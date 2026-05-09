@@ -5,6 +5,7 @@ import websocket from '@fastify/websocket';
 import { env } from './config/env.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
+import { familyRoutes } from './routes/family.js';
 
 const app = Fastify({
   logger: {
@@ -25,6 +26,7 @@ await app.register(websocket);
 
 await app.register(healthRoutes, { prefix: '/health' });
 await app.register(authRoutes, { prefix: '/api/auth' });
+await app.register(familyRoutes, { prefix: '/api/family' });
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {

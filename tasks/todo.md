@@ -25,9 +25,9 @@
 **Checkpoint 0**: `docker compose up` 成功，health check 通过，seed 数据可插入
 
 ## Phase 1: Family Binding & Auth
-- [ ] **P1.1** Child Phone Login & Role Selection UI
-  - [ ] 手机号验证码 API (mock SMS)
-  - [ ] JWT 签发 (7 天)
+- [x] **P1.1** Child Phone Login & Role Selection UI
+  - [x] 手机号验证码 API (mock SMS)
+  - [x] JWT 签发 (7 天)
   - [ ] 身份选择入口页 (WXML 适配)
   - [ ] 子女登录页
 - [ ] **P1.2** Family Creation & Elder Info
