@@ -1,26 +1,26 @@
 # 小暖 MVP 任务清单
 
 ## Phase 0: Foundation
-- [ ] **P0.1** Monorepo & Dev Environment
-  - [ ] `apps/gateway/` Node.js Fastify 网关
-  - [ ] `apps/mini-program/` 微信小程序
-  - [ ] `packages/prisma/` 共享 schema
-  - [ ] `packages/skills/` Pi Agent Skills
-  - [ ] `docker-compose.yml` (PostgreSQL + Qdrant + Redis)
-  - [ ] `pnpm dev` 同时启动
-  - [ ] ESLint + Prettier + TypeScript 严格模式
-- [ ] **P0.2** Database Schema (Prisma)
-  - [ ] Family, User, ElderProfile, ChildProfile
-  - [ ] Session, SessionPhase
-  - [ ] Checkpoint, MemoryVector
-  - [ ] FamilyFeed, DailySummary, HabitLog
-  - [ ] 索引与家庭隔离
-  - [ ] Seed 脚本
-- [ ] **P0.3** Gateway Skeleton
-  - [ ] Fastify + @fastify/websocket
-  - [ ] JWT 认证插件
-  - [ ] WebSocket session 管理
-  - [ ] 路由结构 `/api/auth/*`, `/api/family/*`, `/api/session/*`, `/api/feed/*`
+- [x] **P0.1** Monorepo & Dev Environment
+  - [x] `apps/gateway/` Node.js Fastify 网关
+  - [x] `apps/mini-program/` 微信小程序
+  - [x] `packages/prisma/` 共享 schema
+  - [x] `packages/skills/` Pi Agent Skills
+  - [x] `docker-compose.yml` (PostgreSQL + Qdrant + Redis)
+  - [x] `pnpm dev` 同时启动
+  - [x] ESLint + Prettier + TypeScript 严格模式
+- [x] **P0.2** Database Schema (Prisma)
+  - [x] Family, User, ElderProfile, ChildProfile
+  - [x] Session, SessionPhase
+  - [x] Checkpoint, MemoryVector
+  - [x] FamilyFeed, DailySummary, HabitLog
+  - [x] 索引与家庭隔离
+  - [x] Seed 脚本
+- [x] **P0.3** Gateway Skeleton
+  - [x] Fastify + @fastify/websocket
+  - [x] JWT 认证插件
+  - [x] WebSocket session 管理
+  - [x] 路由结构 `/api/auth/*`, `/api/family/*`, `/api/session/*`, `/api/feed/*`
 
 **Checkpoint 0**: `docker compose up` 成功，health check 通过，seed 数据可插入
 

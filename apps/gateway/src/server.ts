@@ -4,6 +4,7 @@ import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
 import { env } from './config/env.js';
 import { healthRoutes } from './routes/health.js';
+import { authRoutes } from './routes/auth.js';
 
 const app = Fastify({
   logger: {
@@ -11,20 +12,21 @@ const app = Fastify({
   },
 });
 
-async function main() {
-  await app.register(cors, {
-    origin: env.CORS_ORIGIN,
-    credentials: true,
-  });
+await app.register(cors, {
+  origin: env.CORS_ORIGIN,
+  credentials: true,
+});
 
-  await app.register(jwt, {
-    secret: env.JWT_SECRET,
-  });
+await app.register(jwt, {
+  secret: env.JWT_SECRET,
+});
 
-  await app.register(websocket);
+await app.register(websocket);
 
-  await app.register(healthRoutes, { prefix: '/health' });
+await app.register(healthRoutes, { prefix: '/health' });
+await app.register(authRoutes, { prefix: '/api/auth' });
 
+if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
     app.log.info(`Gateway listening on http://localhost:${env.PORT}`);
@@ -33,7 +35,5 @@ async function main() {
     process.exit(1);
   }
 }
-
-main();
 
 export { app };
