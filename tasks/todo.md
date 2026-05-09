@@ -30,10 +30,10 @@
   - [x] JWT 签发 (7 天)
   - [ ] 身份选择入口页 (WXML 适配)
   - [ ] 子女登录页
-- [ ] **P1.2** Family Creation & Elder Info
-  - [ ] `POST /api/family`
-  - [ ] `POST /api/family/invite-code` (6 位数字, 24h 有效)
-  - [ ] ElderProfile 存储
+- [x] **P1.2** Family Creation & Elder Info
+  - [x] `POST /api/family`
+  - [x] `POST /api/family/invite-code` (6 位数字, 24h 有效)
+  - [x] ElderProfile 存储
   - [ ] 子女端绑定与引导页 (WXML 适配)
 - [ ] **P1.3** Elder Binding & No-Login Flow
   - [ ] `POST /api/family/bind` (设备标识)
