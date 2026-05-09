@@ -1,0 +1,27 @@
+{
+  "name": "xiaonuan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "小暖 - AI elderly companion mini-program",
+  "scripts": {
+    "dev": "pnpm --parallel dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "db:migrate": "pnpm --filter @xiaonuan/prisma migrate",
+    "db:generate": "pnpm --filter @xiaonuan/prisma generate",
+    "db:seed": "pnpm --filter @xiaonuan/prisma seed",
+    "db:studio": "pnpm --filter @xiaonuan/prisma studio"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.3.0",
+    "typescript": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xiao Nuan - Listening</title>
+<!-- Google Fonts: Nunito Sans -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-tertiary-fixed": "#001f26",
+                        "tertiary-fixed-dim": "#39d8f7",
+                        "surface-dim": "#e7d7cc",
+                        "outline-variant": "#dac2b1",
+                        "inverse-primary": "#ffb77a",
+                        "on-secondary-container": "#506873",
+                        "inverse-surface": "#382f27",
+                        "on-primary": "#ffffff",
+                        "surface-container-lowest": "#ffffff",
+                        "secondary": "#4a626d",
+                        "on-primary-fixed-variant": "#6d3a00",
+                        "surface-tint": "#8f4e00",
+                        "surface-container-highest": "#f0dfd5",
+                        "inverse-on-surface": "#ffeee3",
+                        "background": "#fff8f5",
+                        "on-secondary": "#ffffff",
+                        "surface-bright": "#fff8f5",
+                        "on-secondary-fixed-variant": "#334a55",
+                        "surface-container-high": "#f6e5da",
+                        "error-container": "#ffdad6",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "tertiary": "#006879",
+                        "primary-fixed-dim": "#ffb77a",
+                        "secondary-container": "#cde6f4",
+                        "tertiary-fixed": "#aaedff",
+                        "outline": "#877365",
+                        "on-tertiary-container": "#004f5c",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#fff1e8",
+                        "primary-fixed": "#ffdcc2",
+                        "surface-container": "#fcebe0",
+                        "primary-container": "#ff9f43",
+                        "on-error": "#ffffff",
+                        "surface": "#fff8f5",
+                        "tertiary-container": "#0fc7e6",
+                        "primary": "#8f4e00",
+                        "error": "#ba1a1a",
+                        "secondary-fixed": "#cde6f4",
+                        "secondary-fixed-dim": "#b1cad7",
+                        "on-surface-variant": "#544437",
+                        "on-surface": "#221a13",
+                        "surface-variant": "#f0dfd5",
+                        "on-primary-fixed": "#2e1500",
+                        "on-background": "#221a13",
+                        "on-primary-container": "#6d3a00",
+                        "on-secondary-fixed": "#051e28",
+                        "on-error-container": "#93000a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "touch-target-min": "64px",
+                        "margin-mobile": "24px",
+                        "gutter-mobile": "16px",
+                        "elderly-fab-size": "120px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Nunito Sans"],
+                        "headline-lg": ["Nunito Sans"],
+                        "body-lg": ["Nunito Sans"],
+                        "body-md": ["Nunito Sans"],
+                        "headline-xl": ["Nunito Sans"],
+                        "headline-md": ["Nunito Sans"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "44px", "fontWeight": "700" }],
+                        "body-lg": ["22px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "body-md": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-xl": ["40px", { "lineHeight": "52px", "fontWeight": "800" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 24px;
+            line-height: 1;
+            letter-spacing: normal;
+            text-transform: none;
+            display: inline-block;
+            white-space: nowrap;
+            word-wrap: normal;
+            direction: ltr;
+            -webkit-font-feature-settings: 'liga';
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+@keyframes pulse-ring {
+  0% { transform: scale(.8); opacity: 0.5; }
+  80%, 100% { opacity: 0; }
+}
+.pulse-effect::before {
+  content: '';
+  position: absolute;
+  width: 140%;
+  height: 140%;
+  border-radius: 9999px;
+  background-color: var(--tw-color-primary);
+  opacity: 0;
+  animation: pulse-ring 2s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+  z-index: -1;
+}
+</style></head>
+<body class="bg-background text-on-background font-body-md min-h-screen flex flex-col overflow-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim shadow-sm flex justify-between items-center px-margin-mobile w-full h-touch-target-min shrink-0 z-40">
+<!-- Leading Avatar -->
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-variant flex items-center justify-center">
+<img alt="Companion Avatar" class="w-full h-full object-cover" data-alt="A soft, warm, 3D cartoon-style illustration of a friendly young adult child's face, smiling gently. The lighting is soft and cinematic, casting a gentle glow that conveys empathy and patience. The color palette is warm with subtle peach and sage tones, set against a pristine light cream background, fitting a reassuring digital companion app." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAu_Z3Bt4FrI0udxSztkyrXK4Liragl7NCDC64yIbDRwO4xVs3tTDnzjf3IwzWVSNDst3lRs4_PV10rlb6jyATbR8-6TQjJET_34PAmH09d-rXo0zw1SuyyUvdXVDbV2LaBrsntum29CfLYxPxq49CHANaX1sM8YUNX93-vSfXTfS82WraxOo1pNqlx0PNE8PuL4uYnY2kUWqeBMHAKPxQDnrEChBD0OOLVEoXTqRlbNgLfmQrWbOFpuk7qldIIi64VyakkrCucIHxM"/>
+</div>
+<!-- Headline -->
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed tracking-tight">Xiao Nuan</h1>
+<!-- Trailing Icon -->
+<button aria-label="History" class="w-12 h-12 flex items-center justify-center text-primary dark:text-primary-fixed hover:opacity-80 transition-transform active:scale-95">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">history</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-grow flex flex-col items-center justify-center px-margin-mobile gap-12 relative">
+<!-- Avatar & Listening Halo Area -->
+<div class="relative flex flex-col items-center justify-center mt-8">
+<!-- Ripple Effects (Static representation of active state) -->
+<div class="absolute w-[280px] h-[280px] bg-primary-container/20 rounded-full flex items-center justify-center pointer-events-none"></div>
+<div class="absolute w-[220px] h-[220px] bg-primary-container/40 rounded-full flex items-center justify-center pointer-events-none"></div>
+<!-- Avatar Core -->
+<div class="relative w-40 h-40 rounded-full overflow-hidden border-4 border-surface shadow-lg z-10 bg-surface-variant">
+<img alt="Xiao Nuan listening attentively" class="w-full h-full object-cover" data-alt="A warm, tactile, hand-drawn style cartoon portrait of a caring young adult acting as an AI companion. The character is looking directly forward with empathetic, gentle eyes and an open, speaking mouth. The art style is soft, safe, and home-like, using a color palette of warm creams, soft oranges, and sage greens, perfectly suited for an elderly care application." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDNbNoAdae-Wct9V7ThusORta8BoBQXw6Gdl5cIsOVePbIZgvSlqS5o09rxjYXY6ytFoG2UT2mkmdS_CPamoD_NTO6DB-KYnVl80mfnN5w-RL9jj-sI2Hg2D3HdAz0JPSJUsCaUGmyEM8H_5GK9VODCxMOEq9X1hbLPe4E0E1WoqL5KiRm3yVWCghIVLer9Yi4-cII4MyJuUo-q927AKNyVjw-3qTo69WjXHbkCaWAX2LsbDcvmu8MHCfPKE2WYgqqY2RiMCiNmg8dT"/>
+</div>
+</div>
+<!-- Action & Feedback Area -->
+<div class="flex flex-col items-center gap-6 mt-4">
+<!-- Pressed FAB (Tactile skeumorphic pressed state) -->
+<button aria-label="Listening" class="w-elderly-fab-size h-elderly-fab-size bg-primary text-on-primary rounded-full flex items-center justify-center scale-95 shadow-sm transform transition-all pointer-events-none pulse-effect relative flex items-center justify-center">
+<span class="material-symbols-outlined text-[56px]" style="font-variation-settings: 'FILL' 1;">mic</span>
+</button>
+<!-- Graphical Waveform Feedback -->
+<div class="flex items-center justify-center gap-2 h-16 w-full max-w-[200px] bg-surface-container rounded-3xl px-6 shadow-sm border border-surface-variant">
+<div class="w-3 bg-primary rounded-full h-6 opacity-80"></div>
+<div class="w-3 bg-primary rounded-full h-10 opacity-90"></div>
+<div class="w-3 bg-primary rounded-full h-14"></div>
+<div class="w-3 bg-primary rounded-full h-8 opacity-90"></div>
+<div class="w-3 bg-primary rounded-full h-5 opacity-70"></div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+</body></html>

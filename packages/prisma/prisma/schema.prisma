@@ -1,0 +1,170 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Family {
+  id          String   @id @default(cuid())
+  inviteCode  String   @unique @map("invite_code")
+  inviteCodeExpiresAt DateTime? @map("invite_code_expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  elder       ElderProfile?
+  children    ChildProfile[]
+  sessions    Session[]
+  feeds       FamilyFeed[]
+  dailySummaries DailySummary[]
+  habitLogs   HabitLog[]
+
+  @@map("families")
+}
+
+model ElderProfile {
+  id        String   @id @default(cuid())
+  familyId  String   @unique @map("family_id")
+  name      String
+  age       Int?
+  dialect   String?
+  deviceId  String?  @map("device_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@map("elder_profiles")
+}
+
+model ChildProfile {
+  id        String   @id @default(cuid())
+  familyId  String   @map("family_id")
+  userId    String   @unique @map("user_id")
+  name      String
+  phone     String   @unique
+  isPrimary Boolean  @default(false) @map("is_primary")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@map("child_profiles")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  phone     String   @unique
+  role      UserRole
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+enum UserRole {
+  ELDER
+  CHILD
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  familyId  String   @map("family_id")
+  phase     SessionPhase @default(GREETING)
+  startedAt DateTime @default(now()) @map("started_at")
+  endedAt   DateTime? @map("ended_at")
+  turnCount Int      @default(0) @map("turn_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  checkpoints Checkpoint[]
+
+  @@map("sessions")
+}
+
+enum SessionPhase {
+  GREETING
+  ACTIVE_CHAT
+  CLOSING
+  ENDED
+}
+
+model Checkpoint {
+  id            String   @id @default(cuid())
+  sessionId     String   @map("session_id")
+  topicSummary  String   @map("topic_summary")
+  keyFacts      String[] @map("key_facts")
+  moodSnapshot  String   @map("mood_snapshot")
+  nextTopicHint String?  @map("next_topic_hint")
+  checkpointId  String   @unique @map("checkpoint_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("checkpoints")
+}
+
+model FamilyFeed {
+  id          String   @id @default(cuid())
+  familyId    String   @map("family_id")
+  type        FeedType
+  content     String
+  category    FeedCategory
+  isRecent    Boolean  @default(false) @map("is_recent")
+  audioUrl    String?  @map("audio_url")
+  photoUrl    String?  @map("photo_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@map("family_feeds")
+}
+
+enum FeedType {
+  TEXT
+  VOICE
+  PHOTO
+}
+
+enum FeedCategory {
+  PERSON
+  PLACE
+  EVENT
+  PREFERENCE
+  HEALTH
+}
+
+model DailySummary {
+  id          String   @id @default(cuid())
+  familyId    String   @map("family_id")
+  date        DateTime @db.Date
+  moodLabel   String   @map("mood_label")
+  duration    Int      @default(0)
+  topicCount  Int      @default(0) @map("topic_count")
+  highlights  String[]
+  concerns    String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@unique([familyId, date])
+  @@map("daily_summaries")
+}
+
+model HabitLog {
+  id          String   @id @default(cuid())
+  familyId    String   @map("family_id")
+  openedAt    DateTime @map("opened_at")
+  closedAt    DateTime? @map("closed_at")
+  duration    Int      @default(0)
+  topicCount  Int      @default(0) @map("topic_count")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@map("habit_logs")
+}

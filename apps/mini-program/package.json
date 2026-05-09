@@ -1,0 +1,11 @@
+{
+  "name": "@xiaonuan/mini-program",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "echo 'Use WeChat DevTools to open this directory'",
+    "build": "echo 'Build via WeChat DevTools'",
+    "lint": "echo 'No lint'",
+    "test": "echo 'No tests'"
+  }
+}

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Xiao Nuan - Settings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#cde6f4",
+                        "on-secondary-container": "#506873",
+                        "error": "#ba1a1a",
+                        "primary-container": "#ff9f43",
+                        "inverse-surface": "#382f27",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#b1cad7",
+                        "background": "#fff8f5",
+                        "tertiary-fixed-dim": "#39d8f7",
+                        "inverse-on-surface": "#ffeee3",
+                        "tertiary-container": "#0fc7e6",
+                        "on-surface": "#221a13",
+                        "secondary-container": "#cde6f4",
+                        "on-primary-fixed-variant": "#6d3a00",
+                        "surface-bright": "#fff8f5",
+                        "error-container": "#ffdad6",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-high": "#f6e5da",
+                        "on-tertiary-fixed": "#001f26",
+                        "on-secondary-fixed-variant": "#334a55",
+                        "surface": "#fff8f5",
+                        "primary-fixed": "#ffdcc2",
+                        "on-surface-variant": "#544437",
+                        "on-primary-fixed": "#2e1500",
+                        "primary-fixed-dim": "#ffb77a",
+                        "on-secondary": "#ffffff",
+                        "on-error-container": "#93000a",
+                        "primary": "#8f4e00",
+                        "outline": "#877365",
+                        "on-primary-container": "#6d3a00",
+                        "surface-variant": "#f0dfd5",
+                        "inverse-primary": "#ffb77a",
+                        "surface-tint": "#8f4e00",
+                        "surface-container-highest": "#f0dfd5",
+                        "surface-dim": "#e7d7cc",
+                        "tertiary-fixed": "#aaedff",
+                        "on-error": "#ffffff",
+                        "on-background": "#221a13",
+                        "surface-container-low": "#fff1e8",
+                        "on-tertiary": "#ffffff",
+                        "on-secondary-fixed": "#051e28",
+                        "tertiary": "#006879",
+                        "on-tertiary-container": "#004f5c",
+                        "surface-container": "#fcebe0",
+                        "secondary": "#4a626d",
+                        "outline-variant": "#dac2b1",
+                        "on-tertiary-fixed-variant": "#004e5c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "2xl": "1rem",
+                        "3xl": "1.5rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "elderly-fab-size": "120px",
+                        "gutter-mobile": "16px",
+                        "unit": "8px",
+                        "margin-mobile": "24px",
+                        "touch-target-min": "64px"
+                    },
+                    "fontFamily": {
+                        "headline-xl": ["Nunito Sans", "sans-serif"],
+                        "headline-md": ["Nunito Sans", "sans-serif"],
+                        "body-md": ["Nunito Sans", "sans-serif"],
+                        "label-lg": ["Nunito Sans", "sans-serif"],
+                        "headline-lg": ["Nunito Sans", "sans-serif"],
+                        "body-lg": ["Nunito Sans", "sans-serif"]
+                    },
+                    "fontSize": {
+                        "headline-xl": ["40px", { "lineHeight": "52px", "fontWeight": "800" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-md": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "label-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "44px", "fontWeight": "700" }],
+                        "body-lg": ["22px", { "lineHeight": "32px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for webkit */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #dac2b1;
+            border-radius: 20px;
+        }
+        /* Toggle Switch CSS */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #8f4e00;
+        }
+        .toggle-checkbox:checked + .toggle-label {
+            background-color: #8f4e00;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md text-body-md min-h-screen pb-32 antialiased">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim shadow-sm flex justify-between items-center px-margin-mobile w-full h-touch-target-min fixed top-0 z-40">
+<div class="w-10 h-10 rounded-full overflow-hidden bg-surface-variant flex items-center justify-center flex-shrink-0 shadow-sm border border-outline-variant">
+<img alt="Child Profile" class="w-full h-full object-cover" data-alt="A warm, soft-focus portrait of a young child smiling gently. The lighting is bright and inviting, creating a wholesome, companionable atmosphere. The color palette is natural with hints of earthy tones, fitting perfectly within a safe, family-oriented digital environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCTXFJCf4hzHiAKrKPth7BBDGM2wClPIHWySKemJ-49zQe_YXTprrpOWUiNt_D3l6eoNV2z7osv9LCui1PrEevgz9kxG2k7TjuMhg-5iwL7fyKBfvavShqFaO45nZxsLoJlgBMFlVUlsKnUKPTWVYiEu7np1YUFDK-P-sZZb48LId16ZZ-2y2OAgxs-XY6BTTmDRZkmL9MiuoNQg0UyXpy0iVNCupmlYmLhRRsbH0oKxrdF1TydgX0WlVc2nHYKBYQfZ--D1D0i8e2n"/>
+</div>
+<h1 class="font-headline-md text-headline-md text-primary dark:text-primary-fixed truncate px-4">Xiao Nuan</h1>
+<button aria-label="History" class="w-touch-target-min h-touch-target-min flex items-center justify-end text-primary dark:text-primary-fixed hover:opacity-80 transition-transform active:scale-95 flex-shrink-0">
+<span class="material-symbols-outlined text-[28px]">history</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 px-margin-mobile flex flex-col gap-8 max-w-2xl mx-auto">
+<!-- Header Title -->
+<div class="pt-4 pb-2">
+<h2 class="font-headline-lg text-headline-lg text-on-surface">Settings</h2>
+</div>
+<!-- User Profile (Child's Info) - Bento Card -->
+<section class="bg-surface-container rounded-3xl p-6 shadow-sm border border-white/50 relative overflow-hidden">
+<div class="absolute -right-12 -top-12 w-32 h-32 bg-secondary-container rounded-full opacity-50 blur-2xl"></div>
+<div class="flex items-center gap-6 relative z-10">
+<div class="w-20 h-20 rounded-full overflow-hidden bg-surface-variant shadow-md border-2 border-white">
+<img alt="Child Avatar" class="w-full h-full object-cover" data-alt="A warm, soft-focus portrait of a young child smiling gently. The lighting is bright and inviting, creating a wholesome, companionable atmosphere. The color palette is natural with hints of earthy tones, fitting perfectly within a safe, family-oriented digital environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBy0J7liNxOjDUCh5xCFkEQxiCdorCmWnxDNpVm7MXwfb_2aDUQRCMsOAOsgvygqwEIUFlofTmbEAqr1UoLWfvzdQ8uLkJHqNOoM72cIZjebSluv2S_I-WHS9SuAoLSFFGKGLp0Pj3PGliXV0nYKcWo5UdleE_oMbpa6XRbial95t3A_MhDr4NDvTPvTjIi5pVNNAu5-NrRM32qfqGPATPeRbA62rK8-29kpOf_O2A3NgvYhHCOJN7Shs0OFRIffTctnH3krtRi9m1i"/>
+</div>
+<div class="flex-1">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-1">Leo</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Child Account</p>
+</div>
+<button class="w-12 h-12 flex items-center justify-center rounded-full bg-primary-container text-on-primary-container shadow-sm hover:bg-primary-fixed-dim transition-colors">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">edit</span>
+</button>
+</div>
+</section>
+<!-- Parent Profile Details -->
+<section class="flex flex-col gap-4">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant px-2 uppercase tracking-wider">Parent Profile</h3>
+<div class="bg-surface-container rounded-3xl shadow-sm border border-white/50 overflow-hidden">
+<!-- List Item 1 -->
+<button class="w-full min-h-[72px] px-6 flex items-center justify-between border-b border-outline-variant/30 hover:bg-surface-container-high transition-colors text-left">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Name</p>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80 text-sm">Grandma Wang</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+<!-- List Item 2 -->
+<button class="w-full min-h-[72px] px-6 flex items-center justify-between border-b border-outline-variant/30 hover:bg-surface-container-high transition-colors text-left">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined">calendar_today</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Age</p>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80 text-sm">78 Years</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+<!-- List Item 3 -->
+<button class="w-full min-h-[72px] px-6 flex items-center justify-between hover:bg-surface-container-high transition-colors text-left">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined">record_voice_over</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Dialect Preference</p>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80 text-sm">Sichuanese</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Binding & Safety -->
+<section class="flex flex-col gap-4">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant px-2 uppercase tracking-wider">Binding &amp; Safety</h3>
+<div class="bg-surface-container rounded-3xl shadow-sm border border-white/50 overflow-hidden">
+<a class="w-full min-h-[72px] px-6 flex items-center justify-between hover:bg-surface-container-high transition-colors text-left" href="{{DATA:SCREEN:SCREEN_13}}">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-secondary-fixed flex items-center justify-center text-on-secondary-container">
+<span class="material-symbols-outlined">link</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Link Elderly Account</p>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80 text-sm">Not linked</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+</a>
+</div>
+</section>
+<!-- Notifications -->
+<section class="flex flex-col gap-4">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant px-2 uppercase tracking-wider">Notifications</h3>
+<div class="bg-surface-container rounded-3xl shadow-sm border border-white/50 overflow-hidden py-2">
+<!-- Toggle Item 1 -->
+<div class="w-full min-h-[72px] px-6 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-tertiary-container flex items-center justify-center text-on-tertiary-container">
+<span class="material-symbols-outlined">description</span>
+</div>
+<div>
+<p class="font-body-lg text-body-lg text-on-surface leading-none mb-1">Daily Summary</p>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80 text-sm">Receive a daily health &amp; activity report</p>
+</div>
+</div>
+<!-- Toggle Switch -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-1 left-1 transition-all checked:translate-x-4 border-surface-variant" id="toggle1" name="toggle1" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-8 rounded-full bg-primary cursor-pointer transition-colors" for="toggle1"></label>
+</div>
+</div>
+<!-- Toggle Item 2 -->
+<div class="w-full min-h-[72px] px-6 flex items-center justify-between mt-2">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-error-container flex items-center justify-center text-on-error-container">
+<span class="material-symbols-outlined">warning</span>
+</div>
+<div>
+<p class="font-body-lg text-body-lg text-on-surface leading-none mb-1">Abnormal Alerts</p>
+<p class="font-body-md text-body-md text-on-surface-variant opacity-80 text-sm">Instant alerts for unusual activity</p>
+</div>
+</div>
+<!-- Toggle Switch -->
+<div class="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+<input checked="" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer z-10 top-1 left-1 transition-all checked:translate-x-4 border-surface-variant" id="toggle2" name="toggle2" type="checkbox"/>
+<label class="toggle-label block overflow-hidden h-8 rounded-full bg-primary cursor-pointer transition-colors" for="toggle2"></label>
+</div>
+</div>
+</div>
+</section>
+<!-- Family Management -->
+<section class="flex flex-col gap-4">
+<h3 class="font-label-lg text-label-lg text-on-surface-variant px-2 uppercase tracking-wider">Family Management</h3>
+<div class="bg-primary-container/20 rounded-3xl p-6 shadow-sm border border-primary-container/30 flex flex-col items-center text-center gap-4">
+<div class="w-16 h-16 rounded-full bg-primary-container flex items-center justify-center text-on-primary-container shadow-sm mb-2">
+<span class="material-symbols-outlined text-[32px]">group_add</span>
+</div>
+<div>
+<h4 class="font-headline-md text-headline-md text-on-surface mb-2">Invite Family Members</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Share this code with family to join the care circle.</p>
+</div>
+<div class="bg-surface rounded-2xl py-4 px-8 w-full max-w-[280px] flex justify-between items-center border border-outline-variant mt-2 shadow-inner">
+<span class="font-headline-lg text-headline-lg text-primary tracking-widest">XN8A-2K</span>
+<button aria-label="Copy Code" class="text-primary hover:text-on-primary-container transition-colors p-2">
+<span class="material-symbols-outlined">content_copy</span>
+</button>
+</div>
+</div>
+</section>
+<!-- About section -->
+<section class="mb-8">
+<div class="bg-surface-container rounded-3xl shadow-sm border border-white/50 overflow-hidden">
+<button class="w-full min-h-[64px] px-6 flex items-center justify-between hover:bg-surface-container-high transition-colors text-left">
+<span class="font-body-lg text-body-lg text-on-surface">About Xiao Nuan</span>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span class="font-body-md text-sm">v 2.1.0</span>
+<span class="material-symbols-outlined">chevron_right</span>
+</div>
+</button>
+</div>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container-high shadow-lg fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 rounded-t-3xl border-t border-white/20 backdrop-blur-md">
+<!-- Home (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-primary-fixed-dim/20 transition-all duration-300 active:scale-90 w-16 h-16 rounded-2xl" href="#">
+<span class="material-symbols-outlined mb-1 text-[28px]">home</span>
+<span class="font-label-lg text-label-lg text-[11px] leading-tight">Home</span>
+</a>
+<!-- Memory (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-primary-fixed-dim/20 transition-all duration-300 active:scale-90 w-16 h-16 rounded-2xl" href="#">
+<span class="material-symbols-outlined mb-1 text-[28px]">auto_awesome</span>
+<span class="font-label-lg text-label-lg text-[11px] leading-tight">Memory</span>
+</a>
+<!-- History (Inactive) -->
+<a class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-primary-fixed-dim/20 transition-all duration-300 active:scale-90 w-16 h-16 rounded-2xl" href="#">
+<span class="material-symbols-outlined mb-1 text-[28px]">history</span>
+<span class="font-label-lg text-label-lg text-[11px] leading-tight">History</span>
+</a>
+<!-- Settings (Active) -->
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-8 py-2 transition-all duration-300 active:scale-90 shadow-sm border border-primary-container/50" href="#">
+<span class="material-symbols-outlined mb-1 text-[28px]" style="font-variation-settings: 'FILL' 1;">settings</span>
+<span class="font-label-lg text-label-lg text-[11px] leading-tight">Settings</span>
+</a>
+</nav>
+</body></html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Family Memory - Xiao Nuan</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#334a55",
+                        "surface-bright": "#fff8f5",
+                        "secondary": "#4a626d",
+                        "on-tertiary-container": "#004f5c",
+                        "on-secondary-fixed": "#051e28",
+                        "surface-container-high": "#f6e5da",
+                        "primary-fixed": "#ffdcc2",
+                        "on-tertiary": "#ffffff",
+                        "on-primary-fixed": "#2e1500",
+                        "inverse-surface": "#382f27",
+                        "tertiary-fixed-dim": "#39d8f7",
+                        "tertiary": "#006879",
+                        "on-surface": "#221a13",
+                        "secondary-fixed": "#cde6f4",
+                        "error-container": "#ffdad6",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#e7d7cc",
+                        "outline": "#877365",
+                        "surface-tint": "#8f4e00",
+                        "surface-container": "#fcebe0",
+                        "on-error-container": "#93000a",
+                        "error": "#ba1a1a",
+                        "on-secondary": "#ffffff",
+                        "on-primary": "#ffffff",
+                        "on-primary-fixed-variant": "#6d3a00",
+                        "on-primary-container": "#6d3a00",
+                        "surface-container-low": "#fff1e8",
+                        "on-surface-variant": "#544437",
+                        "on-secondary-container": "#506873",
+                        "outline-variant": "#dac2b1",
+                        "primary-fixed-dim": "#ffb77a",
+                        "on-tertiary-fixed": "#001f26",
+                        "tertiary-fixed": "#aaedff",
+                        "secondary-fixed-dim": "#b1cad7",
+                        "on-background": "#221a13",
+                        "inverse-primary": "#ffb77a",
+                        "background": "#fff8f5",
+                        "primary": "#8f4e00",
+                        "surface-container-lowest": "#ffffff",
+                        "surface": "#fff8f5",
+                        "secondary-container": "#cde6f4",
+                        "surface-container-highest": "#f0dfd5",
+                        "primary-container": "#ff9f43",
+                        "tertiary-container": "#0fc7e6",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "surface-variant": "#f0dfd5",
+                        "inverse-on-surface": "#ffeee3"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter-mobile": "16px",
+                        "margin-mobile": "24px",
+                        "elderly-fab-size": "120px",
+                        "touch-target-min": "64px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "label-lg": ["Nunito Sans"],
+                        "body-md": ["Nunito Sans"],
+                        "headline-md": ["Nunito Sans"],
+                        "body-lg": ["Nunito Sans"],
+                        "headline-lg": ["Nunito Sans"],
+                        "headline-xl": ["Nunito Sans"]
+                    },
+                    "fontSize": {
+                        "label-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "700" }],
+                        "body-md": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "body-lg": ["22px", { "lineHeight": "32px", "fontWeight": "500" }],
+                        "headline-lg": ["32px", { "lineHeight": "44px", "fontWeight": "700" }],
+                        "headline-xl": ["40px", { "lineHeight": "52px", "fontWeight": "800" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            -webkit-tap-highlight-color: transparent;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+</head>
+<body class="bg-surface text-on-surface min-h-screen font-body-md antialiased pb-32">
+<!-- TopAppBar -->
+<header class="bg-surface dark:bg-surface-dim shadow-sm flex justify-between items-center px-margin-mobile w-full h-touch-target-min sticky top-0 z-40">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center overflow-hidden shrink-0">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="A soft, warm, hand-drawn style AI companion character avatar. The character should look empathetic, patient, and inviting, styled in pastel tones matching the primary orange and sage green palette of the app. The mood is friendly and approachable, avoiding hyper-realistic or overly tech-focused aesthetics." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCSZmfxMhbRtxP_e66nUFgR2RdaEaTkemJVIuXRtxvCFvQJkjSW9grMjg6tmy77-p9YKBvsANwuEa5QUqwdMh1vE85SGHrEmMixOz8bFNz-vY32S0pvkUzyoGSbbX357F5pPTgqbrTvcj8HfeWjzqLzU8azw_iWcGLA42QBAES5KFcZk4Z8ITxtJVlw_-I5HVfBKG68luq1H4BZhGVgOnR0w_d5EJzju5UNp6q3PNgyag5H45GhoLX4Q8G6skwHUF6CsN230sGiWZWP"/>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-primary dark:text-primary-fixed tracking-tight">Xiao Nuan</h1>
+</div>
+<button aria-label="History" class="w-touch-target-min h-touch-target-min flex justify-end items-center text-primary dark:text-primary-fixed hover:opacity-80 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-[28px]" style="font-variation-settings: 'FILL' 0;">history</span>
+</button>
+</header>
+<!-- Main Content Canvas -->
+<main class="px-margin-mobile pt-8 flex flex-col gap-8 max-w-4xl mx-auto">
+<!-- Page Header & Actions -->
+<section class="flex flex-col gap-6">
+<div>
+<h2 class="font-headline-xl text-headline-xl text-on-surface">Family Memory</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2">Add stories and memos to help Xiao Nuan understand and remember important family details.</p>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<button class="bg-primary text-on-primary h-[72px] rounded-xl flex items-center justify-center gap-3 shadow-sm hover:opacity-90 active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">edit_document</span>
+<span class="font-label-lg text-label-lg">Add Story</span>
+</button>
+<button class="bg-secondary-container text-on-secondary-container h-[72px] rounded-xl flex items-center justify-center gap-3 shadow-sm hover:bg-secondary-fixed active:scale-95 transition-all">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">mic</span>
+<span class="font-label-lg text-label-lg">Record Memo</span>
+</button>
+</div>
+</section>
+<!-- Memory Cards Grid (Bento style for children's side) -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-8">
+<!-- Card 1 -->
+<article class="bg-surface-container-lowest rounded-xl shadow-[0_4px_24px_rgba(143,78,0,0.08)] p-6 border border-outline-variant/30 flex flex-col gap-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-fixed-dim/10 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+<div class="flex justify-between items-start">
+<div class="bg-primary-container/30 p-3 rounded-lg text-primary">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">school</span>
+</div>
+<div class="flex gap-2">
+<button aria-label="Edit" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button aria-label="Delete" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-error transition-colors rounded-full hover:bg-error-container/50">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Grandson's graduation</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Leo graduated from high school last June. He is now attending state university studying engineering. Grandma was very proud of his speech.</p>
+</div>
+<div class="mt-auto pt-4 flex items-center text-on-surface-variant/70 font-label-lg text-[14px]">
+<span class="material-symbols-outlined text-[16px] mr-1">calendar_today</span>
+                    Added 2 weeks ago
+                </div>
+</article>
+<!-- Card 2 -->
+<article class="bg-surface-container-lowest rounded-xl shadow-[0_4px_24px_rgba(143,78,0,0.08)] p-6 border border-outline-variant/30 flex flex-col gap-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-tertiary-container/10 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+<div class="flex justify-between items-start">
+<div class="bg-tertiary-container/30 p-3 rounded-lg text-tertiary">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">restaurant</span>
+</div>
+<div class="flex gap-2">
+<button aria-label="Edit" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button aria-label="Delete" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-error transition-colors rounded-full hover:bg-error-container/50">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Favorite dish: Braised Pork</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Grandma's absolute favorite meal is Hong Shao Rou (Braised Pork Belly). She prefers it slightly sweeter and served with bok choy.</p>
+</div>
+<div class="mt-auto pt-4 flex items-center text-on-surface-variant/70 font-label-lg text-[14px]">
+<span class="material-symbols-outlined text-[16px] mr-1">calendar_today</span>
+                    Added 1 month ago
+                </div>
+</article>
+<!-- Card 3 -->
+<article class="bg-surface-container-lowest rounded-xl shadow-[0_4px_24px_rgba(143,78,0,0.08)] p-6 border border-outline-variant/30 flex flex-col gap-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-secondary-container/20 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+<div class="flex justify-between items-start">
+<div class="bg-secondary-container/50 p-3 rounded-lg text-secondary">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">pets</span>
+</div>
+<div class="flex gap-2">
+<button aria-label="Edit" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button aria-label="Delete" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-error transition-colors rounded-full hover:bg-error-container/50">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Old pet dog 'Bao'</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Had a golden retriever named Bao for 12 years. She often talks about how he used to wait by the window. Comforting topic when she feels lonely.</p>
+</div>
+<div class="mt-auto pt-4 flex items-center text-on-surface-variant/70 font-label-lg text-[14px]">
+<span class="material-symbols-outlined text-[16px] mr-1">mic</span>
+                    Voice memo • Added 2 months ago
+                </div>
+</article>
+<!-- Card 4 -->
+<article class="bg-surface-container-lowest rounded-xl shadow-[0_4px_24px_rgba(143,78,0,0.08)] p-6 border border-outline-variant/30 flex flex-col gap-4 relative overflow-hidden group">
+<div class="absolute top-0 right-0 w-32 h-32 bg-primary-container/10 rounded-bl-full -z-10 transition-transform group-hover:scale-110"></div>
+<div class="flex justify-between items-start">
+<div class="bg-primary-container/30 p-3 rounded-lg text-primary">
+<span class="material-symbols-outlined text-[32px]" style="font-variation-settings: 'FILL' 1;">medication</span>
+</div>
+<div class="flex gap-2">
+<button aria-label="Edit" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors rounded-full hover:bg-surface-variant">
+<span class="material-symbols-outlined">edit</span>
+</button>
+<button aria-label="Delete" class="w-10 h-10 flex items-center justify-center text-on-surface-variant hover:text-error transition-colors rounded-full hover:bg-error-container/50">
+<span class="material-symbols-outlined">delete</span>
+</button>
+</div>
+</div>
+<div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-2">Doctor's appointment routine</h3>
+<p class="font-body-md text-body-md text-on-surface-variant">Always gets anxious before seeing Dr. Chen on Tuesdays. Remind her to bring the blue folder with her reading glasses.</p>
+</div>
+<div class="mt-auto pt-4 flex items-center text-on-surface-variant/70 font-label-lg text-[14px]">
+<span class="material-symbols-outlined text-[16px] mr-1">calendar_today</span>
+                    Added 3 months ago
+                </div>
+</article>
+</section>
+</main>
+<!-- BottomNavBar -->
+<nav class="bg-surface-container dark:bg-surface-container-high shadow-[0_-4px_16px_rgba(0,0,0,0.05)] fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 rounded-t-[24px]">
+<button aria-label="Home" class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-primary-fixed-dim/20 transition-all duration-300 active:scale-90 w-[72px] h-[64px] rounded-xl" onclick="location.href='{{DATA:SCREEN:SCREEN_8}}'">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label-lg text-[12px] leading-tight">Home</span>
+</button>
+<button aria-label="Memory" class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-[20px] w-[80px] h-[64px] transition-all duration-300 active:scale-90" onclick="location.href='{{DATA:SCREEN:SCREEN_7}}'">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-label-lg text-[12px] leading-tight">Memory</span>
+</button>
+<button aria-label="History" class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-primary-fixed-dim/20 transition-all duration-300 active:scale-90 w-[72px] h-[64px] rounded-xl" onclick="location.href='{{DATA:SCREEN:SCREEN_9}}'">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">history</span>
+<span class="font-label-lg text-[12px] leading-tight">History</span>
+</button>
+<button aria-label="Settings" class="flex flex-col items-center justify-center text-on-secondary-container opacity-70 hover:bg-primary-fixed-dim/20 transition-all duration-300 active:scale-90 w-[72px] h-[64px] rounded-xl" onclick="location.href='{{DATA:SCREEN:SCREEN_2}}'">
+<span class="material-symbols-outlined mb-1" style="font-variation-settings: 'FILL' 0;">settings</span>
+<span class="font-label-lg text-[12px] leading-tight">Settings</span>
+</button>
+</nav>
+</body></html>

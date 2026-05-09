@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>小暖 - 身份选择</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Nunito+Sans:wght@400;500;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed-variant": "#334a55",
+                        "on-primary-fixed": "#2e1500",
+                        "tertiary": "#006879",
+                        "secondary-container": "#cde6f4",
+                        "on-surface-variant": "#544437",
+                        "surface-dim": "#e7d7cc",
+                        "background": "#fff8f5",
+                        "inverse-surface": "#382f27",
+                        "error-container": "#ffdad6",
+                        "on-background": "#221a13",
+                        "on-primary": "#ffffff",
+                        "secondary-fixed-dim": "#b1cad7",
+                        "primary": "#8f4e00",
+                        "on-surface": "#221a13",
+                        "inverse-primary": "#ffb77a",
+                        "tertiary-container": "#0fc7e6",
+                        "on-primary-fixed-variant": "#6d3a00",
+                        "outline-variant": "#dac2b1",
+                        "on-error": "#ffffff",
+                        "tertiary-fixed-dim": "#39d8f7",
+                        "on-secondary": "#ffffff",
+                        "surface": "#fff8f5",
+                        "on-tertiary-fixed-variant": "#004e5c",
+                        "surface-tint": "#8f4e00",
+                        "outline": "#877365",
+                        "on-error-container": "#93000a",
+                        "surface-bright": "#fff8f5",
+                        "secondary-fixed": "#cde6f4",
+                        "primary-fixed-dim": "#ffb77a",
+                        "tertiary-fixed": "#aaedff",
+                        "primary-fixed": "#ffdcc2",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#f0dfd5",
+                        "surface-container-low": "#fff1e8",
+                        "surface-container": "#fcebe0",
+                        "surface-container-high": "#f6e5da",
+                        "on-secondary-container": "#506873",
+                        "on-tertiary-container": "#004f5c",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#f0dfd5",
+                        "primary-container": "#ff9f43",
+                        "on-tertiary-fixed": "#001f26",
+                        "inverse-on-surface": "#ffeee3",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed": "#051e28",
+                        "secondary": "#4a626d",
+                        "on-primary-container": "#6d3a00"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "elderly-fab-size": "120px",
+                        "touch-target-min": "64px",
+                        "margin-mobile": "24px",
+                        "gutter-mobile": "16px"
+                    },
+                    "fontFamily": {
+                        "headline-md": ["Nunito Sans"],
+                        "headline-lg": ["Nunito Sans"],
+                        "headline-xl": ["Nunito Sans"],
+                        "label-lg": ["Nunito Sans"],
+                        "body-md": ["Nunito Sans"],
+                        "body-lg": ["Nunito Sans"]
+                    },
+                    "fontSize": {
+                        "headline-md": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "headline-lg": ["32px", { "lineHeight": "44px", "fontWeight": "700" }],
+                        "headline-xl": ["40px", { "lineHeight": "52px", "fontWeight": "800" }],
+                        "label-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0.5px", "fontWeight": "700" }],
+                        "body-md": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "body-lg": ["22px", { "lineHeight": "32px", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+<style>
+  @keyframes ripple-animation {
+    to {
+      transform: scale(4);
+      opacity: 0;
+    }
+  }
+  .ripple {
+    position: absolute;
+    background: rgba(255, 255, 255, 0.4);
+    border-radius: 50%;
+    transform: scale(0);
+    animation: ripple-animation 0.6s linear;
+    pointer-events: none;
+  }
+  @keyframes expand-transition {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    50% {
+      opacity: 1;
+    }
+    100% {
+      transform: scale(4);
+      opacity: 1;
+    }
+  }
+  .transition-overlay {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    width: 100vmax;
+    height: 100vmax;
+    background-color: #8f4e00; /* primary warm color */
+    border-radius: 50%;
+    transform: translate(-50%, -50%) scale(0);
+    z-index: 9999;
+    pointer-events: none;
+    transition: none;
+  }
+  .transition-overlay.active {
+    animation: expand-transition 0.8s ease-in-out forwards;
+  }
+</style></head>
+<body class="bg-background min-h-screen flex flex-col items-center justify-between px-margin-mobile py-[48px] overflow-hidden antialiased">
+<!-- Header Section -->
+<header class="w-full text-center mt-[32px] flex flex-col items-center gap-[16px]">
+<h1 class="font-headline-xl text-headline-xl text-primary drop-shadow-sm">小暖</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-[280px]">给家人的温情陪伴</p>
+</header>
+<!-- Main Content: Role Selection Cards -->
+<main class="w-full max-w-[400px] flex flex-col gap-[32px] mt-[48px] flex-grow justify-center">
+<!-- Elderly Card -->
+<a class="block w-full min-h-[160px] bg-primary-container rounded-[24px] p-[24px] flex flex-row items-center gap-[24px] shadow-sm hover:opacity-90 active:scale-[0.98] transition-all duration-300 relative overflow-hidden group" href="#" id="elder-card" onclick="const rect = this.getBoundingClientRect(); const ripple = document.createElement('span'); ripple.classList.add('ripple'); const size = Math.max(rect.width, rect.height); ripple.style.width = ripple.style.height = size + 'px'; ripple.style.left = event.clientX - rect.left - size/2 + 'px'; ripple.style.top = event.clientY - rect.top - size/2 + 'px'; this.appendChild(ripple); setTimeout(() =&gt; ripple.remove(), 600); document.getElementById('screen-transition').classList.add('active'); event.preventDefault();">
+<!-- Decorative Background Element -->
+<div class="absolute -right-[20px] -top-[20px] w-[140px] h-[140px] bg-white/20 rounded-full blur-[20px]"></div>
+<div class="flex-shrink-0 w-[88px] h-[88px] bg-white rounded-full flex items-center justify-center shadow-sm overflow-hidden border-4 border-white/50 z-10">
+<img alt="老人头像" class="w-full h-full object-cover" data-alt="A warm, approachable cartoon-style illustration of an elderly person smiling gently. The character has soft features and white hair, conveying wisdom and patience. The color palette uses soft, pastel tones that match a minimalist, comforting aesthetic. The image is bright, inviting, and feels safe and home-like." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCEEcfP4AESgHaqLbiWfkrGmj69Pi1vU-k3opgv_2sS6RyBhzxp4QFG5ZqmntVNupFoF670P08sFg5BmcXr1RVWOcQNEMyl8XFuCtrtftgk9onXtojzrDAxuefAl5sx4c8kOvnqqHCwrULY8AVH9jmYDNt9OW92JxqqBc7SGedu3-_xnSqKwQcwU1euweHjoqcWY6z5xU0jBbP8VNTBOLOIu-1gDwHnocKoTaE5h0zwoq0hwPZM8Fs1Bh2-yHtE_vE33607ar-pg9bs"/>
+</div>
+<div class="flex flex-col gap-[8px] z-10">
+<h2 class="font-headline-lg text-headline-lg text-on-primary-container">我是老人</h2>
+<p class="font-body-md text-body-md text-on-primary-container/80 leading-snug">简单语音对话<br/>小暖陪您聊天</p>
+</div>
+</a>
+<!-- Family/Children Card -->
+<a class="block w-full min-h-[160px] bg-secondary-container rounded-[24px] p-[24px] flex flex-row items-center gap-[24px] shadow-sm hover:opacity-90 active:scale-[0.98] transition-all duration-300 relative overflow-hidden group" href="#">
+<!-- Decorative Background Element -->
+<div class="absolute -left-[20px] -bottom-[20px] w-[140px] h-[140px] bg-white/30 rounded-full blur-[20px]"></div>
+<div class="flex-shrink-0 w-[88px] h-[88px] bg-white rounded-full flex items-center justify-center shadow-sm overflow-hidden border-4 border-white/50 z-10">
+<img alt="子女头像" class="w-full h-full object-cover" data-alt="A clean, modern cartoon-style illustration of a young adult, representing a caring family member. The character has an attentive and friendly expression. The visual style is minimalist and soft, using calming blue and sage green tones. The lighting is bright and optimistic, fitting a warm digital companionship theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAQfT0F-l2bi0h-U6DjGzsQ3uKozSnnWtlKiNC0ebT3pbOS8H7rVQ7UWqL9YryLaQEnnJYZQwbNGG71lijD2L4XwoMCgYRaH_HQ2K0pnnNFYrAvFeHkanmaQr_OobyeOdTLF16Kh_iiW_8NuKGO8P6cfa1wH9dVSaxzVMdO_IiJbzwPZmoIXc_YHB5G5QK1_RB2OJmtwdg93K0YV5esQZXor0PgwvevS7DwVLtL71Zojexn-pDS8ANG_wJDTU4gU_4QIVRlsf8ayTrx"/>
+</div>
+<div class="flex flex-col gap-[8px] z-10">
+<h2 class="font-headline-lg text-headline-lg text-on-secondary-container">我是子女</h2>
+<p class="font-body-md text-body-md text-on-secondary-container/80 leading-snug">投喂家庭记忆<br/>感知父母心情</p>
+</div>
+</a>
+</main>
+<!-- Footer Links -->
+<footer class="w-full text-center mt-[48px] pb-[24px]">
+<div class="flex justify-center items-center gap-[24px]">
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors min-w-[touch-target-min] min-h-[touch-target-min] flex items-center justify-center p-[8px]" href="#">关于我们</a>
+<span class="w-[4px] h-[4px] bg-outline-variant rounded-full"></span>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary transition-colors min-w-[touch-target-min] min-h-[touch-target-min] flex items-center justify-center p-[8px]" href="#">服务协议</a>
+</div>
+</footer>
+<div class="transition-overlay" id="screen-transition"></div></body></html>
