@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
 import { prisma } from '@xiaonuan/prisma';
+import { handleVoiceText } from '../conversation/loop.js';
 
 export function createWebSocketHandler(app: FastifyInstance) {
   return async (socket: WebSocket, req: FastifyRequest) => {
@@ -91,6 +92,20 @@ export function createWebSocketHandler(app: FastifyInstance) {
           }
           sessionId = session.id;
           sendMessage('session:resumed', { sessionId: session.id });
+          return;
+        }
+
+        if (type === 'message:voice_text') {
+          if (!sessionId) {
+            sendMessage('error', { message: '会话未创建' });
+            return;
+          }
+          const text = payload?.text;
+          if (!text) {
+            sendMessage('error', { message: 'text 必填' });
+            return;
+          }
+          await handleVoiceText(sessionId, user!.familyId!, text, socket);
           return;
         }
       } catch (err) {

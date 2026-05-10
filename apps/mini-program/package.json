@@ -6,6 +6,9 @@
     "dev": "echo 'Use WeChat DevTools to open this directory'",
     "build": "echo 'Build via WeChat DevTools'",
     "lint": "echo 'No lint'",
-    "test": "echo 'No tests'"
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
   }
 }
