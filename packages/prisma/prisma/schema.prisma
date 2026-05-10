@@ -31,6 +31,7 @@ model ElderProfile {
   age       Int?
   dialect   String?
   deviceId  String?  @map("device_id")
+  openid    String?  @unique @map("openid")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 

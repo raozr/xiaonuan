@@ -178,3 +178,110 @@ describe('POST /api/auth/login', () => {
     expect(body.message).toBe('解密失败');
   });
 });
+
+describe('POST /api/auth/silent-login', () => {
+  it('should return token for existing child profile', async () => {
+    const uniquePhone = `138${Date.now().toString().slice(-8)}`;
+    const uniqueOpenid = `silent_child_${Date.now()}`;
+
+    const family = await prisma.family.create({
+      data: {
+        inviteCode: Math.floor(100000 + Math.random() * 900000).toString(),
+        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        elder: { create: { name: '李爷爷' } },
+      },
+    });
+    await prisma.childProfile.create({
+      data: {
+        userId: uniqueOpenid,
+        name: '小李',
+        phone: uniquePhone,
+        openid: uniqueOpenid,
+        familyId: family.id,
+      },
+    });
+
+    vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
+      openid: uniqueOpenid,
+      session_key: 'test_session_key',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/silent-login',
+      payload: { code: 'valid_code' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.token).toBeDefined();
+    expect(body.role).toBe('CHILD');
+
+    await prisma.family.delete({ where: { id: family.id } });
+  });
+
+  it('should return token for existing elder profile', async () => {
+    const uniqueOpenid = `silent_elder_${Date.now()}`;
+
+    const family = await prisma.family.create({
+      data: {
+        inviteCode: Math.floor(100000 + Math.random() * 900000).toString(),
+        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        elder: { create: { name: '王奶奶', openid: uniqueOpenid } },
+      },
+    });
+
+    vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
+      openid: uniqueOpenid,
+      session_key: 'test_session_key',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/silent-login',
+      payload: { code: 'valid_code' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.token).toBeDefined();
+    expect(body.role).toBe('ELDER');
+
+    await prisma.family.delete({ where: { id: family.id } });
+  });
+
+  it('should return needRegister for unknown openid', async () => {
+    vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
+      openid: 'unknown_openid',
+      session_key: 'test_session_key',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/silent-login',
+      payload: { code: 'valid_code' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(false);
+    expect(body.needRegister).toBe(true);
+  });
+
+  it('should return error when wechat api fails', async () => {
+    vi.spyOn(wechat, 'getSessionByCode').mockRejectedValueOnce(new Error('invalid code'));
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/silent-login',
+      payload: { code: 'invalid_code' },
+    });
+
+    expect(response.statusCode).toBe(500);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(false);
+    expect(body.message).toBe('invalid code');
+  });
+});

@@ -110,7 +110,7 @@ export async function familyRoutes(app: FastifyInstance) {
   });
 
   app.post('/bind', async (request, reply) => {
-    const body = request.body as { inviteCode?: string; deviceId?: string };
+    const body = request.body as { inviteCode?: string; deviceId?: string; openid?: string };
 
     if (!body.inviteCode || !body.deviceId) {
       return reply.status(400).send({ success: false, message: '邀请码和设备标识必填' });
@@ -131,7 +131,10 @@ export async function familyRoutes(app: FastifyInstance) {
 
     await prisma.elderProfile.update({
       where: { familyId: family.id },
-      data: { deviceId: body.deviceId },
+      data: {
+        deviceId: body.deviceId,
+        ...(body.openid ? { openid: body.openid } : {}),
+      },
     });
 
     const token = app.jwt.sign(
