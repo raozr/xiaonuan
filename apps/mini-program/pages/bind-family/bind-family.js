@@ -10,15 +10,38 @@ Page({
     elderDialect: '',
     inviteCode: '',
     loading: false,
+    openid: '',
   },
 
   async onShow() {
     const token = app.globalData.token || wx.getStorageSync('xiaonuan_token');
     if (!token) {
       this.setData({ mode: 'ELDER' });
+      await this.fetchOpenid();
       return;
     }
     await this.loadFamily();
+  },
+
+  async fetchOpenid() {
+    try {
+      const loginRes = await new Promise((resolve, reject) => {
+        wx.login({ success: resolve, fail: reject });
+      });
+      if (!loginRes.code) return;
+
+      const res = await app.request({
+        url: '/api/auth/wechat-code',
+        method: 'POST',
+        data: { code: loginRes.code },
+      });
+
+      if (res.statusCode === 200 && res.data.openid) {
+        this.setData({ openid: res.data.openid });
+      }
+    } catch (err) {
+      console.error('获取 openid 失败:', err);
+    }
   },
 
   async loadFamily() {
@@ -152,6 +175,7 @@ Page({
         data: {
           inviteCode: inviteCode.trim(),
           deviceId: sysInfo.deviceId || `mp-${Date.now()}`,
+          openid: this.data.openid,
         },
       });
 
