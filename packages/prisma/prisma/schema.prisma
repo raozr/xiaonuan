@@ -82,8 +82,21 @@ model Session {
 
   family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
   checkpoints Checkpoint[]
+  messages  SessionMessage[]
 
   @@map("sessions")
+}
+
+model SessionMessage {
+  id        String   @id @default(cuid())
+  sessionId String   @map("session_id")
+  role      String
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@map("session_messages")
 }
 
 enum SessionPhase {

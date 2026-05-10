@@ -4,6 +4,7 @@ import { prisma } from '@xiaonuan/prisma';
 
 describe('GET /api/me', () => {
   it('should return child profile with valid child token', async () => {
+    const uniquePhone = `138${Date.now().toString().slice(-8)}`;
     // Create a family
     const family = await prisma.family.create({
       data: {
@@ -14,7 +15,7 @@ describe('GET /api/me', () => {
           create: {
             userId: `user-child-${Date.now()}`,
             name: '小明',
-            phone: `13800${Date.now()}`.slice(-5),
+            phone: uniquePhone,
           },
         },
       },
@@ -22,7 +23,7 @@ describe('GET /api/me', () => {
     });
 
     const childToken = app.jwt.sign(
-      { phone: '13800138001', role: 'CHILD' },
+      { phone: uniquePhone, role: 'CHILD' },
       { expiresIn: '7d' }
     );
 

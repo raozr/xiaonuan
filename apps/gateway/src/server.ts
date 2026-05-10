@@ -7,6 +7,7 @@ import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
 import { familyRoutes } from './routes/family.js';
 import { meRoutes } from './routes/me.js';
+import { sessionRoutes } from './routes/session.js';
 import { authenticate } from './middleware/auth.js';
 
 const app = Fastify({
@@ -29,6 +30,7 @@ await app.register(websocket);
 await app.register(healthRoutes, { prefix: '/health' });
 await app.register(authRoutes, { prefix: '/api/auth' });
 await app.register(familyRoutes, { prefix: '/api/family' });
+await app.register(sessionRoutes);
 
 await app.register(async (protectedRoutes) => {
   await authenticate(protectedRoutes);
