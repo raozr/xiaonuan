@@ -8,6 +8,39 @@
   margin-bottom: 24px;
 }
 
+.guide-card {
+  background: #fff3e0;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+  border: 1px solid #ffcc80;
+}
+
+.guide-text {
+  display: block;
+  font-size: 16px;
+  color: #8f4e00;
+  margin-bottom: 12px;
+}
+
+.guide-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.guide-btn {
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 14px;
+  color: #8f4e00;
+  background: #ffffff;
+}
+
+.guide-btn-primary {
+  background: #ff9f43;
+  color: #ffffff;
+}
+
 .title {
   display: block;
   font-size: 24px;

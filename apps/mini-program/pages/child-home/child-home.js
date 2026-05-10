@@ -5,6 +5,7 @@ Page({
     userInfo: null,
     familyInfo: null,
     todaySummary: null,
+    showGuide: false,
   },
 
   async onLoad() {
@@ -20,7 +21,8 @@ Page({
         method: 'GET',
       });
       if (res.statusCode === 200) {
-        this.setData({ familyInfo: res.data });
+        const isDefaultElder = res.data.elder?.name === '老人';
+        this.setData({ familyInfo: res.data, showGuide: isDefaultElder });
       }
     } catch (err) {
       console.error('加载家庭信息失败:', err);
@@ -41,6 +43,14 @@ Page({
         ],
       },
     });
+  },
+
+  dismissGuide() {
+    this.setData({ showGuide: false });
+  },
+
+  goToFamily() {
+    wx.navigateTo({ url: '/pages/bind-family/bind-family' });
   },
 
   createFamily() {
