@@ -47,6 +47,21 @@
   margin-bottom: 40rpx;
 }
 
+.name-input,
+.phone-input {
+  width: 80%;
+  height: 96rpx;
+  padding: 0 32rpx;
+  margin-bottom: 40rpx;
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 48rpx;
+  font-size: 32rpx;
+  color: #333;
+  text-align: center;
+  box-sizing: border-box;
+}
+
 .auth-btn {
   width: 80%;
   height: 96rpx;
@@ -66,18 +81,4 @@
   font-size: 24rpx;
   color: #aaa;
   margin-top: 24rpx;
-}
-
-.phone-input {
-  width: 80%;
-  height: 96rpx;
-  padding: 0 32rpx;
-  margin-bottom: 40rpx;
-  background: #ffffff;
-  border: 1px solid #ddd;
-  border-radius: 48rpx;
-  font-size: 32rpx;
-  color: #333;
-  text-align: center;
-  box-sizing: border-box;
 }
