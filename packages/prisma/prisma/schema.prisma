@@ -43,8 +43,9 @@ model ChildProfile {
   id        String   @id @default(cuid())
   familyId  String   @map("family_id")
   userId    String   @unique @map("user_id")
-  name      String
+  name      String?
   phone     String   @unique
+  openid    String?  @unique @map("openid")
   isPrimary Boolean  @default(false) @map("is_primary")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

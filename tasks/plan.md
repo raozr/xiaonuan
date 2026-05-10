@@ -114,3 +114,186 @@
 - `doc/design/*/code.html` -> WXML/WXSS adaptation base
 - `doc/design/*/DESIGN.md` -> global design tokens (colors, typography, spacing)
 - PRD & Tech Arch -> Tool signatures, Skill structures, state machine logic
+
+---
+
+# Plan: WeChat Auth Login + Auto Family Creation
+
+## Overview
+
+Replace the child phone-login flow (SMS verification code) with WeChat authorization (`wx.login` + `getPhoneNumber`). On first registration, the backend automatically creates a default family with a default elder profile, ensuring `ChildProfile.familyId` is never null.
+
+## Architecture Decisions
+
+1. **WeChat Login Method**: Use the traditional `wx.login` + `getPhoneNumber` flow (`encryptedData` + `iv` decryption).
+   - Backend calls `jscode2session` with `code` to get `openid` + `session_key`
+   - Backend decrypts the phone number using `session_key` (AES-128-CBC)
+   - No `access_token` management required
+
+2. **Schema Changes**:
+   - `ChildProfile` adds `openid` (unique, optional) for WeChat identity binding
+   - `ChildProfile.name` becomes optional, defaulting to `"家长"` on registration
+   - `ElderProfile.name` defaults to `"老人"` when auto-created
+
+3. **Auto Family Creation**:
+   - After successful phone number authorization, backend auto-creates:
+     - `Family` (with auto-generated `inviteCode`)
+     - `ElderProfile` (default name `"老人"`, editable later)
+     - `ChildProfile` (`openid`, decrypted `phone`, `name="家长"`, `isPrimary=true`)
+   - `familyId` is always populated, satisfying the non-nullable constraint
+
+4. **Legacy Cleanup**:
+   - Remove old `/api/auth/verify-code` endpoint
+   - Replace child login UI from phone-input + SMS-code to WeChat authorization button
+
+## Task List
+
+### Phase 1: Backend Foundation
+
+#### Task 1: Database Migration
+- Add `openid` to `ChildProfile` (`String? @unique`)
+- Make `ChildProfile.name` optional (`String?`)
+- Generate and apply Prisma migration
+
+**AC:**
+- [ ] `prisma migrate dev` succeeds
+- [ ] Prisma Client types regenerate correctly
+
+**Files:** `packages/prisma/prisma/schema.prisma`, `packages/prisma/prisma/migrations/*`
+**Size:** S
+
+---
+
+#### Task 2: WeChat Login Infrastructure
+- Add env vars `WECHAT_APPID` and `WECHAT_SECRET`
+- New endpoint `POST /api/auth/wechat-code`:
+  - Accept `{ code }`
+  - Call WeChat `jscode2session` API
+  - Return `{ openid, sessionKey }`
+- New utility `decryptWechatData(sessionKey, encryptedData, iv)`:
+  - AES-128-CBC decryption per WeChat spec
+  - Return decrypted JSON (contains phone number)
+
+**AC:**
+- [ ] `wechat-code` endpoint returns openid/sessionKey for a valid code
+- [ ] Decryption utility has unit tests for success and failure cases
+
+**Files:** `apps/gateway/src/routes/auth.ts`, `apps/gateway/src/utils/wechat.ts` (new), `apps/gateway/.env.example`
+**Size:** M
+
+---
+
+#### Task 3: WeChat Registration / Login Endpoint
+- Refactor `POST /api/auth/login` to accept `{ openid, sessionKey, encryptedData, iv }`
+- Decrypt phone number with `sessionKey`
+- Query `ChildProfile` by `openid` or phone
+- **If new user:**
+  - Create `Family` + `ElderProfile` (default name) + `ChildProfile` (bind to new family)
+- **If existing user:**
+  - Update `openid` (if missing) and phone (if changed)
+- Sign JWT with `{ phone, role: 'CHILD', familyId }`
+- Remove old `/api/auth/verify-code`
+
+**AC:**
+- [ ] New user: Family + ElderProfile + ChildProfile all created in one transaction
+- [ ] Existing user: no duplicate family created
+- [ ] JWT contains `familyId`
+- [ ] `/api/me` returns correct profile for new users
+
+**Files:** `apps/gateway/src/routes/auth.ts`, `apps/gateway/src/routes/me.ts`, `apps/gateway/src/routes/family.ts`
+**Size:** M
+
+**Checkpoint 1:** All backend tests pass, DB migration clean
+
+---
+
+### Phase 2: Mini-Program Frontend
+
+#### Task 4: WeChat Login Page
+- On page load: call `wx.login()`, send `code` to `/api/auth/wechat-code`
+- Cache `openid` + `sessionKey` in page data
+
+**AC:**
+- [ ] Network panel shows successful `wechat-code` request
+- [ ] `openid` cached locally
+
+**Files:** `apps/mini-program/pages/child-login/child-login.js` (new/modify)
+**Size:** S
+
+---
+
+#### Task 5: Phone Number Authorization Button
+- Display `<button open-type="getPhoneNumber">授权手机号登录</button>`
+- `onGetPhoneNumber` callback:
+  - Extract `encryptedData` + `iv` on success
+  - Send to `/api/auth/login` with cached `openid` + `sessionKey`
+  - Store returned JWT token
+  - `wx.reLaunch` to `child-home`
+- Show friendly message if user denies authorization
+
+**AC:**
+- [ ] WeChat authorization dialog pops up on button tap
+- [ ] Successful auth navigates to child-home
+- [ ] Denial shows a retry prompt
+
+**Files:** `apps/mini-program/pages/child-login/child-login.js`, `*.wxml`, `*.wxss`
+**Size:** M
+
+---
+
+#### Task 6: Entry Logic Update
+- Update `role-select`: "我是子女" navigates to new `child-login` page
+- Update `app.js` `checkLoginStatus`:
+  - If `/api/me` returns user with `familyId`, go to `child-home`
+  - Otherwise fallback to `child-login`
+
+**AC:**
+- [ ] Role selection routes to WeChat login
+- [ ] Logged-in users auto-enter child-home on restart
+
+**Files:** `apps/mini-program/pages/role-select/role-select.js`, `apps/mini-program/app.js`
+**Size:** S
+
+**Checkpoint 2:** End-to-end flow verified (auth -> auto family -> child-home)
+
+---
+
+### Phase 3: Testing & Polish
+
+#### Task 7: Backend Tests
+- Mock WeChat `jscode2session` API (using `nock` or manual stub)
+- Mock decryption utility
+- Test new-user auto-creation path
+- Test existing-user login path
+- Test decryption failure handling
+
+**AC:**
+- [ ] `npm test` auth suite passes
+
+**Files:** `apps/gateway/src/routes/auth.test.ts`
+**Size:** M
+
+---
+
+#### Task 8: First-Time Family Guide
+- In `child-home`, detect if `elderName` is the default `"老人"`
+- Show a banner/modal: "请完善老人信息，以便小暖更好地陪伴"
+- Provide a quick link to edit elder info
+
+**AC:**
+- [ ] First visit shows the guide
+- [ ] Guide disappears after info is updated
+
+**Files:** `apps/mini-program/pages/child-home/child-home.js`, `*.wxml`
+**Size:** S
+
+**Checkpoint 3 (Final):** All tests pass, mini-program compiles, manual E2E verified
+
+## Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| `getPhoneNumber` requires certified mini-program (enterprise/individual business) | High | Confirm account type; fallback to manual phone input if not certified |
+| `jscode2session` network instability | Med | Frontend retry logic; backend timeout handling |
+| Auto-created default family feels abrupt | Low | Task 8 provides first-time guidance to customize elder info |
+| `code` is single-use; retry requires fresh `wx.login()` | Med | Frontend ensures one `wx.login()` per flow; re-call on failure |

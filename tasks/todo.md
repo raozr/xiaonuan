@@ -35,17 +35,60 @@
   - [x] `POST /api/family/invite-code` (6 位数字, 24h 有效)
   - [x] ElderProfile 存储
   - [ ] 子女端绑定与引导页 (WXML 适配)
-- [ ] **P1.3** Elder Binding & No-Login Flow
-  - [ ] `POST /api/family/bind` (设备标识)
-  - [ ] 设备绑定 token
+- [x] **P1.3** Elder Binding & No-Login Flow
+  - [x] `POST /api/family/bind` (设备标识)
+  - [x] 设备绑定 token
   - [ ] 老人端首次绑定页 (WXML 适配)
   - [ ] 免登录自动进入
-- [ ] **P1.4** Role-Based UI Routing
-  - [ ] 入口角色判断逻辑
+- [x] **P1.4** Role-Based Auth & User Info
+  - [x] JWT auth middleware
+  - [x] `GET /api/me` (role + profile)
+  - [ ] 入口角色判断逻辑 (小程序)
   - [ ] 老人端默认态页 (WXML 适配)
   - [ ] 子女端今日状态页 (WXML 适配)
 
 **Checkpoint 1**: 子女创建家庭 → 老人绑定 → 双角色入口正确
+- Backend APIs complete and tested (15/15 passing)
+- Frontend pages pending (require WeChat DevTools)
+
+## Phase 1.5: WeChat Auth Login (P1.1 Replacement)
+
+子女端注册流程从「手机号 + 验证码」切换为「微信授权登录 + 自动创建家庭」。
+
+- [ ] **P1.5.1** Database Schema Update
+  - [ ] `ChildProfile` 新增 `openid` (unique, optional)
+  - [ ] `ChildProfile.name` 改为 optional，注册默认 "家长"
+  - [ ] `ElderProfile.name` 注册默认 "老人"
+  - [ ] Prisma migration 生成并执行
+- [ ] **P1.5.2** WeChat Login Infrastructure
+  - [ ] 环境变量 `WECHAT_APPID` + `WECHAT_SECRET`
+  - [ ] `POST /api/auth/wechat-code` (code -> openid + sessionKey)
+  - [ ] 微信数据解密工具 (AES-128-CBC)
+- [ ] **P1.5.3** WeChat Registration / Login Endpoint
+  - [ ] 改造 `POST /api/auth/login`：接收 openid + encryptedData + iv
+  - [ ] sessionKey 解密手机号
+  - [ ] 新用户：自动创建 Family + ElderProfile + ChildProfile
+  - [ ] 老用户：更新 openid/手机号，不重复创建
+  - [ ] JWT payload 包含 familyId
+  - [ ] 移除旧 `/api/auth/verify-code`
+- [ ] **P1.5.4** Mini-Program Login Page
+  - [ ] `wx.login()` 获取 code，换取 openid + sessionKey
+  - [ ] `<button open-type="getPhoneNumber">` 获取加密手机号
+  - [ ] 调用新 login API，存储 token，跳转 child-home
+- [ ] **P1.5.5** Entry Logic Update
+  - [ ] 子女角色选择后跳转新登录页
+  - [ ] `app.js` checkLoginStatus 适配新 JWT payload
+- [ ] **P1.5.6** First-Time Family Guide
+  - [ ] child-home 首次进入检测默认老人名
+  - [ ] 显示引导：请完善老人信息
+- [ ] **P1.5.7** Backend Tests
+  - [ ] mock jscode2session 和解密
+  - [ ] 新用户自动创建家庭测试
+  - [ ] 老用户登录不重复创建测试
+
+**Checkpoint 1.5**: 子女微信授权 → 自动创建家庭 → 进入 child-home → 完善老人信息
+- All backend tests passing
+- Mini-program compiles and runs in WeChat DevTools
 
 ## Phase 2: Basic Elder Conversation Loop
 - [ ] **P2.1** Elder UI States
