@@ -1,0 +1,29 @@
+<view class="container">
+  <view class="greeting">
+    <text class="greeting-text">{{(userInfo && userInfo.name) ? userInfo.name + '，您好' : '您好'}}</text>
+    <text class="greeting-sub">我是小暖，来陪您说说话</text>
+  </view>
+
+  <view class="avatar-wrap">
+    <view class="avatar {{isListening ? 'listening' : ''}} {{isSpeaking ? 'speaking' : ''}}">
+      <text class="avatar-face">🐻</text>
+    </view>
+    <view class="breath-ring"></view>
+  </view>
+
+  <view class="hint">
+    <text wx:if="{{isListening}}">我在听…</text>
+    <text wx:elif="{{isSpeaking}}">小暖在说…</text>
+    <text wx:else>按住下方按钮说话</text>
+  </view>
+
+  <view
+    class="voice-btn {{isListening ? 'active' : ''}}"
+    bindtouchstart="onTouchStart"
+    bindtouchend="onTouchEnd"
+  >
+    <text class="voice-icon">🎙</text>
+  </view>
+
+  <button class="btn-logout" bindtap="logout">退出登录</button>
+</view>

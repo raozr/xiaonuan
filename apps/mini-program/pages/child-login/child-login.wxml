@@ -1,0 +1,20 @@
+<view class="container">
+  <view class="header">
+    <text class="title">欢迎加入小暖</text>
+    <text class="subtitle">授权手机号，一键登录</text>
+  </view>
+
+  <view class="auth-section">
+    <image class="logo" src="/assets/logo.png" mode="aspectFit" />
+    <text class="hint">点击下方按钮授权微信手机号</text>
+    <button
+      class="auth-btn"
+      open-type="getPhoneNumber"
+      bind:getphonenumber="onGetPhoneNumber"
+      loading="{{loading}}"
+    >
+      授权手机号登录
+    </button>
+    <text class="tip">小暖将保护您的隐私安全</text>
+  </view>
+</view>

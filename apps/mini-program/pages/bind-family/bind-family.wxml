@@ -1,0 +1,68 @@
+<view class="container">
+  <view wx:if="{{mode === 'ELDER'}}" class="elder-section">
+    <text class="title">欢迎加入小暖</text>
+    <text class="subtitle">请输入子女提供的6位邀请码</text>
+
+    <view class="form">
+      <input
+        class="input code-input"
+        type="number"
+        placeholder="6位邀请码"
+        maxlength="6"
+        value="{{inviteCode}}"
+        bindinput="onInviteCodeInput"
+      />
+      <button class="btn-primary" bindtap="bindElder" loading="{{loading}}">绑定</button>
+    </view>
+  </view>
+
+  <view wx:if="{{mode === 'CHILD' && !hasFamily}}" class="form-section">
+    <text class="title">创建家庭</text>
+    <text class="subtitle">填写老人信息，生成邀请码</text>
+
+    <view class="form">
+      <input
+        class="input"
+        placeholder="老人姓名 *"
+        value="{{elderName}}"
+        bindinput="onElderNameInput"
+      />
+      <input
+        class="input"
+        type="number"
+        placeholder="老人年龄"
+        value="{{elderAge}}"
+        bindinput="onElderAgeInput"
+      />
+      <input
+        class="input"
+        placeholder="方言偏好（如：四川话）"
+        value="{{elderDialect}}"
+        bindinput="onElderDialectInput"
+      />
+      <button class="btn-primary" bindtap="createFamily" loading="{{loading}}">创建家庭</button>
+    </view>
+  </view>
+
+  <view wx:if="{{mode === 'CHILD' && hasFamily}}" class="info-section">
+    <text class="title">家庭信息</text>
+
+    <view class="info-card">
+      <text class="info-label">老人姓名</text>
+      <text class="info-value">{{(family.elder && family.elder.name) || '--'}}</text>
+    </view>
+
+    <view class="info-card">
+      <text class="info-label">邀请码</text>
+      <view class="code-row">
+        <text class="code-value">{{family.inviteCode}}</text>
+        <text class="code-action" bindtap="copyInviteCode">复制</text>
+      </view>
+      <text class="code-hint">请让老人在小程序中输入此邀请码完成绑定，24小时内有效</text>
+    </view>
+
+    <button class="btn-secondary" bindtap="refreshInviteCode" loading="{{loading}}">重新生成邀请码</button>
+  </view>
+
+  <button class="btn-back" bindtap="goBack">返回</button>
+</view>

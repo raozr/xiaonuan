@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/role-select/role-select",
+    "pages/child-login/child-login",
+    "pages/child-home/child-home",
+    "pages/elder-home/elder-home",
+    "pages/bind-family/bind-family"
+  ],
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#fff8f5",
+    "navigationBarTitleText": "小暖",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#fff8f5"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
