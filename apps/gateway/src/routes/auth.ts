@@ -1,32 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { prisma } from '@xiaonuan/prisma';
 import { getSessionByCode, decryptWechatData } from '../utils/wechat.js';
+import { generateInviteCode } from '../utils/invite-code.js';
 
 const phoneSchema = z.string().regex(/^1[3-9]\d{9}$/);
 
-const codeStore = new Map<string, { code: string; expiresAt: number }>();
-
-function generateCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
 export async function authRoutes(app: FastifyInstance) {
-  app.post('/verify-code', async (request, reply) => {
-    const body = request.body as { phone?: string };
-    const result = phoneSchema.safeParse(body.phone);
-
-    if (!result.success) {
-      return reply.status(400).send({ success: false, message: '手机号格式错误' });
-    }
-
-    const phone = result.data;
-    const code = generateCode();
-    codeStore.set(phone, { code, expiresAt: Date.now() + 5 * 60 * 1000 });
-
-    // TODO: integrate real SMS service
-    return reply.send({ success: true, message: '验证码已发送', code });
-  });
-
   app.post('/wechat-code', async (request, reply) => {
     const body = request.body as { code?: string };
     if (!body.code) {
@@ -43,27 +23,73 @@ export async function authRoutes(app: FastifyInstance) {
   });
 
   app.post('/login', async (request, reply) => {
-    const body = request.body as { phone?: string; code?: string };
-    const phoneResult = phoneSchema.safeParse(body.phone);
+    const body = request.body as {
+      openid?: string;
+      sessionKey?: string;
+      encryptedData?: string;
+      iv?: string;
+    };
 
-    if (!phoneResult.success || !body.code) {
+    if (!body.openid || !body.sessionKey || !body.encryptedData || !body.iv) {
       return reply.status(400).send({ success: false, message: '参数错误' });
     }
 
-    const phone = phoneResult.data;
-    const stored = codeStore.get(phone);
+    try {
+      const phoneData = decryptWechatData(body.sessionKey, body.encryptedData, body.iv);
+      const phone = String(phoneData.phoneNumber || phoneData.purePhoneNumber);
 
-    if (!stored || stored.code !== body.code || Date.now() > stored.expiresAt) {
-      return reply.status(401).send({ success: false, message: '验证码错误或已过期' });
+      if (!phoneSchema.safeParse(phone).success) {
+        return reply.status(400).send({ success: false, message: '手机号格式错误' });
+      }
+
+      let childProfile = await prisma.childProfile.findUnique({
+        where: { openid: body.openid },
+      });
+
+      if (!childProfile) {
+        const family = await prisma.family.create({
+          data: {
+            inviteCode: generateInviteCode(),
+            inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+            elder: {
+              create: {
+                name: '老人',
+              },
+            },
+          },
+        });
+
+        childProfile = await prisma.childProfile.create({
+          data: {
+            userId: body.openid,
+            name: '家长',
+            phone,
+            openid: body.openid,
+            isPrimary: true,
+            familyId: family.id,
+          },
+        });
+      } else {
+        if (childProfile.phone !== phone) {
+          await prisma.childProfile.update({
+            where: { id: childProfile.id },
+            data: { phone },
+          });
+          childProfile = await prisma.childProfile.findUnique({
+            where: { id: childProfile.id },
+          });
+        }
+      }
+
+      const token = app.jwt.sign(
+        { phone: childProfile!.phone, role: 'CHILD', familyId: childProfile!.familyId },
+        { expiresIn: '7d' }
+      );
+
+      return reply.send({ success: true, token, expiresIn: 604800 });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '登录失败';
+      return reply.status(500).send({ success: false, message });
     }
-
-    codeStore.delete(phone);
-
-    const token = app.jwt.sign(
-      { phone, role: 'CHILD' },
-      { expiresIn: '7d' }
-    );
-
-    return reply.send({ success: true, token, expiresIn: 604800 });
   });
 }

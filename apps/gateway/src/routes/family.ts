@@ -1,6 +1,7 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '@xiaonuan/prisma';
+import { generateInviteCode } from '../utils/invite-code.js';
 
 const createFamilySchema = z.object({
   elderName: z.string().min(1),
@@ -8,12 +9,51 @@ const createFamilySchema = z.object({
   elderDialect: z.string().optional(),
 });
 
-function generateInviteCode(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
+  const authHeader = request.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return reply.status(401).send({ success: false, message: '未提供认证令牌' });
+  }
+  try {
+    await request.jwtVerify();
+  } catch {
+    return reply.status(401).send({ success: false, message: '无效的认证令牌' });
+  }
 }
 
 export async function familyRoutes(app: FastifyInstance) {
-  app.post('/', async (request, reply) => {
+  app.get('/', { preHandler: [requireAuth] }, async (request, reply) => {
+    const user = request.user as { role: string; phone?: string; familyId?: string } | undefined;
+    if (!user) {
+      return reply.status(401).send({ success: false, message: '未认证' });
+    }
+
+    if (user.role === 'CHILD' && user.phone) {
+      const childProfile = await prisma.childProfile.findUnique({
+        where: { phone: user.phone },
+        include: { family: { include: { elder: true } } },
+      });
+      if (!childProfile || !childProfile.family) {
+        return reply.status(404).send({ success: false, message: '家庭不存在' });
+      }
+      return reply.send(childProfile.family);
+    }
+
+    if (user.role === 'ELDER' && user.familyId) {
+      const family = await prisma.family.findUnique({
+        where: { id: user.familyId },
+        include: { elder: true },
+      });
+      if (!family) {
+        return reply.status(404).send({ success: false, message: '家庭不存在' });
+      }
+      return reply.send(family);
+    }
+
+    return reply.status(400).send({ success: false, message: '无效的用户角色' });
+  });
+
+  app.post('/', { preHandler: [requireAuth] }, async (request, reply) => {
     const body = request.body as Record<string, unknown>;
     const parsed = createFamilySchema.safeParse(body);
 
@@ -48,7 +88,7 @@ export async function familyRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/invite-code', async (request, reply) => {
+  app.post('/invite-code', { preHandler: [requireAuth] }, async (request, reply) => {
     const body = request.body as { familyId?: string };
 
     if (!body.familyId) {
