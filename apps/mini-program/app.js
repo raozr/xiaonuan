@@ -15,35 +15,74 @@ App({
   async checkLoginStatus() {
     try {
       const token = wx.getStorageSync('xiaonuan_token');
-      if (!token) {
-        console.log('未登录，跳转到身份选择');
-        wx.reLaunch({ url: '/pages/role-select/role-select' });
-        return;
+      if (token) {
+        this.globalData.token = token;
+        const res = await this.request({
+          url: '/api/me',
+          method: 'GET',
+        });
+
+        if (res.statusCode === 200) {
+          this.globalData.userInfo = res.data;
+          this.globalData.role = res.data.role;
+          console.log('已登录，角色:', res.data.role);
+
+          if (res.data.role === 'ELDER') {
+            wx.reLaunch({ url: '/pages/elder-home/elder-home' });
+          } else {
+            wx.reLaunch({ url: '/pages/child-home/child-home' });
+          }
+          return;
+        }
       }
 
-      this.globalData.token = token;
-      const res = await this.request({
-        url: '/api/me',
-        method: 'GET',
+      // No valid token — try silent login via openid
+      await this.silentLogin();
+    } catch (err) {
+      console.error('检查登录状态失败:', err);
+      wx.reLaunch({ url: '/pages/role-select/role-select' });
+    }
+  },
+
+  async silentLogin() {
+    try {
+      const loginRes = await new Promise((resolve, reject) => {
+        wx.login({
+          success: resolve,
+          fail: reject,
+        });
       });
 
-      if (res.statusCode === 200) {
-        this.globalData.userInfo = res.data;
+      if (!loginRes.code) {
+        throw new Error('wx.login 未返回 code');
+      }
+
+      const res = await this.request({
+        url: '/api/auth/silent-login',
+        method: 'POST',
+        data: { code: loginRes.code },
+      });
+
+      if (res.statusCode === 200 && res.data.success && res.data.token) {
+        wx.setStorageSync('xiaonuan_token', res.data.token);
+        this.globalData.token = res.data.token;
         this.globalData.role = res.data.role;
-        console.log('已登录，角色:', res.data.role);
+
+        console.log('静默登录成功，角色:', res.data.role);
 
         if (res.data.role === 'ELDER') {
           wx.reLaunch({ url: '/pages/elder-home/elder-home' });
         } else {
           wx.reLaunch({ url: '/pages/child-home/child-home' });
         }
-      } else {
-        console.log('token 失效，重新登录');
-        wx.removeStorageSync('xiaonuan_token');
-        wx.reLaunch({ url: '/pages/role-select/role-select' });
+        return;
       }
+
+      // New user or other failure — go to role-select
+      console.log('静默登录失败，需要手动登录');
+      wx.reLaunch({ url: '/pages/role-select/role-select' });
     } catch (err) {
-      console.error('检查登录状态失败:', err);
+      console.error('静默登录失败:', err);
       wx.reLaunch({ url: '/pages/role-select/role-select' });
     }
   },
