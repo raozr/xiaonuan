@@ -13,35 +13,19 @@ Page({
     openid: '',
   },
 
+  onLoad(options) {
+    if (options.openid) {
+      this.setData({ openid: options.openid });
+    }
+  },
+
   async onShow() {
     const token = app.globalData.token || wx.getStorageSync('xiaonuan_token');
     if (!token) {
       this.setData({ mode: 'ELDER' });
-      await this.fetchOpenid();
       return;
     }
     await this.loadFamily();
-  },
-
-  async fetchOpenid() {
-    try {
-      const loginRes = await new Promise((resolve, reject) => {
-        wx.login({ success: resolve, fail: reject });
-      });
-      if (!loginRes.code) return;
-
-      const res = await app.request({
-        url: '/api/auth/wechat-code',
-        method: 'POST',
-        data: { code: loginRes.code },
-      });
-
-      if (res.statusCode === 200 && res.data.openid) {
-        this.setData({ openid: res.data.openid });
-      }
-    } catch (err) {
-      console.error('获取 openid 失败:', err);
-    }
   },
 
   async loadFamily() {
@@ -160,22 +144,27 @@ Page({
   },
 
   async bindElder() {
-    const { inviteCode } = this.data;
+    const { inviteCode, elderName } = this.data;
     if (!inviteCode || inviteCode.length !== 6) {
       wx.showToast({ title: '请输入6位邀请码', icon: 'none' });
+      return;
+    }
+    if (!elderName.trim()) {
+      wx.showToast({ title: '请输入老人姓名', icon: 'none' });
       return;
     }
 
     this.setData({ loading: true });
     try {
-      const sysInfo = wx.getSystemInfoSync();
+      const loginRes = await wx.login();
       const res = await app.request({
-        url: '/api/family/bind',
+        url: '/api/auth/register',
         method: 'POST',
         data: {
+          code: loginRes.code,
+          role: 'ELDER',
+          name: elderName.trim(),
           inviteCode: inviteCode.trim(),
-          deviceId: sysInfo.deviceId || `mp-${Date.now()}`,
-          openid: this.data.openid,
         },
       });
 

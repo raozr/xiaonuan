@@ -33,12 +33,12 @@
   width: 100%;
 }
 
-.logo {
-  width: 200rpx;
-  height: 200rpx;
+.logo-text {
+  font-size: 96rpx;
+  font-weight: 800;
+  color: #8f4e00;
   margin-bottom: 60rpx;
-  background: #e8e8e8;
-  border-radius: 24rpx;
+  display: block;
 }
 
 .hint {
@@ -66,4 +66,18 @@
   font-size: 24rpx;
   color: #aaa;
   margin-top: 24rpx;
+}
+
+.phone-input {
+  width: 80%;
+  height: 96rpx;
+  padding: 0 32rpx;
+  margin-bottom: 40rpx;
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 48rpx;
+  font-size: 32rpx;
+  color: #333;
+  text-align: center;
+  box-sizing: border-box;
 }

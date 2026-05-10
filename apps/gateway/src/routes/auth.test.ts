@@ -3,6 +3,10 @@ import { app } from '../server.js';
 import * as wechat from '../utils/wechat.js';
 import { prisma } from '@xiaonuan/prisma';
 
+function generateInviteCode() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
 describe('POST /api/auth/wechat-code', () => {
   it('should return openid and sessionKey for valid code', async () => {
     vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
@@ -52,25 +56,23 @@ describe('POST /api/auth/wechat-code', () => {
   });
 });
 
-describe('POST /api/auth/login', () => {
-  it('should create family and child profile for new user', async () => {
+describe('POST /api/auth/register', () => {
+  it('should create family and child profile for new child user', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
-    const uniqueOpenid = `new_openid_${Date.now()}`;
-    vi.spyOn(wechat, 'decryptWechatData').mockReturnValueOnce({
-      phoneNumber: uniquePhone,
-      purePhoneNumber: uniquePhone,
-      countryCode: '86',
-      watermark: { appid: process.env.WECHAT_APPID },
+    const uniqueOpenid = `reg_child_${Date.now()}`;
+    vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
+      openid: uniqueOpenid,
+      session_key: 'test_session_key',
     });
 
     const response = await app.inject({
       method: 'POST',
-      url: '/api/auth/login',
+      url: '/api/auth/register',
       payload: {
-        openid: uniqueOpenid,
-        sessionKey: 'test_key',
-        encryptedData: 'test_data',
-        iv: 'test_iv',
+        code: 'valid_code',
+        role: 'CHILD',
+        name: '小明家长',
+        phone: uniquePhone,
       },
     });
 
@@ -78,6 +80,7 @@ describe('POST /api/auth/login', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
+    expect(body.role).toBe('CHILD');
 
     const child = await prisma.childProfile.findUnique({
       where: { openid: uniqueOpenid },
@@ -85,97 +88,182 @@ describe('POST /api/auth/login', () => {
     });
     expect(child).toBeDefined();
     expect(child!.phone).toBe(uniquePhone);
-    expect(child!.name).toBe('家长');
+    expect(child!.name).toBe('小明家长');
     expect(child!.isPrimary).toBe(true);
     expect(child!.family).toBeDefined();
     expect(child!.family.elder).toBeDefined();
-    expect(child!.family.elder!.name).toBe('老人');
 
-    // Cleanup
     await prisma.family.delete({ where: { id: child!.familyId } });
   });
 
-  it('should not recreate family for existing user', async () => {
-    const uniquePhone = `138${Date.now().toString().slice(-8)}`;
-    const uniqueOpenid = `existing_openid_${Date.now()}`;
-    vi.spyOn(wechat, 'decryptWechatData').mockReturnValueOnce({
-      phoneNumber: uniquePhone,
-      watermark: { appid: process.env.WECHAT_APPID },
-    });
+  it('should bind elder to existing family', async () => {
+    const uniqueOpenid = `reg_elder_${Date.now()}`;
+    const inviteCode = generateInviteCode();
 
-    // Pre-create user
     const family = await prisma.family.create({
       data: {
-        inviteCode: Math.floor(100000 + Math.random() * 900000).toString(),
+        inviteCode,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '李爷爷' } },
+        elder: { create: { name: '占位老人' } },
       },
     });
-    const child = await prisma.childProfile.create({
+
+    vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
+      openid: uniqueOpenid,
+      session_key: 'test_session_key',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: {
+        code: 'valid_code',
+        role: 'ELDER',
+        name: '张爷爷',
+        phone: '13800138000',
+        inviteCode,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.token).toBeDefined();
+    expect(body.role).toBe('ELDER');
+
+    const elder = await prisma.elderProfile.findUnique({
+      where: { familyId: family.id },
+    });
+    expect(elder).toBeDefined();
+    expect(elder!.name).toBe('张爷爷');
+    expect(elder!.openid).toBe(uniqueOpenid);
+
+    await prisma.family.delete({ where: { id: family.id } });
+  });
+
+  it('should return 409 for duplicate openid', async () => {
+    const uniquePhone = `138${Date.now().toString().slice(-8)}`;
+    const uniqueOpenid = `dup_openid_${Date.now()}`;
+
+    const family = await prisma.family.create({
+      data: {
+        inviteCode: generateInviteCode(),
+        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        elder: { create: { name: '老人' } },
+      },
+    });
+    await prisma.childProfile.create({
       data: {
         userId: uniqueOpenid,
-        name: '小李',
+        name: '家长',
         phone: uniquePhone,
         openid: uniqueOpenid,
         familyId: family.id,
       },
     });
 
+    vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
+      openid: uniqueOpenid,
+      session_key: 'test_session_key',
+    });
+
     const response = await app.inject({
       method: 'POST',
-      url: '/api/auth/login',
+      url: '/api/auth/register',
       payload: {
-        openid: uniqueOpenid,
-        sessionKey: 'test_key',
-        encryptedData: 'test_data',
-        iv: 'test_iv',
+        code: 'valid_code',
+        role: 'CHILD',
+        name: '另一名家长',
+        phone: `139${Date.now().toString().slice(-8)}`,
       },
     });
 
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode).toBe(409);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(false);
 
-    const childAfter = await prisma.childProfile.findUnique({
-      where: { openid: uniqueOpenid },
-    });
-    expect(childAfter!.familyId).toBe(family.id);
-
-    // Cleanup
     await prisma.family.delete({ where: { id: family.id } });
   });
 
-  it('should return error for missing params', async () => {
+  it('should return 409 for duplicate phone', async () => {
+    const uniquePhone = `138${Date.now().toString().slice(-8)}`;
+    const uniqueOpenid1 = `phone_dup_1_${Date.now()}`;
+    const uniqueOpenid2 = `phone_dup_2_${Date.now()}`;
+
+    const family = await prisma.family.create({
+      data: {
+        inviteCode: generateInviteCode(),
+        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        elder: { create: { name: '老人' } },
+      },
+    });
+    await prisma.childProfile.create({
+      data: {
+        userId: uniqueOpenid1,
+        name: '家长A',
+        phone: uniquePhone,
+        openid: uniqueOpenid1,
+        familyId: family.id,
+      },
+    });
+
+    vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
+      openid: uniqueOpenid2,
+      session_key: 'test_session_key',
+    });
+
     const response = await app.inject({
       method: 'POST',
-      url: '/api/auth/login',
-      payload: { openid: 'test' },
+      url: '/api/auth/register',
+      payload: {
+        code: 'valid_code',
+        role: 'CHILD',
+        name: '家长B',
+        phone: uniquePhone,
+      },
+    });
+
+    expect(response.statusCode).toBe(409);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(false);
+
+    await prisma.family.delete({ where: { id: family.id } });
+  });
+
+  it('should return 404 for invalid invite code', async () => {
+    vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
+      openid: `elder_${Date.now()}`,
+      session_key: 'test_session_key',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: {
+        code: 'valid_code',
+        role: 'ELDER',
+        name: '张爷爷',
+        phone: '13800138000',
+        inviteCode: '000000',
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(false);
+  });
+
+  it('should return 400 for missing params', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/register',
+      payload: { code: 'test' },
     });
 
     expect(response.statusCode).toBe(400);
     const body = JSON.parse(response.body);
     expect(body.success).toBe(false);
     expect(body.message).toBe('参数错误');
-  });
-
-  it('should return error when decryption fails', async () => {
-    vi.spyOn(wechat, 'decryptWechatData').mockImplementationOnce(() => {
-      throw new Error('解密失败');
-    });
-
-    const response = await app.inject({
-      method: 'POST',
-      url: '/api/auth/login',
-      payload: {
-        openid: 'test_openid',
-        sessionKey: 'test_key',
-        encryptedData: 'bad_data',
-        iv: 'test_iv',
-      },
-    });
-
-    expect(response.statusCode).toBe(500);
-    const body = JSON.parse(response.body);
-    expect(body.success).toBe(false);
-    expect(body.message).toBe('解密失败');
   });
 });
 
@@ -252,7 +340,7 @@ describe('POST /api/auth/silent-login', () => {
     await prisma.family.delete({ where: { id: family.id } });
   });
 
-  it('should return needRegister for unknown openid', async () => {
+  it('should return needRegister and openid for unknown openid', async () => {
     vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
       openid: 'unknown_openid',
       session_key: 'test_session_key',
@@ -268,6 +356,7 @@ describe('POST /api/auth/silent-login', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(false);
     expect(body.needRegister).toBe(true);
+    expect(body.openid).toBe('unknown_openid');
   });
 
   it('should return error when wechat api fails', async () => {

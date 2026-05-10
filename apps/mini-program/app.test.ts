@@ -81,20 +81,20 @@ describe('App auto-login flow', () => {
     expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/child-home/child-home' });
   });
 
-  it('should redirect to role-select for new user', async () => {
+  it('should redirect to role-select for new user with openid', async () => {
     // Simulate new user (openid not found)
     requestMocks.push({
       url: 'http://localhost:3000/api/auth/silent-login',
       response: {
         statusCode: 200,
-        data: { success: false, needRegister: true },
+        data: { success: false, needRegister: true, openid: 'oNEWUSER123' },
       },
     });
 
     await appInstance.checkLoginStatus();
 
     expect(wx.login).toHaveBeenCalled();
-    expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/role-select/role-select' });
+    expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/role-select/role-select?openid=oNEWUSER123' });
   });
 
   it('should redirect to role-select on silent-login error', async () => {

@@ -1,0 +1,40 @@
+<view class="container">
+  <view class="header">
+    <text class="title">欢迎加入小暖</text>
+    <text class="subtitle">填写信息，创建家庭</text>
+  </view>
+
+  <view class="auth-section">
+    <text class="logo-text">小暖</text>
+
+    <text class="hint">请输入您的姓名和手机号</text>
+
+    <input
+      class="name-input"
+      type="text"
+      maxlength="20"
+      placeholder="请输入您的姓名"
+      value="{{nameInput}}"
+      bindinput="onNameInput"
+    />
+
+    <input
+      class="phone-input"
+      type="number"
+      maxlength="11"
+      placeholder="请输入手机号"
+      value="{{phoneInput}}"
+      bindinput="onPhoneInput"
+    />
+
+    <button
+      class="auth-btn"
+      bindtap="register"
+      loading="{{loading}}"
+    >
+      注册并创建家庭
+    </button>
+
+    <text class="tip">小暖将保护您的隐私安全</text>
+  </view>
+</view>

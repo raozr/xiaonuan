@@ -1,11 +1,19 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '@xiaonuan/prisma';
-import { getSessionByCode, decryptWechatData } from '../utils/wechat.js';
+import { getSessionByCode } from '../utils/wechat.js';
 import { generateInviteCode } from '../utils/invite-code.js';
 import { env } from '../config/env.js';
 
 const phoneSchema = z.string().regex(/^1[3-9]\d{9}$/);
+
+const registerSchema = z.object({
+  code: z.string().min(1),
+  role: z.enum(['CHILD', 'ELDER']),
+  name: z.string().min(1),
+  phone: z.string().optional(),
+  inviteCode: z.string().optional(),
+});
 
 export async function authRoutes(app: FastifyInstance) {
   app.get('/debug-appid', async (_request, reply) => {
@@ -31,45 +39,6 @@ export async function authRoutes(app: FastifyInstance) {
       request.log.error({ code: body.code, appid: env.WECHAT_APPID, err: message }, '微信 jscode2session 失败');
       return reply.status(500).send({ success: false, message });
     }
-  });
-
-  app.post('/phone-login', async (request, reply) => {
-    const body = request.body as { phone?: string };
-    if (!body.phone || !phoneSchema.safeParse(body.phone).success) {
-      return reply.status(400).send({ success: false, message: '手机号格式错误' });
-    }
-
-    let childProfile = await prisma.childProfile.findUnique({
-      where: { phone: body.phone },
-    });
-
-    if (!childProfile) {
-      const family = await prisma.family.create({
-        data: {
-          inviteCode: generateInviteCode(),
-          inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          elder: { create: { name: '老人' } },
-        },
-      });
-
-      childProfile = await prisma.childProfile.create({
-        data: {
-          userId: `phone_${body.phone}`,
-          name: '家长',
-          phone: body.phone,
-          openid: `openid_${body.phone}`,
-          isPrimary: true,
-          familyId: family.id,
-        },
-      });
-    }
-
-    const token = app.jwt.sign(
-      { phone: childProfile.phone, role: 'CHILD', familyId: childProfile.familyId },
-      { expiresIn: '7d' }
-    );
-
-    return reply.send({ success: true, token, expiresIn: 604800 });
   });
 
   app.post('/silent-login', async (request, reply) => {
@@ -107,80 +76,106 @@ export async function authRoutes(app: FastifyInstance) {
       }
 
       // Unknown openid — new user
-      return reply.send({ success: false, needRegister: true });
+      return reply.send({ success: false, needRegister: true, openid });
     } catch (err) {
       const message = err instanceof Error ? err.message : '微信登录失败';
       return reply.status(500).send({ success: false, message });
     }
   });
 
-  app.post('/login', async (request, reply) => {
-    const body = request.body as {
-      openid?: string;
-      sessionKey?: string;
-      encryptedData?: string;
-      iv?: string;
-    };
+  app.post('/register', async (request, reply) => {
+    const body = request.body as Record<string, unknown>;
+    const parsed = registerSchema.safeParse(body);
 
-    if (!body.openid || !body.sessionKey || !body.encryptedData || !body.iv) {
+    if (!parsed.success) {
       return reply.status(400).send({ success: false, message: '参数错误' });
     }
 
-    try {
-      const phoneData = decryptWechatData(body.sessionKey, body.encryptedData, body.iv);
-      const phone = String(phoneData.phoneNumber || phoneData.purePhoneNumber);
+    const { code, role, name, phone, inviteCode } = parsed.data;
 
-      if (!phoneSchema.safeParse(phone).success) {
-        return reply.status(400).send({ success: false, message: '手机号格式错误' });
+    try {
+      const result = await getSessionByCode(code);
+      const openid = result.openid;
+
+      // Check if openid already exists
+      const existingChild = await prisma.childProfile.findUnique({ where: { openid } });
+      const existingElder = await prisma.elderProfile.findUnique({ where: { openid } });
+      if (existingChild || existingElder) {
+        return reply.status(409).send({ success: false, message: '该微信账号已注册' });
       }
 
-      let childProfile = await prisma.childProfile.findUnique({
-        where: { openid: body.openid },
-      });
+      if (role === 'CHILD') {
+        if (!phone || !phoneSchema.safeParse(phone).success) {
+          return reply.status(400).send({ success: false, message: '手机号格式错误' });
+        }
 
-      if (!childProfile) {
+        // Check if phone already exists
+        const existingPhone = await prisma.childProfile.findUnique({ where: { phone } });
+        if (existingPhone) {
+          return reply.status(409).send({ success: false, message: '该手机号已被使用' });
+        }
+
         const family = await prisma.family.create({
           data: {
             inviteCode: generateInviteCode(),
             inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            elder: {
-              create: {
-                name: '老人',
-              },
-            },
+            elder: { create: { name: '老人' } },
           },
         });
 
-        childProfile = await prisma.childProfile.create({
+        const childProfile = await prisma.childProfile.create({
           data: {
-            userId: body.openid,
-            name: '家长',
+            userId: openid,
+            name,
             phone,
-            openid: body.openid,
+            openid,
             isPrimary: true,
             familyId: family.id,
           },
         });
-      } else {
-        if (childProfile.phone !== phone) {
-          await prisma.childProfile.update({
-            where: { id: childProfile.id },
-            data: { phone },
-          });
-          childProfile = await prisma.childProfile.findUnique({
-            where: { id: childProfile.id },
-          });
-        }
+
+        const token = app.jwt.sign(
+          { phone: childProfile.phone, role: 'CHILD', familyId: childProfile.familyId },
+          { expiresIn: '7d' }
+        );
+
+        return reply.send({ success: true, token, role: 'CHILD', familyId: family.id });
       }
 
-      const token = app.jwt.sign(
-        { phone: childProfile!.phone, role: 'CHILD', familyId: childProfile!.familyId },
-        { expiresIn: '7d' }
-      );
+      if (role === 'ELDER') {
+        if (!inviteCode) {
+          return reply.status(400).send({ success: false, message: '老人注册需要邀请码' });
+        }
 
-      return reply.send({ success: true, token, expiresIn: 604800 });
+        const family = await prisma.family.findUnique({
+          where: { inviteCode },
+          include: { elder: true },
+        });
+
+        if (!family) {
+          return reply.status(404).send({ success: false, message: '邀请码无效' });
+        }
+
+        if (family.inviteCodeExpiresAt && family.inviteCodeExpiresAt < new Date()) {
+          return reply.status(410).send({ success: false, message: '邀请码已过期' });
+        }
+
+        await prisma.elderProfile.update({
+          where: { familyId: family.id },
+          data: { name, openid },
+        });
+
+        const token = app.jwt.sign(
+          { familyId: family.id, role: 'ELDER' },
+          { expiresIn: '365d' }
+        );
+
+        return reply.send({ success: true, token, role: 'ELDER', familyId: family.id });
+      }
+
+      return reply.status(400).send({ success: false, message: '无效的角色' });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '登录失败';
+      const message = err instanceof Error ? err.message : '注册失败';
       return reply.status(500).send({ success: false, message });
     }
   });

@@ -78,7 +78,13 @@ App({
         return;
       }
 
-      // New user or other failure — go to role-select
+      // New user — go to role-select with openid
+      if (res.statusCode === 200 && res.data.needRegister && res.data.openid) {
+        console.log('新用户，前往角色选择');
+        wx.reLaunch({ url: '/pages/role-select/role-select?openid=' + res.data.openid });
+        return;
+      }
+
       console.log('静默登录失败，需要手动登录');
       wx.reLaunch({ url: '/pages/role-select/role-select' });
     } catch (err) {

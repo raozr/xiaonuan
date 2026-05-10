@@ -2,7 +2,7 @@
   "pages": [
     "pages/index/index",
     "pages/role-select/role-select",
-    "pages/child-login/child-login",
+    "pages/child-register/child-register",
     "pages/child-home/child-home",
     "pages/elder-home/elder-home",
     "pages/bind-family/bind-family"
