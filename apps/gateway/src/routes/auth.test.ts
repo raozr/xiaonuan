@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { app } from '../server.js';
+import * as wechat from '../utils/wechat.js';
 
 describe('POST /api/auth/verify-code', () => {
   it('should return success for valid phone number', async () => {
@@ -62,5 +63,54 @@ describe('POST /api/auth/login', () => {
     expect(response.statusCode).toBe(401);
     const body = JSON.parse(response.body);
     expect(body.success).toBe(false);
+  });
+});
+
+describe('POST /api/auth/wechat-code', () => {
+  it('should return openid and sessionKey for valid code', async () => {
+    vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
+      openid: 'test_openid_123',
+      session_key: 'test_session_key_456',
+    });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/wechat-code',
+      payload: { code: 'valid_wechat_code' },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.openid).toBe('test_openid_123');
+    expect(body.sessionKey).toBe('test_session_key_456');
+  });
+
+  it('should return error when code is missing', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/wechat-code',
+      payload: {},
+    });
+
+    expect(response.statusCode).toBe(400);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(false);
+    expect(body.message).toBe('code 必填');
+  });
+
+  it('should return error when wechat api fails', async () => {
+    vi.spyOn(wechat, 'getSessionByCode').mockRejectedValueOnce(new Error('invalid code'));
+
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/wechat-code',
+      payload: { code: 'invalid_code' },
+    });
+
+    expect(response.statusCode).toBe(500);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(false);
+    expect(body.message).toBe('invalid code');
   });
 });

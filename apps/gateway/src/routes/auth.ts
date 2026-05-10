@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
+import { getSessionByCode, decryptWechatData } from '../utils/wechat.js';
 
 const phoneSchema = z.string().regex(/^1[3-9]\d{9}$/);
 
@@ -24,6 +25,21 @@ export async function authRoutes(app: FastifyInstance) {
 
     // TODO: integrate real SMS service
     return reply.send({ success: true, message: '验证码已发送', code });
+  });
+
+  app.post('/wechat-code', async (request, reply) => {
+    const body = request.body as { code?: string };
+    if (!body.code) {
+      return reply.status(400).send({ success: false, message: 'code 必填' });
+    }
+
+    try {
+      const result = await getSessionByCode(body.code);
+      return reply.send({ success: true, openid: result.openid, sessionKey: result.session_key });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : '微信登录失败';
+      return reply.status(500).send({ success: false, message });
+    }
   });
 
   app.post('/login', async (request, reply) => {
