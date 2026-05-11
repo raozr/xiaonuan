@@ -36,6 +36,7 @@ model ElderProfile {
   healthNotes       String?  @map("health_notes")
   topicsToAvoid     String?  @map("topics_to_avoid")
   greetingPreference String? @map("greeting_preference")
+  timezone          String?  @default("Asia/Shanghai") @map("timezone")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 

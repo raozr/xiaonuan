@@ -16,6 +16,9 @@ vi.mock('@xiaonuan/prisma', () => ({
     familyFeed: {
       findMany: vi.fn(),
     },
+    elderProfile: {
+      findUnique: vi.fn(),
+    },
   },
 }));
 
@@ -30,6 +33,7 @@ import { getMidTermMemory } from './mid-term-memory.js';
 describe('daily-memory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.elderProfile.findUnique).mockResolvedValue({ timezone: 'Asia/Shanghai' } as any);
   });
 
   it('should return empty string when no ended sessions today', async () => {
@@ -83,6 +87,7 @@ describe('daily-memory', () => {
 describe('short-term-memory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.elderProfile.findUnique).mockResolvedValue({ timezone: 'Asia/Shanghai' } as any);
   });
 
   it('should return empty string when no checkpoints in window', async () => {
