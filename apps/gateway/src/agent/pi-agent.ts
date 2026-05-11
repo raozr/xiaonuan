@@ -1,5 +1,7 @@
 import { loadSkillsForPhase, type Skill } from './skill-loader.js';
 import { memoryContext, memoryRecall } from '../tools/memory.js';
+import { chatCompletion } from '../services/dashscope.js';
+import { buildSystemPrompt } from './prompt-builder.js';
 
 export interface PiAgentConfig {
   familyId: string;
@@ -17,6 +19,7 @@ export interface PiAgent {
 
 export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
   const skills = await loadSkillsForPhase(config.phase);
+  const systemPrompt = await buildSystemPrompt(config.familyId);
 
   const tools: Record<string, Function> = {
     memory_context: async (args: { familyId: string }) => {
@@ -31,15 +34,19 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
     },
   };
 
-  // Mock conversation processor
   async function processMessage(input: string): Promise<string> {
-    // TODO: Replace with real LLM integration
-    // For now, return a warm placeholder response based on loaded skills
-    const personaSkill = skills.find((s) => s.name === 'companion-persona');
-    if (personaSkill) {
-      return `小暖听到了：「${input}」。我在呢，想多聊聊吗？`;
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      { role: 'user' as const, content: input },
+    ];
+
+    try {
+      const reply = await chatCompletion(messages, { temperature: 0.85, maxTokens: 512 });
+      return reply;
+    } catch (err) {
+      console.error('[PiAgent] LLM 调用失败:', err);
+      return '小暖刚才没听清，您能再说一遍吗？';
     }
-    return `我在呢，您接着说。`;
   }
 
   return {
