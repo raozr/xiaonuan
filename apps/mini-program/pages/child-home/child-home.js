@@ -53,6 +53,10 @@ Page({
     wx.navigateTo({ url: '/pages/bind-family/bind-family' });
   },
 
+  goToSettings() {
+    wx.navigateTo({ url: '/pages/child-settings/child-settings' });
+  },
+
   createFamily() {
     wx.navigateTo({ url: '/pages/bind-family/bind-family' });
   },

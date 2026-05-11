@@ -1,7 +1,10 @@
 <view class="container">
   <view class="header">
-    <text class="title">小暖</text>
-    <text class="subtitle">{{(userInfo && userInfo.name) || '妈妈'}}的陪伴</text>
+    <view class="header-left">
+      <text class="title">小暖</text>
+      <text class="subtitle">{{(userInfo && userInfo.name) || '妈妈'}}的陪伴</text>
+    </view>
+    <text class="settings-icon" bindtap="goToSettings">设置</text>
   </view>
 
   <view class="guide-card" wx:if="{{showGuide}}">

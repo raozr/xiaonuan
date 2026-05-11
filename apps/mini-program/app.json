@@ -5,7 +5,8 @@
     "pages/child-register/child-register",
     "pages/child-home/child-home",
     "pages/elder-home/elder-home",
-    "pages/bind-family/bind-family"
+    "pages/bind-family/bind-family",
+    "pages/child-settings/child-settings"
   ],
   "window": {
     "backgroundTextStyle": "light",
