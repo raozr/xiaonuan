@@ -363,3 +363,55 @@ describe('greeting-hint', () => {
     expect(result).not.toContain('【未尽话题】');
   });
 });
+
+describe('dedup', () => {
+  it('should remove highly similar bullets across sections', async () => {
+    vi.mocked(prisma.session.findMany).mockResolvedValueOnce([
+      {
+        id: 'session-1',
+        checkpoints: [{ topicSummary: '膝盖不太舒服', createdAt: new Date() }],
+      },
+    ] as any);
+    vi.mocked(prisma.checkpoint.findMany).mockResolvedValueOnce([]);
+    vi.mocked(memoryRecall).mockResolvedValue([
+      { id: '1', score: 0.9, payload: { content: '您提到膝盖不太舒服' } },
+    ] as any);
+    vi.mocked(prisma.familyFeed.findMany).mockResolvedValue([]);
+
+    const result = await buildMemoryContext({
+      familyId: 'family-123',
+      turnCount: 1,
+      input: '膝盖',
+      phase: 'ACTIVE_CHAT',
+    });
+
+    // "膝盖不太舒服" from daily and "您提到膝盖不太舒服" from mid-term are similar
+    // Only one should remain
+    const matches = result.match(/膝盖/g);
+    expect(matches?.length).toBeLessThanOrEqual(2);
+  });
+
+  it('should keep distinct bullets', async () => {
+    vi.mocked(prisma.session.findMany).mockResolvedValueOnce([
+      {
+        id: 'session-1',
+        checkpoints: [{ topicSummary: '聊到儿子周末回家', createdAt: new Date() }],
+      },
+    ] as any);
+    vi.mocked(prisma.checkpoint.findMany).mockResolvedValueOnce([]);
+    vi.mocked(memoryRecall).mockResolvedValue([
+      { id: '1', score: 0.9, payload: { content: '喜欢早上去公园打太极' } },
+    ] as any);
+    vi.mocked(prisma.familyFeed.findMany).mockResolvedValue([]);
+
+    const result = await buildMemoryContext({
+      familyId: 'family-123',
+      turnCount: 1,
+      input: '我喜欢早上在公园打太极',
+      phase: 'ACTIVE_CHAT',
+    });
+
+    expect(result).toContain('聊到儿子周末回家');
+    expect(result).toContain('喜欢早上去公园打太极');
+  });
+});

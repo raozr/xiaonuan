@@ -27,5 +27,5 @@ export async function getGreetingHint(familyId: string): Promise<string> {
 
   if (!checkpoint?.nextTopicHint) return '';
 
-  return `【未尽话题】\n上次您提到${checkpoint.nextTopicHint}，今天咱们接着说？`;
+  return `【未尽话题】\n- 上次您提到${checkpoint.nextTopicHint}，今天咱们接着说？`;
 }
