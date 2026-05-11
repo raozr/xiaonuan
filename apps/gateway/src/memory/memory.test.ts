@@ -29,6 +29,7 @@ vi.mock('../tools/memory.js', () => ({
 import { prisma } from '@xiaonuan/prisma';
 import { memoryRecall } from '../tools/memory.js';
 import { getMidTermMemory } from './mid-term-memory.js';
+import { clearEntityCache } from './entity-vocabulary.js';
 
 describe('daily-memory', () => {
   beforeEach(() => {
@@ -241,37 +242,48 @@ describe('context-builder', () => {
 describe('mid-term-memory', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.familyFeed.findMany).mockReset();
+    vi.mocked(memoryRecall).mockReset();
+    clearEntityCache();
   });
 
   it('should return empty for short input without entities', async () => {
+    vi.mocked(prisma.familyFeed.findMany).mockResolvedValue([]);
+
     const result = await getMidTermMemory('嗯', 'family-123');
     expect(result).toBe('');
   });
 
   it('should trigger for long input (>= 10 chars)', async () => {
-    vi.mocked(memoryRecall).mockResolvedValueOnce([
+    vi.mocked(memoryRecall).mockResolvedValue([
       { id: '1', score: 0.9, payload: { content: '喜欢早上去公园打太极' } },
     ] as any);
-    vi.mocked(prisma.familyFeed.findMany).mockResolvedValueOnce([]);
+    vi.mocked(prisma.familyFeed.findMany).mockResolvedValue([]);
 
-    const result = await getMidTermMemory('我喜欢早上打太极', 'family-123');
+    const result = await getMidTermMemory('我喜欢早上在公园打太极', 'family-123');
     expect(result).toContain('【相关回忆】');
     expect(result).toContain('喜欢早上去公园打太极');
   });
 
-  it('should trigger for input with entity words', async () => {
-    vi.mocked(memoryRecall).mockResolvedValueOnce([]);
-    vi.mocked(prisma.familyFeed.findMany).mockResolvedValueOnce([
-      { id: '1', content: '腰不好，避免久坐', category: 'HEALTH' },
-    ] as any);
+  it('should trigger for input with entity words from vocabulary', async () => {
+    // First call: getFamilyEntities queries PERSON/PLACE
+    // Second call: getMidTermMemory queries PREFERENCE/HEALTH
+    vi.mocked(prisma.familyFeed.findMany)
+      .mockResolvedValueOnce([
+        { id: '1', content: '李阿姨', category: 'PERSON' },
+      ] as any)
+      .mockResolvedValueOnce([
+        { id: '2', content: '腰不好，避免久坐', category: 'HEALTH' },
+      ] as any);
+    vi.mocked(memoryRecall).mockResolvedValue([]);
 
-    const result = await getMidTermMemory('腰', 'family-123');
+    const result = await getMidTermMemory('李阿姨来了', 'family-123');
     expect(result).toContain('腰不好，避免久坐');
   });
 
   it('should return empty when both sources empty', async () => {
-    vi.mocked(memoryRecall).mockResolvedValueOnce([]);
-    vi.mocked(prisma.familyFeed.findMany).mockResolvedValueOnce([]);
+    vi.mocked(memoryRecall).mockResolvedValue([]);
+    vi.mocked(prisma.familyFeed.findMany).mockResolvedValue([]);
 
     const result = await getMidTermMemory('今天天气不错今天天气不错', 'family-123');
     expect(result).toBe('');
