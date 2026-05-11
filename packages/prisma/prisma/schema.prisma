@@ -25,33 +25,39 @@ model Family {
 }
 
 model ElderProfile {
-  id        String   @id @default(cuid())
-  familyId  String   @unique @map("family_id")
-  name      String
-  age       Int?
-  dialect   String?
-  deviceId  String?  @map("device_id")
-  openid    String?  @unique @map("openid")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(cuid())
+  familyId          String   @unique @map("family_id")
+  name              String
+  age               Int?
+  dialect           String?
+  deviceId          String?  @map("device_id")
+  openid            String?  @unique @map("openid")
+  hobbies           String?  @map("hobbies")
+  healthNotes       String?  @map("health_notes")
+  topicsToAvoid     String?  @map("topics_to_avoid")
+  greetingPreference String? @map("greeting_preference")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
-  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  family            Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   @@map("elder_profiles")
 }
 
 model ChildProfile {
-  id        String   @id @default(cuid())
-  familyId  String   @map("family_id")
-  userId    String   @unique @map("user_id")
-  name      String?
-  phone     String   @unique
-  openid    String?  @unique @map("openid")
-  isPrimary Boolean  @default(false) @map("is_primary")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                  String   @id @default(cuid())
+  familyId            String   @map("family_id")
+  userId              String   @unique @map("user_id")
+  name                String?
+  phone               String   @unique
+  openid              String?  @unique @map("openid")
+  isPrimary           Boolean  @default(false) @map("is_primary")
+  relationshipToElder String?  @map("relationship_to_elder")
+  customNotes         String?  @map("custom_notes")
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
 
-  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  family              Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   @@map("child_profiles")
 }

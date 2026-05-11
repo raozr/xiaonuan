@@ -52,4 +52,31 @@ export async function meRoutes(app: FastifyInstance) {
 
     return reply.status(400).send({ success: false, message: '无效的用户角色' });
   });
+
+  app.put('/', async (request: FastifyRequest, reply: FastifyReply) => {
+    const user = request.user as UserPayload | undefined;
+
+    if (!user || user.role !== 'CHILD' || !user.phone) {
+      return reply.status(401).send({ success: false, message: '未认证或非子女用户' });
+    }
+
+    const body = request.body as Record<string, unknown>;
+    const updateData: Record<string, unknown> = {};
+
+    if (typeof body.name === 'string') updateData.name = body.name;
+    if (typeof body.relationshipToElder === 'string') updateData.relationshipToElder = body.relationshipToElder;
+    if (typeof body.customNotes === 'string') updateData.customNotes = body.customNotes;
+
+    const updated = await prisma.childProfile.update({
+      where: { phone: user.phone },
+      data: updateData,
+    });
+
+    return reply.send({
+      success: true,
+      name: updated.name,
+      relationshipToElder: updated.relationshipToElder,
+      customNotes: updated.customNotes,
+    });
+  });
 }

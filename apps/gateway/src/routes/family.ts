@@ -109,6 +109,85 @@ export async function familyRoutes(app: FastifyInstance) {
     });
   });
 
+  app.put('/elder', { preHandler: [requireAuth] }, async (request, reply) => {
+    const user = request.user as { role: string; phone?: string; familyId?: string } | undefined;
+    if (!user || user.role !== 'CHILD' || !user.phone) {
+      return reply.status(401).send({ success: false, message: '未认证' });
+    }
+
+    const childProfile = await prisma.childProfile.findUnique({
+      where: { phone: user.phone },
+    });
+    if (!childProfile) {
+      return reply.status(404).send({ success: false, message: '用户不存在' });
+    }
+
+    const body = request.body as Record<string, unknown>;
+    const updateData: Record<string, unknown> = {};
+
+    if (typeof body.name === 'string') updateData.name = body.name;
+    if (typeof body.age === 'number') updateData.age = body.age;
+    if (typeof body.dialect === 'string') updateData.dialect = body.dialect;
+    if (typeof body.hobbies === 'string') updateData.hobbies = body.hobbies;
+    if (typeof body.healthNotes === 'string') updateData.healthNotes = body.healthNotes;
+    if (typeof body.topicsToAvoid === 'string') updateData.topicsToAvoid = body.topicsToAvoid;
+    if (typeof body.greetingPreference === 'string') updateData.greetingPreference = body.greetingPreference;
+
+    const updated = await prisma.elderProfile.update({
+      where: { familyId: childProfile.familyId },
+      data: updateData,
+    });
+
+    return reply.send({ success: true, elder: updated });
+  });
+
+  app.get('/settings', { preHandler: [requireAuth] }, async (request, reply) => {
+    const user = request.user as { role: string; phone?: string; familyId?: string } | undefined;
+    if (!user) {
+      return reply.status(401).send({ success: false, message: '未认证' });
+    }
+
+    if (user.role === 'CHILD' && user.phone) {
+      const childProfile = await prisma.childProfile.findUnique({
+        where: { phone: user.phone },
+        include: { family: { include: { elder: true, children: true } } },
+      });
+      if (!childProfile || !childProfile.family) {
+        return reply.status(404).send({ success: false, message: '家庭不存在' });
+      }
+      return reply.send({
+        family: {
+          id: childProfile.family.id,
+          inviteCode: childProfile.family.inviteCode,
+          inviteCodeExpiresAt: childProfile.family.inviteCodeExpiresAt,
+        },
+        elder: childProfile.family.elder,
+        children: childProfile.family.children,
+      });
+    }
+
+    if (user.role === 'ELDER' && user.familyId) {
+      const family = await prisma.family.findUnique({
+        where: { id: user.familyId },
+        include: { elder: true, children: true },
+      });
+      if (!family) {
+        return reply.status(404).send({ success: false, message: '家庭不存在' });
+      }
+      return reply.send({
+        family: {
+          id: family.id,
+          inviteCode: family.inviteCode,
+          inviteCodeExpiresAt: family.inviteCodeExpiresAt,
+        },
+        elder: family.elder,
+        children: family.children,
+      });
+    }
+
+    return reply.status(400).send({ success: false, message: '无效的用户角色' });
+  });
+
   app.post('/bind', async (request, reply) => {
     const body = request.body as { inviteCode?: string; deviceId?: string; openid?: string };
 
