@@ -14,7 +14,7 @@ Page({
     const { openid } = this.data;
 
     if (role === 'ELDER') {
-      wx.navigateTo({ url: `/pages/bind-family/bind-family?openid=${openid}` });
+      wx.navigateTo({ url: `/pages/bind-family/bind-family?openid=${openid}&mode=ELDER` });
     } else {
       wx.navigateTo({ url: `/pages/child-register/child-register?openid=${openid}` });
     }

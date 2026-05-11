@@ -12,8 +12,12 @@ export async function getSessionByCode(
   url.searchParams.set('js_code', code);
   url.searchParams.set('grant_type', 'authorization_code');
 
+  console.log('[wechat] requesting:', url.toString().replace(WECHAT_SECRET, '***'));
+
   const res = await fetch(url.toString());
   const data = (await res.json()) as Record<string, unknown>;
+
+  console.log('[wechat] response:', JSON.stringify(data));
 
   if (data.errcode) {
     throw new Error(String(data.errmsg) || '微信接口调用失败');

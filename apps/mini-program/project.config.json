@@ -48,8 +48,8 @@
     "disableSWC": true
   },
   "compileType": "miniprogram",
-  "libVersion": "3.3.4",
-  "appid": "wx09171f0f6c0ce969",
+  "libVersion": "3.16.0",
+  "appid": "wx75ab694e40cfd8a4",
   "projectname": "xiaonuan",
   "condition": {},
   "editorSetting": {

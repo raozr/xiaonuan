@@ -8,6 +8,10 @@ vi.mock('../qdrant/client.js', () => ({
   },
 }));
 
+vi.mock('../services/embedding.js', () => ({
+  embedText: vi.fn().mockResolvedValue([0.1, 0.2, 0.3]),
+}));
+
 vi.mock('@xiaonuan/prisma', () => ({
   prisma: {
     familyFeed: {

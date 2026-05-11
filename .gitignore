@@ -7,3 +7,17 @@ build/
 .DS_Store
 coverage/
 *.tsbuildinfo
+
+# Documentation and Process Files
+SPEC*.md
+doc/
+docs/
+tasks/
+.claude/
+
+# Temporary and Generated Files
+*.mp3
+*.wav
+apps/gateway/*.mjs
+apps/gateway/diag-api.ts
+apps/gateway/public/tts/

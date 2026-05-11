@@ -1,7 +1,13 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
 import { prisma } from '@xiaonuan/prisma';
-import { handleVoiceText } from '../conversation/loop.js';
+import { handleVoiceText, sendClosingMessage } from '../conversation/loop.js';
+import { definePhaseTransition } from '../state-machine/index.js';
+import {
+  updateSessionPhase,
+  getSessionPhase,
+} from '../conversation/turn-manager.js';
+import { generateCheckpoint } from '../memory/checkpoint-service.js';
 
 export function createWebSocketHandler(app: FastifyInstance) {
   return async (socket: WebSocket, req: FastifyRequest) => {
@@ -29,6 +35,8 @@ export function createWebSocketHandler(app: FastifyInstance) {
     let sessionId: string | null = null;
     let missedPongs = 0;
     let heartbeatInterval: NodeJS.Timeout | null = null;
+    let silenceTimeout: NodeJS.Timeout | null = null;
+    let checkpointTimeout: NodeJS.Timeout | null = null;
 
     startHeartbeat();
 
@@ -56,6 +64,42 @@ export function createWebSocketHandler(app: FastifyInstance) {
       }
     }
 
+    function resetSilenceTimer() {
+      if (silenceTimeout) {
+        clearTimeout(silenceTimeout);
+        silenceTimeout = null;
+      }
+      silenceTimeout = setTimeout(() => {
+        handleSilence();
+      }, 30000);
+    }
+
+    function clearSilenceTimer() {
+      if (silenceTimeout) {
+        clearTimeout(silenceTimeout);
+        silenceTimeout = null;
+      }
+    }
+
+    async function handleSilence() {
+      if (!sessionId) return;
+      try {
+        const currentPhase = await getSessionPhase(sessionId);
+        if (currentPhase === 'ACTIVE_CHAT' || currentPhase === 'GREETING') {
+          const newPhase = definePhaseTransition(
+            currentPhase,
+            'elder_silent_30s'
+          );
+          await updateSessionPhase(sessionId, newPhase);
+          sendMessage('phase:changed', { phase: newPhase });
+          await sendClosingMessage(sessionId, user!.familyId!, socket);
+          clearSilenceTimer();
+        }
+      } catch (err) {
+        console.error('[WebSocket] 静默检测处理失败:', err);
+      }
+    }
+
     socket.on('message', async (raw: Buffer) => {
       try {
         const { type, payload } = JSON.parse(raw.toString());
@@ -69,11 +113,12 @@ export function createWebSocketHandler(app: FastifyInstance) {
           const session = await prisma.session.create({
             data: {
               familyId: user!.familyId!,
-              phase: 'ACTIVE_CHAT',
+              phase: 'GREETING',
             },
           });
           sessionId = session.id;
           sendMessage('session:created', { sessionId: session.id });
+          resetSilenceTimer();
           return;
         }
 
@@ -91,7 +136,12 @@ export function createWebSocketHandler(app: FastifyInstance) {
             return;
           }
           sessionId = session.id;
+          if (checkpointTimeout) {
+            clearTimeout(checkpointTimeout);
+            checkpointTimeout = null;
+          }
           sendMessage('session:resumed', { sessionId: session.id });
+          resetSilenceTimer();
           return;
         }
 
@@ -105,7 +155,31 @@ export function createWebSocketHandler(app: FastifyInstance) {
             sendMessage('error', { message: 'text 必填' });
             return;
           }
+
+          const currentPhase = await getSessionPhase(sessionId);
+
+          if (currentPhase === 'CLOSING') {
+            const newPhase = definePhaseTransition(
+              'CLOSING',
+              'elder_speaks_again'
+            );
+            await updateSessionPhase(sessionId, newPhase);
+            sendMessage('phase:changed', { phase: newPhase });
+          }
+
+          clearSilenceTimer();
           await handleVoiceText(sessionId, user!.familyId!, text, socket);
+          resetSilenceTimer();
+
+          if (currentPhase === 'GREETING') {
+            const newPhase = definePhaseTransition(
+              'GREETING',
+              'first_message_received'
+            );
+            await updateSessionPhase(sessionId, newPhase);
+            sendMessage('phase:changed', { phase: newPhase });
+          }
+
           return;
         }
       } catch (err) {
@@ -115,6 +189,25 @@ export function createWebSocketHandler(app: FastifyInstance) {
 
     socket.on('close', () => {
       stopHeartbeat();
+      clearSilenceTimer();
+      if (sessionId) {
+        checkpointTimeout = setTimeout(async () => {
+          try {
+            const newPhase = definePhaseTransition(
+              await getSessionPhase(sessionId!),
+              'session_close'
+            );
+            await updateSessionPhase(sessionId!, newPhase);
+            await prisma.session.update({
+              where: { id: sessionId! },
+              data: { endedAt: new Date() },
+            });
+            await generateCheckpoint(sessionId!);
+          } catch (err) {
+            console.error('[WebSocket] 关闭会话处理失败:', err);
+          }
+        }, 5 * 60 * 1000);
+      }
     });
   };
 }

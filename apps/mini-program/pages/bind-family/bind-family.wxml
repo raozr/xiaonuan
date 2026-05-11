@@ -1,9 +1,16 @@
 <view class="container">
   <view wx:if="{{mode === 'ELDER'}}" class="elder-section">
     <text class="title">欢迎加入小暖</text>
-    <text class="subtitle">请输入子女提供的6位邀请码</text>
+    <text class="subtitle">请输入您的姓名和子女提供的邀请码</text>
 
     <view class="form">
+      <input
+        class="input"
+        type="text"
+        placeholder="老人姓名"
+        value="{{elderName}}"
+        bindinput="onElderNameInput"
+      />
       <input
         class="input code-input"
         type="number"

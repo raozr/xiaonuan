@@ -65,8 +65,8 @@ describe('checkpoint-service', () => {
       familyId: 'family-123',
     } as any);
 
-    vi.mocked(chatCompletion).mockResolvedValueOnce(
-      JSON.stringify({
+    vi.mocked(chatCompletion).mockResolvedValueOnce({
+      content: JSON.stringify({
         topicSummary: '聊到家人来访',
         keyFacts: [
           { fact: '儿子周末回来', category: 'EVENT' },
@@ -75,7 +75,7 @@ describe('checkpoint-service', () => {
         moodSnapshot: '开心',
         nextTopicHint: '问问老人想吃什么',
       })
-    );
+    });
 
     await generateCheckpoint('session-123');
 
@@ -126,8 +126,8 @@ describe('checkpoint-service', () => {
       familyId: 'family-123',
     } as any);
 
-    vi.mocked(chatCompletion).mockResolvedValueOnce(
-      JSON.stringify({
+    vi.mocked(chatCompletion).mockResolvedValueOnce({
+      content: JSON.stringify({
         topicSummary: '老人腰疼',
         keyFacts: [
           { fact: '腰有点疼', category: 'HEALTH' },
@@ -135,7 +135,7 @@ describe('checkpoint-service', () => {
         ],
         moodSnapshot: '一般',
       })
-    );
+    });
 
     await generateCheckpoint('session-123');
 
@@ -159,15 +159,15 @@ describe('checkpoint-service', () => {
       familyId: 'family-123',
     } as any);
 
-    vi.mocked(chatCompletion).mockResolvedValueOnce(
-      JSON.stringify({
+    vi.mocked(chatCompletion).mockResolvedValueOnce({
+      content: JSON.stringify({
         topicSummary: '日常问候',
         keyFacts: [
           { fact: '天气不错', category: 'HOBBY' },
         ],
         moodSnapshot: '开心',
       })
-    );
+    });
 
     await generateCheckpoint('session-123');
 
@@ -183,7 +183,7 @@ describe('checkpoint-service', () => {
       { id: '2', role: 'AI', content: '您好', createdAt: new Date() },
     ] as any);
 
-    vi.mocked(chatCompletion).mockResolvedValueOnce('invalid json');
+    vi.mocked(chatCompletion).mockResolvedValueOnce({ content: 'invalid json' });
 
     await expect(generateCheckpoint('session-123')).resolves.toBeUndefined();
     expect(prisma.checkpoint.upsert).not.toHaveBeenCalled();

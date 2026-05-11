@@ -58,7 +58,7 @@ ${conversation}
       ],
       { temperature: 0.7, maxTokens: 512 }
     );
-    checkpointData = JSON.parse(response);
+    checkpointData = JSON.parse(response.content ?? '{}');
   } catch (err) {
     console.error('[Checkpoint] LLM 生成失败:', err);
     return;

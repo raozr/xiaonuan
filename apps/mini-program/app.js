@@ -1,6 +1,8 @@
 App({
   globalData: {
-    apiBase: 'http://localhost:3000',
+    // 真机调试时改为电脑局域网 IP，如 'http://192.168.1.31:3000'
+    // 开发者工具模拟器用 'http://localhost:3000'
+    apiBase: 'http://192.168.1.29:3000',
     token: null,
     role: null,
     userInfo: null,
@@ -100,7 +102,7 @@ App({
         url: `${apiBase}${options.url}`,
         method: options.method || 'GET',
         data: options.data || {},
-        timeout: options.timeout || 10000,
+        timeout: options.timeout || 60000,
         header: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {}),

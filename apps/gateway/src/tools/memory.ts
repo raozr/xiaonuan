@@ -1,20 +1,6 @@
 import { prisma } from '@xiaonuan/prisma';
 import { qdrant } from '../qdrant/client.js';
-
-// Placeholder embedding: deterministic pseudo-random vector from text hash.
-// TODO: Replace with real embedding model (OpenAI, local, etc.)
-function embedText(text: string, dim: number = 1536): number[] {
-  let seed = 0;
-  for (let i = 0; i < text.length; i++) {
-    seed = (seed * 31 + text.charCodeAt(i)) % 2147483647;
-  }
-  const vec: number[] = [];
-  for (let i = 0; i < dim; i++) {
-    seed = (seed * 1103515245 + 12345) % 2147483647;
-    vec.push((seed / 2147483647) * 2 - 1);
-  }
-  return vec;
-}
+import { embedText } from '../services/embedding.js';
 
 export async function memoryContext(familyId: string) {
   const feeds = await prisma.familyFeed.findMany({
@@ -40,7 +26,13 @@ export async function memoryRecall(
   checkpointId?: string,
   topK: number = 5
 ) {
-  const vector = embedText(query);
+  let vector: number[];
+  try {
+    vector = await embedText(query);
+  } catch (err) {
+    console.error('[memoryRecall] embedding 失败，降级跳过向量检索:', err);
+    return [];
+  }
 
   const must: Array<Record<string, unknown>> = [
     { key: 'familyId', match: { value: familyId } },
@@ -50,12 +42,38 @@ export async function memoryRecall(
     must.push({ key: 'checkpointId', match: { value: checkpointId } });
   }
 
-  const results = await qdrant.search('family_memories', {
-    vector,
-    limit: topK,
-    filter: { must },
-    with_payload: true,
-  });
+  try {
+    const results = await qdrant.search('family_memories', {
+      vector,
+      limit: topK,
+      filter: { must },
+      with_payload: true,
+    });
+    return results;
+    } catch (err) {
+    console.error('[memoryRecall] Qdrant 查询失败，降级返回空结果:', err);
+    return [];
+  }
+}
 
-  return results;
+export async function memoryNote(
+  category: 'PREFERENCE' | 'HEALTH' | 'EVENT' | 'PERSON' | 'PLACE',
+  content: string,
+  familyId: string
+) {
+  try {
+    const feed = await prisma.familyFeed.create({
+      data: {
+        familyId,
+        type: 'TEXT',
+        category,
+        content,
+        isRecent: true,
+      },
+    });
+    return { success: true, feedId: feed.id };
+  } catch (err) {
+    console.error('[memoryNote] 写入 FamilyFeed 失败:', err);
+    return { success: false, error: '写入失败' };
+  }
 }

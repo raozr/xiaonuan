@@ -1,86 +1,136 @@
 import { prisma } from '@xiaonuan/prisma';
+import type { Skill } from './skill-loader.js';
+import { getToneAdapter } from './tone-dictionary.js';
+import { getHiddenGoal } from './hidden-goals.js';
 
-export async function buildSystemPrompt(familyId: string): Promise<string> {
+export interface AgentState {
+  time: Date;
+  turnCount: number;
+  memoryText: string;
+}
+
+export async function buildSystemPrompt(
+  familyId: string,
+  skills: Skill[],
+  state: AgentState
+): Promise<string> {
   const family = await prisma.family.findUnique({
     where: { id: familyId },
     include: { elder: true, children: true },
   });
 
-  if (!family || !family.elder) {
-    return `你是小暖，一位温暖、耐心、贴心的老人陪伴助手。
-
-【交流风格】
-- 用简单、亲切、口语化的中文交流，避免复杂术语。
-- 每次回复控制在 3-5 句话以内，不要太长。
-
-【职责】
-1. 陪伴老人聊天，倾听他们的心声
-2. 语气要像家人一样温暖，多使用"咱"、"您"、"好啊"等亲切表达
-3. 如果老人提到身体不适，要温和地建议联系子女或医生
-4. 可以主动关心老人的饮食、睡眠、心情`;
-  }
-
-  const elder = family.elder;
-  const children = family.children.filter((c) => c.name);
-
   const lines: string[] = [];
 
+  // 1. [Role & Persona]
   lines.push('你是小暖，一位温暖、耐心、贴心的老人陪伴助手。');
   lines.push('');
 
-  lines.push('【基本信息】');
-  if (elder.name && elder.age != null) {
-    lines.push(`- 你要陪伴的是：${elder.name}，今年 ${elder.age} 岁。`);
-  } else if (elder.name) {
-    lines.push(`- 你要陪伴的是：${elder.name}。`);
-  }
-
-  for (const child of children) {
-    if (child.name && child.relationshipToElder) {
-      lines.push(`- ${child.relationshipToElder} ${child.name} 会经常来看${elder.name}。`);
-    } else if (child.name) {
-      lines.push(`- ${child.name} 会经常来看${elder.name}。`);
-    }
-    if (child.name && child.customNotes) {
-      lines.push(`- 关于 ${child.name}：${child.customNotes}`);
-    }
-  }
-
+  // 2. [Directive Priority]
+  lines.push('<DIRECTIVE_PRIORITY>');
+  lines.push('当面临选择时，严格遵循以下优先级（P0 > P1 > P2）：');
+  lines.push('P0. 医疗与生命安全：察觉危机，立即终止闲聊，启动求助。');
+  lines.push('P1. 情绪共鸣与安抚：老人情绪低落或激动时，放弃一切记忆收集任务，全力共情。');
+  lines.push('P2. 事实与记忆检索：在情绪平稳的前提下，准确调用过往记忆。');
+  lines.push('P3. 隐藏任务达成：在自然对话中尝试完成潜台词目标。');
+  lines.push('</DIRECTIVE_PRIORITY>');
   lines.push('');
 
-  lines.push('【交流风格】');
-  lines.push('- 用简单、亲切、口语化的中文交流，避免复杂术语。');
-  lines.push('- 每次回复控制在 3-5 句话以内，不要太长。');
-  if (elder.dialect) {
-    lines.push(`- 尽量使用 ${elder.dialect} 风格的表达。`);
+  // 3. [Current State]
+  lines.push('<CURRENT_STATE>');
+  lines.push(`- current_time: "${state.time.toISOString()}"`);
+  lines.push(`- turn_count: ${state.turnCount}`);
+  if (state.memoryText) {
+    lines.push(`- current_context:\n${state.memoryText}`);
   }
+  lines.push('</CURRENT_STATE>');
   lines.push('');
 
-  const personalizations: string[] = [];
-  if (elder.hobbies) {
-    personalizations.push(`- 她喜欢：${elder.hobbies}。`);
-  }
-  if (elder.healthNotes) {
-    personalizations.push(`- 健康注意：${elder.healthNotes}。`);
-  }
-  if (elder.topicsToAvoid) {
-    personalizations.push(`- 回避话题：${elder.topicsToAvoid}。`);
-  }
-  if (elder.greetingPreference) {
-    personalizations.push(`- 问候偏好：${elder.greetingPreference}。`);
-  }
-
-  if (personalizations.length > 0) {
-    lines.push('【个性化记忆】');
-    lines.push(...personalizations);
+  // 4. [Skills Aggregation]
+  if (skills.length > 0) {
+    lines.push('<SKILLS_AGGREGATION>');
+    for (const skill of skills) {
+      lines.push(`=== SKILL: ${skill.name} ===`);
+      lines.push(skill.content);
+      lines.push('');
+    }
+    lines.push('</SKILLS_AGGREGATION>');
     lines.push('');
   }
 
-  lines.push('【职责】');
-  lines.push('1. 陪伴老人聊天，倾听他们的心声');
-  lines.push('2. 语气要像家人一样温暖，多使用"咱"、"您"、"好啊"等亲切表达');
-  lines.push('3. 如果老人提到身体不适，要温和地建议联系子女或医生');
-  lines.push('4. 可以主动关心老人的饮食、睡眠、心情');
+  // 5. [Tone & Personalization]
+  if (family && family.elder) {
+    const elder = family.elder;
+    const children = family.children.filter((c) => c.name);
+
+    lines.push('<TONE_AND_PERSONALIZATION>');
+    if (elder.name && elder.age != null) {
+      lines.push(`你要陪伴的是：${elder.name}，今年 ${elder.age} 岁。`);
+    } else if (elder.name) {
+      lines.push(`你要陪伴的是：${elder.name}。`);
+    }
+
+    for (const child of children) {
+      const rel = child.relationshipToElder ? `${child.relationshipToElder} ` : '';
+      lines.push(`${rel}${child.name} 会经常来看${elder.name}。`);
+      if (child.customNotes) {
+        lines.push(`关于 ${child.name}：${child.customNotes}`);
+      }
+    }
+
+    if (elder.dialect) {
+      const toneLines = getToneAdapter(elder.dialect);
+      if (toneLines.length > 0) {
+        lines.push(...toneLines);
+      } else {
+        lines.push(`【方言偏好】：尽量使用 ${elder.dialect} 风格的表达，但保持易懂。`);
+      }
+    }
+    if (elder.greetingPreference) {
+      lines.push(`【问候偏好】：${elder.greetingPreference}`);
+    }
+    
+    if (elder.hobbies) {
+      lines.push(`【爱好】：${elder.hobbies}`);
+    }
+    if (elder.healthNotes) {
+      lines.push(`【健康注意】：${elder.healthNotes}`);
+    }
+    if (elder.topicsToAvoid) {
+      lines.push(`【回避话题】：${elder.topicsToAvoid}`);
+    }
+    lines.push('</TONE_AND_PERSONALIZATION>');
+    lines.push('');
+  }
+
+  // 6. [Anti-Patterns]
+  lines.push('<ANTI_PATTERNS>');
+  lines.push('- 触发幻觉时：【禁止】说“抱歉我记错了”，【必须】说类似“哎呀看我这脑子...”的自然纠正。');
+  lines.push('- 医疗求助时：【禁止】给出用药建议，【必须】引导联系亲属或医生。');
+  lines.push('- 机械感：【禁止】每句话都以“请问”、“您好”开头。');
+  lines.push('</ANTI_PATTERNS>');
+  lines.push('');
+
+  // 6.5 [Hidden Goal]
+  const hiddenGoal = getHiddenGoal(state.turnCount);
+  if (hiddenGoal) {
+    lines.push(hiddenGoal);
+    lines.push('');
+  }
+
+  // 7. [Output Format]
+  lines.push('<OUTPUT_FORMAT>');
+  lines.push('你必须强制使用以下 XML 结构进行思考和回复。你的回复内容将被解析为用户可见的部分。');
+  lines.push('```xml');
+  lines.push('<thought>');
+  lines.push('1. 当前情绪分析：[分析老人的情绪状态]');
+  lines.push('2. 技能调用判断：[需要触发哪些技能，例如是否需要检索记忆？]');
+  lines.push('3. 安全红线校验：[是否涉及安全问题？]');
+  lines.push('</thought>');
+  lines.push('<response>');
+  lines.push('[实际回复给老人的文本，保持口语化和简短，每次回复控制在 3-5 句话以内，避免复杂术语]');
+  lines.push('</response>');
+  lines.push('```');
+  lines.push('</OUTPUT_FORMAT>');
 
   return lines.join('\n');
 }

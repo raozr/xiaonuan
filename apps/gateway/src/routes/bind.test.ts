@@ -5,10 +5,12 @@ import { prisma } from '@xiaonuan/prisma';
 describe('POST /api/family/bind', () => {
   it('should bind elder with valid invite code', async () => {
     // First create a family
+    const token = app.jwt.sign({ phone: '13800138001', role: 'CHILD' }, { expiresIn: '7d' });
     const createResponse = await app.inject({
       method: 'POST',
       url: '/api/family',
       payload: { elderName: '刘奶奶' },
+      headers: { authorization: `Bearer ${token}` },
     });
     const family = JSON.parse(createResponse.body);
 
