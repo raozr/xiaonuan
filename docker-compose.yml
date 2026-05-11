@@ -15,6 +15,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - xiaonuan-network
 
   qdrant:
     image: qdrant/qdrant:v1.12.0
@@ -29,6 +31,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - xiaonuan-network
 
   redis:
     image: redis:7-alpine
@@ -42,6 +46,43 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - xiaonuan-network
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xiaonuan-gateway
+    restart: always
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://xiaonuan:xiaonuan@postgres:5432/xiaonuan
+      - QDRANT_URL=http://qdrant:6333
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-xiaonuan-prod-secret}
+      - WECHAT_APPID=${WECHAT_APPID}
+      - WECHAT_SECRET=${WECHAT_SECRET}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - NLS_APP_KEY=${NLS_APP_KEY}
+      - NLS_ACCESS_KEY_ID=${NLS_ACCESS_KEY_ID}
+      - NLS_ACCESS_KEY_SECRET=${NLS_ACCESS_KEY_SECRET}
+    networks:
+      - xiaonuan-network
+
+networks:
+  xiaonuan-network:
+    driver: bridge
 
 volumes:
   postgres_data:

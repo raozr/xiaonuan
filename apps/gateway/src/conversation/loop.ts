@@ -72,7 +72,11 @@ export async function sendClosingMessage(
   socket: WebSocket
 ) {
   try {
-    const systemPrompt = await buildSystemPrompt(familyId);
+    const systemPrompt = await buildSystemPrompt(familyId, [], {
+      time: new Date(),
+      turnCount: 0,
+      memoryText: '',
+    });
     const messages = [
       {
         role: 'system' as const,

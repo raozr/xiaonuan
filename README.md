@@ -55,27 +55,22 @@ xiaonuan/
    cd xiaonuan
    ```
 
-2. **安装依赖**
-   ```bash
-   pnpm install
-   ```
+2. **配置环境**
+   复制根目录下的 `.env.example` 为 `.env`，并根据需要填写 API Key（如 `DASHSCOPE_API_KEY`）。
 
-3. **配置环境**
-   复制根目录及各 app 目录下的 `.env.example` 为 `.env`，并填写必要的 API Key（如 DASHSCOPE_API_KEY）。
-
-4. **启动基础设施**
+3. **一键启动（推荐）**
+   本项目已实现全栈 Docker 化，只需一行命令即可启动所有后端服务及基础设施：
    ```bash
    docker-compose up -d
    ```
+   该命令会自动完成依赖安装、数据库初始化、服务构建及启动。
 
-5. **初始化数据库**
+4. **手动开发模式**
+   如果您需要进行后端代码开发，可以先启动基础设施：
    ```bash
+   docker-compose up -d postgres qdrant redis
+   pnpm install
    pnpm db:generate
-   pnpm db:migrate
-   ```
-
-6. **启动开发服务器**
-   ```bash
    pnpm dev
    ```
 
