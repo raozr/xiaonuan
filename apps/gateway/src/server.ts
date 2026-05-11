@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
 import { env } from './config/env.js';
+import { ensureFamilyMemoriesCollection } from './qdrant/client.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
 import { familyRoutes } from './routes/family.js';
@@ -39,6 +40,7 @@ await app.register(async (protectedRoutes) => {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
+    await ensureFamilyMemoriesCollection();
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
     app.log.info(`Gateway listening on http://localhost:${env.PORT}`);
   } catch (err) {
