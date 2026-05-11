@@ -59,11 +59,11 @@ xiaonuan/
    复制根目录下的 `.env.example` 为 `.env`，并根据需要填写 API Key（如 `DASHSCOPE_API_KEY`）。
 
 3. **一键启动（推荐）**
-   本项目已实现全栈 Docker 化，只需一行命令即可启动所有后端服务及基础设施：
+   本项目已实现全栈 Docker 化，并提供管理脚本简化操作：
    ```bash
-   docker-compose up -d
+   ./manager.sh start
    ```
-   该命令会自动完成依赖安装、数据库初始化、服务构建及启动。
+   该脚本封装了 `docker-compose` 命令，支持 `start`, `stop`, `restart`, `status`, `logs` 等常用操作。
 
 4. **手动开发模式**
    如果您需要进行后端代码开发，可以先启动基础设施：
