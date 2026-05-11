@@ -14,6 +14,10 @@ Page({
     await this.loadTodaySummary();
   },
 
+  async onShow() {
+    await this.loadFamilyInfo();
+  },
+
   async loadFamilyInfo() {
     try {
       const res = await app.request({
@@ -50,7 +54,7 @@ Page({
   },
 
   goToFamily() {
-    wx.navigateTo({ url: '/pages/bind-family/bind-family' });
+    wx.navigateTo({ url: '/pages/child-settings/child-settings' });
   },
 
   goToSettings() {

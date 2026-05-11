@@ -17,6 +17,9 @@ Page({
     if (options.openid) {
       this.setData({ openid: options.openid });
     }
+    if (options.mode) {
+      this.setData({ mode: options.mode });
+    }
   },
 
   async onShow() {
@@ -92,6 +95,7 @@ Page({
           elderAge: '',
           elderDialect: '',
         });
+        wx.navigateTo({ url: '/pages/child-settings/child-settings' });
       } else {
         wx.showToast({ title: res.data?.message || '创建失败', icon: 'none' });
       }
