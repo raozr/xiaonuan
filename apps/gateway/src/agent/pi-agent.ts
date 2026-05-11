@@ -2,10 +2,17 @@ import { loadSkillsForPhase, type Skill } from './skill-loader.js';
 import { memoryContext, memoryRecall } from '../tools/memory.js';
 import { chatCompletion } from '../services/dashscope.js';
 import { buildSystemPrompt } from './prompt-builder.js';
+import { getRecentMessages } from '../conversation/turn-manager.js';
+import { buildMemoryContext } from '../memory/context-builder.js';
 
 export interface PiAgentConfig {
   familyId: string;
   phase: string;
+}
+
+export interface ProcessMessageOptions {
+  sessionId: string;
+  turnCount: number;
 }
 
 export interface PiAgent {
@@ -14,12 +21,17 @@ export interface PiAgent {
   getSkills(): Skill[];
   getTools(): Record<string, Function>;
   callTool(name: string, args: Record<string, unknown>): Promise<unknown>;
-  processMessage(input: string): Promise<string>;
+  processMessage(input: string, options: ProcessMessageOptions): Promise<string>;
 }
 
 export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
   const skills = await loadSkillsForPhase(config.phase);
   const systemPrompt = await buildSystemPrompt(config.familyId);
+
+  const skillContent = skills.map((s) => s.content).join('\n\n');
+  const baseSystemPrompt = skillContent
+    ? `${systemPrompt}\n\n${skillContent}`
+    : systemPrompt;
 
   const tools: Record<string, Function> = {
     memory_context: async (args: { familyId: string }) => {
@@ -34,9 +46,36 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
     },
   };
 
-  async function processMessage(input: string): Promise<string> {
+  async function processMessage(
+    input: string,
+    options: ProcessMessageOptions
+  ): Promise<string> {
+    let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+    try {
+      history = await getRecentMessages(options.sessionId, 10);
+    } catch (err) {
+      console.error('[PiAgent] 获取历史消息失败:', err);
+    }
+
+    let memoryText = '';
+    try {
+      memoryText = await buildMemoryContext({
+        familyId: config.familyId,
+        turnCount: options.turnCount,
+        input,
+        phase: config.phase,
+      });
+    } catch (err) {
+      console.error('[PiAgent] 构建记忆上下文失败:', err);
+    }
+
+    const fullSystemPrompt = memoryText
+      ? `${baseSystemPrompt}\n\n${memoryText}`
+      : baseSystemPrompt;
+
     const messages = [
-      { role: 'system' as const, content: systemPrompt },
+      { role: 'system' as const, content: fullSystemPrompt },
+      ...history,
       { role: 'user' as const, content: input },
     ];
 

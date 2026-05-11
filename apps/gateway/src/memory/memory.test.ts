@@ -7,9 +7,11 @@ vi.mock('@xiaonuan/prisma', () => ({
   prisma: {
     session: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     checkpoint: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     familyFeed: {
       findMany: vi.fn(),
@@ -268,5 +270,79 @@ describe('mid-term-memory', () => {
 
     const result = await getMidTermMemory('今天天气不错今天天气不错', 'family-123');
     expect(result).toBe('');
+  });
+});
+
+describe('greeting-hint', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(prisma.session.findFirst).mockReset();
+    vi.mocked(prisma.checkpoint.findFirst).mockReset();
+  });
+
+  it('should return empty when last session was within 3 days', async () => {
+    vi.mocked(prisma.session.findFirst).mockResolvedValueOnce({
+      endedAt: new Date(Date.now() - 86400000),
+    } as any);
+
+    const { getGreetingHint } = await import('./greeting-hint.js');
+    const result = await getGreetingHint('family-123');
+    expect(result).toBe('');
+  });
+
+  it('should return hint when last session was over 3 days ago', async () => {
+    vi.mocked(prisma.session.findFirst).mockResolvedValueOnce({
+      endedAt: new Date(Date.now() - 5 * 86400000),
+    } as any);
+    vi.mocked(prisma.checkpoint.findFirst).mockResolvedValueOnce({
+      nextTopicHint: '想聊聊孙子的事',
+    } as any);
+
+    const { getGreetingHint } = await import('./greeting-hint.js');
+    const result = await getGreetingHint('family-123');
+    expect(result).toContain('【未尽话题】');
+    expect(result).toContain('想聊聊孙子的事');
+  });
+
+  it('should return empty when no previous session exists', async () => {
+    vi.mocked(prisma.session.findFirst).mockResolvedValueOnce(null);
+
+    const { getGreetingHint } = await import('./greeting-hint.js');
+    const result = await getGreetingHint('family-123');
+    expect(result).toBe('');
+  });
+
+  it('should inject greeting hint in GREETING phase', async () => {
+    vi.mocked(prisma.session.findFirst).mockResolvedValueOnce({
+      endedAt: new Date(Date.now() - 5 * 86400000),
+    } as any);
+    vi.mocked(prisma.checkpoint.findFirst).mockResolvedValueOnce({
+      nextTopicHint: '想聊聊孙子的事',
+    } as any);
+
+    const result = await buildMemoryContext({
+      familyId: 'family-123',
+      turnCount: 1,
+      input: '你好',
+      phase: 'GREETING',
+    });
+
+    expect(result).toContain('【未尽话题】');
+    expect(result).toContain('想聊聊孙子的事');
+  });
+
+  it('should omit greeting hint in non-GREETING phase', async () => {
+    vi.mocked(prisma.session.findFirst).mockResolvedValueOnce({
+      endedAt: new Date(Date.now() - 5 * 86400000),
+    } as any);
+
+    const result = await buildMemoryContext({
+      familyId: 'family-123',
+      turnCount: 1,
+      input: '你好',
+      phase: 'ACTIVE_CHAT',
+    });
+
+    expect(result).not.toContain('【未尽话题】');
   });
 });

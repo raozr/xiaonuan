@@ -1,16 +1,19 @@
 import { getDailyMemory } from './daily-memory.js';
 import { getShortTermMemory } from './short-term-memory.js';
 import { getMidTermMemory } from './mid-term-memory.js';
+import { getGreetingHint } from './greeting-hint.js';
 
 export async function buildMemoryContext(params: {
   familyId: string;
   turnCount: number;
   input: string;
+  phase?: string;
 }): Promise<string> {
   const results = await Promise.allSettled([
     params.turnCount <= 3 ? getDailyMemory(params.familyId) : Promise.resolve(''),
     params.turnCount <= 3 ? getShortTermMemory(params.familyId) : Promise.resolve(''),
     getMidTermMemory(params.input, params.familyId),
+    params.phase === 'GREETING' ? getGreetingHint(params.familyId) : Promise.resolve(''),
   ]);
 
   const sections: string[] = [];
@@ -23,6 +26,9 @@ export async function buildMemoryContext(params: {
 
   const midTerm = results[2].status === 'fulfilled' ? results[2].value : '';
   if (midTerm) sections.push(midTerm);
+
+  const greetingHint = results[3].status === 'fulfilled' ? results[3].value : '';
+  if (greetingHint) sections.push(greetingHint);
 
   return sections.join('\n\n');
 }
