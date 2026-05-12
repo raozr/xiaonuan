@@ -253,6 +253,9 @@ describe('buildSystemPrompt', () => {
   });
 
   it('should include all filled fields in prompt', async () => {
+    const user = await prisma.user.create({
+      data: { phone: `13900${Date.now()}`.slice(-5), role: 'CHILD' },
+    });
     const family = await prisma.family.create({
       data: {
         inviteCode: `prompt-${Date.now()}`,
@@ -270,9 +273,9 @@ describe('buildSystemPrompt', () => {
         },
         children: {
           create: {
-            userId: `c1-${Date.now()}`,
+            userId: user.id,
             name: '小李',
-            phone: `13900${Date.now()}`.slice(-5),
+            phone: user.phone,
             relationshipToElder: '儿子',
             customNotes: '我在北京工作',
           },
@@ -300,9 +303,13 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('我在北京工作');
 
     await prisma.family.delete({ where: { id: family.id } });
+    await prisma.user.delete({ where: { id: user.id } });
   });
 
   it('should omit empty fields from prompt', async () => {
+    const user = await prisma.user.create({
+      data: { phone: `13901${Date.now()}`.slice(-5), role: 'CHILD' },
+    });
     const family = await prisma.family.create({
       data: {
         inviteCode: `prompt2-${Date.now()}`,
@@ -315,9 +322,9 @@ describe('buildSystemPrompt', () => {
         },
         children: {
           create: {
-            userId: `c2-${Date.now()}`,
+            userId: user.id,
             name: '小张',
-            phone: `13901${Date.now()}`.slice(-5),
+            phone: user.phone,
           },
         },
       },
@@ -338,5 +345,6 @@ describe('buildSystemPrompt', () => {
     expect(prompt).not.toContain('问候偏好');
 
     await prisma.family.delete({ where: { id: family.id } });
+    await prisma.user.delete({ where: { id: user.id } });
   });
 });

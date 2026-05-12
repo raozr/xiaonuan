@@ -122,6 +122,7 @@ export async function authRoutes(app: FastifyInstance) {
           data: {
             openid,
             phone,
+            name,
             role: 'CHILD',
           },
         });

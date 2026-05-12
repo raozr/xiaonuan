@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '@xiaonuan/prisma';
 import { generateInviteCode } from '../utils/invite-code.js';
+import { verifyElderAuth } from '../middleware/auth.js';
 
 const createFamilySchema = z.object({
   elderName: z.string().min(1),
@@ -16,9 +17,36 @@ async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
   }
   try {
     await request.jwtVerify();
+    await verifyElderAuth(request, reply);
   } catch {
+    if (reply.sent) return;
     return reply.status(401).send({ success: false, message: '无效的认证令牌' });
   }
+}
+
+async function assertFamilyMember(userId: string, familyId: string, reply: FastifyReply) {
+  const member = await prisma.childProfile.findUnique({
+    where: { userId_familyId: { userId, familyId } },
+  });
+  if (!member) {
+    return reply.status(403).send({ success: false, message: '无权访问该家庭' });
+  }
+  return member;
+}
+
+function enrichFamiliesWithStatus(
+  families: any[],
+  activeSessions: { familyId: string; updatedAt: Date }[],
+  lastSessions: { familyId: string; updatedAt: Date }[]
+) {
+  const activeMap = new Map(activeSessions.map(s => [s.familyId, true]));
+  const lastMap = new Map(lastSessions.map(s => [s.familyId, s.updatedAt]));
+
+  return families.map(f => ({
+    ...f,
+    isOnline: activeMap.has(f.id) ?? false,
+    lastActive: lastMap.get(f.id)?.toISOString() ?? null,
+  }));
 }
 
 export async function familyRoutes(app: FastifyInstance) {
@@ -35,7 +63,27 @@ export async function familyRoutes(app: FastifyInstance) {
         include: { family: { include: { elder: true } } },
       });
       const families = childProfiles.map(cp => cp.family);
-      return reply.send(families);
+      const familyIds = families.map(f => f.id);
+
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const [activeSessions, lastSessions] = await Promise.all([
+        prisma.session.findMany({
+          where: {
+            familyId: { in: familyIds },
+            endedAt: null,
+            updatedAt: { gte: thirtyMinutesAgo },
+          },
+          select: { familyId: true, updatedAt: true },
+        }),
+        prisma.session.findMany({
+          where: { familyId: { in: familyIds } },
+          orderBy: { updatedAt: 'desc' },
+          distinct: ['familyId'],
+          select: { familyId: true, updatedAt: true },
+        }),
+      ]);
+
+      return reply.send(enrichFamiliesWithStatus(families, activeSessions, lastSessions));
     }
 
     if (user.role === 'ELDER' && user.familyId) {
@@ -46,7 +94,26 @@ export async function familyRoutes(app: FastifyInstance) {
       if (!family) {
         return reply.status(404).send({ success: false, message: '家庭不存在' });
       }
-      return reply.send([family]); // Return as array for consistency
+
+      const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+      const [activeSessions, lastSessions] = await Promise.all([
+        prisma.session.findMany({
+          where: {
+            familyId: family.id,
+            endedAt: null,
+            updatedAt: { gte: thirtyMinutesAgo },
+          },
+          select: { familyId: true, updatedAt: true },
+        }),
+        prisma.session.findMany({
+          where: { familyId: family.id },
+          orderBy: { updatedAt: 'desc' },
+          take: 1,
+          select: { familyId: true, updatedAt: true },
+        }),
+      ]);
+
+      return reply.send(enrichFamiliesWithStatus([family], activeSessions, lastSessions));
     }
 
     return reply.status(400).send({ success: false, message: '无效的用户角色' });
@@ -61,17 +128,19 @@ export async function familyRoutes(app: FastifyInstance) {
       return reply.status(401).send({ success: false, message: '未认证' });
     }
 
-    // Verify ownership
-    const membership = await prisma.childProfile.findUnique({
-      where: { userId_familyId: { userId: user.userId, familyId } },
-      include: { family: { include: { elder: true, children: true } } }
+    const member = await assertFamilyMember(user.userId, familyId, reply);
+    if (!member) return;
+
+    const family = await prisma.family.findUnique({
+      where: { id: familyId },
+      include: { elder: true, children: true },
     });
 
-    if (!membership) {
-      return reply.status(403).send({ success: false, message: '无权访问该家庭' });
+    if (!family) {
+      return reply.status(404).send({ success: false, message: '家庭不存在' });
     }
 
-    return reply.send(membership.family);
+    return reply.send(family);
   });
 
   // Create a new family (Child only)
@@ -90,7 +159,6 @@ export async function familyRoutes(app: FastifyInstance) {
 
     const { elderName, elderAge, elderDialect } = parsed.data;
 
-    // Get current user info to propagate to the new profile
     const userData = await prisma.user.findUnique({ where: { id: user.userId } });
     if (!userData) {
       return reply.status(404).send({ success: false, message: '用户不存在' });
@@ -110,12 +178,12 @@ export async function familyRoutes(app: FastifyInstance) {
         children: {
           create: {
             userId: user.userId,
-            name: userData.phone, // Default name to phone or something sensible
+            name: userData.phone,
             phone: userData.phone || '',
             openid: userData.openid,
             isPrimary: true,
-          }
-        }
+          },
+        },
       },
       include: {
         elder: true,
@@ -139,13 +207,8 @@ export async function familyRoutes(app: FastifyInstance) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
-    // Verify ownership
-    const membership = await prisma.childProfile.findUnique({
-      where: { userId_familyId: { userId: user.userId, familyId } }
-    });
-    if (!membership) {
-      return reply.status(403).send({ success: false, message: '无权访问该家庭' });
-    }
+    const member = await assertFamilyMember(user.userId, familyId, reply);
+    if (!member) return;
 
     const family = await prisma.family.update({
       where: { id: familyId },
@@ -170,13 +233,8 @@ export async function familyRoutes(app: FastifyInstance) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
-    // Verify ownership
-    const membership = await prisma.childProfile.findUnique({
-      where: { userId_familyId: { userId: user.userId, familyId } }
-    });
-    if (!membership) {
-      return reply.status(403).send({ success: false, message: '无权访问该家庭' });
-    }
+    const member = await assertFamilyMember(user.userId, familyId, reply);
+    if (!member) return;
 
     const body = request.body as Record<string, unknown>;
     const updateData: Record<string, unknown> = {};
@@ -251,13 +309,8 @@ export async function familyRoutes(app: FastifyInstance) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
-    // Verify ownership
-    const membership = await prisma.childProfile.findUnique({
-      where: { userId_familyId: { userId: user.userId, familyId } }
-    });
-    if (!membership) {
-      return reply.status(403).send({ success: false, message: '无权访问该家庭' });
-    }
+    const member = await assertFamilyMember(user.userId, familyId, reply);
+    if (!member) return;
 
     await prisma.elderProfile.update({
       where: { familyId },
@@ -265,5 +318,26 @@ export async function familyRoutes(app: FastifyInstance) {
     });
 
     return reply.send({ success: true, message: '解绑成功' });
+  });
+
+  // Delete family (primary child only)
+  app.delete('/:familyId', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const user = request.user;
+
+    if (!user || user.role !== 'CHILD' || !user.userId) {
+      return reply.status(403).send({ success: false, message: '无权操作' });
+    }
+
+    const member = await assertFamilyMember(user.userId, familyId, reply);
+    if (!member) return;
+
+    if (!member.isPrimary) {
+      return reply.status(403).send({ success: false, message: '仅主要家庭成员可删除家庭' });
+    }
+
+    await prisma.family.delete({ where: { id: familyId } });
+
+    return reply.send({ success: true, message: '家庭已删除' });
   });
 }
