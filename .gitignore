@@ -10,7 +10,6 @@ coverage/
 
 # Documentation and Process Files
 SPEC*.md
-doc/
 docs/
 tasks/
 .claude/
