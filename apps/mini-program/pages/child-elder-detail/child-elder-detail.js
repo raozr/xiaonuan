@@ -7,6 +7,7 @@ Page({
     familyInfo: null,
     todaySummary: null,
     showGuide: false,
+    inviteCode: '',
   },
 
   async onLoad(options) {
@@ -32,7 +33,11 @@ Page({
       });
       if (res.statusCode === 200) {
         const isDefaultElder = res.data.elder?.name === '老人';
-        this.setData({ familyInfo: res.data, showGuide: isDefaultElder });
+        this.setData({
+          familyInfo: res.data,
+          showGuide: isDefaultElder,
+          inviteCode: res.data.inviteCode || '',
+        });
       }
     } catch (err) {
       console.error('加载家庭信息失败:', err);
@@ -40,7 +45,6 @@ Page({
   },
 
   async loadTodaySummary() {
-    // P0 MVP: 静态展示，后续接入真实数据
     this.setData({
       todaySummary: {
         mood: '开心',
@@ -59,17 +63,72 @@ Page({
     this.setData({ showGuide: false });
   },
 
-  goToFamily() {
-    wx.navigateTo({ url: `/pages/child-settings/child-settings?familyId=${this.data.familyId}` });
-  },
-
   goToSettings() {
     wx.navigateTo({ url: `/pages/child-settings/child-settings?familyId=${this.data.familyId}` });
   },
 
   createFamily() {
-    // This is "Feed AI" now
     wx.navigateTo({ url: `/pages/bind-family/bind-family?familyId=${this.data.familyId}` });
+  },
+
+  copyInviteCode() {
+    const code = this.data.inviteCode;
+    if (!code) return;
+    wx.setClipboardData({
+      data: code,
+      success: () => {
+        wx.showToast({ title: '邀请码已复制', icon: 'success' });
+      },
+    });
+  },
+
+  async refreshInviteCode() {
+    try {
+      const res = await app.request({
+        url: `/api/family/${this.data.familyId}/refresh-code`,
+        method: 'POST',
+        data: {},
+      });
+      if (res.statusCode === 200) {
+        this.setData({ inviteCode: res.data.inviteCode });
+        wx.showToast({ title: '邀请码已刷新', icon: 'success' });
+      } else {
+        wx.showToast({ title: res.data?.message || '刷新失败', icon: 'none' });
+      }
+    } catch (err) {
+      console.error('刷新邀请码失败:', err);
+      wx.showToast({ title: '网络错误', icon: 'none' });
+    }
+  },
+
+  async unbindElder() {
+    const that = this;
+    wx.showModal({
+      title: '解除绑定',
+      content: '解除后老人端将无法继续使用，确定吗？',
+      confirmColor: '#FF6B6B',
+      async success(res) {
+        if (res.confirm) {
+          try {
+            const reqRes = await app.request({
+              url: `/api/family/${that.data.familyId}/bind`,
+              method: 'DELETE',
+            });
+            if (reqRes.statusCode === 200) {
+              wx.showToast({ title: '已解绑', icon: 'success' });
+              setTimeout(() => {
+                wx.navigateBack();
+              }, 1500);
+            } else {
+              wx.showToast({ title: reqRes.data?.message || '解绑失败', icon: 'none' });
+            }
+          } catch (err) {
+            console.error('解绑失败:', err);
+            wx.showToast({ title: '网络错误', icon: 'none' });
+          }
+        }
+      },
+    });
   },
 
   logout() {

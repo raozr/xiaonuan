@@ -10,7 +10,7 @@
   <view class="guide-card" wx:if="{{showGuide}}">
     <text class="guide-text">请完善老人信息，以便小暖更好地陪伴</text>
     <view class="guide-actions">
-      <text class="guide-btn guide-btn-primary" bindtap="goToFamily">去完善</text>
+      <text class="guide-btn guide-btn-primary" bindtap="goToSettings">去完善</text>
       <text class="guide-btn" bindtap="dismissGuide">稍后再说</text>
     </view>
   </view>
@@ -40,5 +40,18 @@
     </view>
   </view>
 
+  <view class="invite-card">
+    <text class="invite-label">老人端绑定码</text>
+    <view class="invite-code-row">
+      <text class="invite-code">{{inviteCode}}</text>
+      <view class="invite-actions">
+        <text class="invite-action" bindtap="copyInviteCode">复制</text>
+        <text class="invite-action refresh" bindtap="refreshInviteCode">重新生成</text>
+      </view>
+    </view>
+    <text class="invite-hint">让老人在 APP 中输入此 8 位数字即可绑定</text>
+  </view>
+
+  <button class="btn-unbind" bindtap="unbindElder">解除绑定</button>
   <button class="btn-logout" bindtap="logout">退出登录</button>
 </view>

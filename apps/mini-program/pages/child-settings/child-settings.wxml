@@ -64,28 +64,6 @@
     </view>
   </view>
 
-  <!-- 家庭管理卡片 -->
-  <view class="card">
-    <text class="card-title">家庭管理</text>
-    <view class="form-row">
-      <text class="form-label">邀请码</text>
-      <view class="invite-row">
-        <text class="invite-code">{{inviteCode || '--'}}</text>
-        <text class="invite-action" bindtap="copyInviteCode">复制</text>
-        <text class="invite-action refresh" bindtap="refreshInviteCode">刷新</text>
-      </view>
-    </view>
-    <view class="form-row form-row-column" wx:if="{{familyMembers.length > 0}}">
-      <text class="form-label">家庭成员</text>
-      <view class="member-list">
-        <view wx:for="{{familyMembers}}" wx:key="index" class="member-item">
-          <text class="member-name">{{item.name || '未命名'}}</text>
-          <text class="member-rel" wx:if="{{item.relationshipToElder}}">{{item.relationshipToElder}}</text>
-        </view>
-      </view>
-    </view>
-  </view>
-
   <!-- 关于 -->
   <view class="card about-card">
     <text class="about-text">小暖 v0.1.0</text>

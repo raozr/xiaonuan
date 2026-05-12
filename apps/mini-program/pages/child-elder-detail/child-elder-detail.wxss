@@ -172,6 +172,62 @@
   margin-top: 2px;
 }
 
+.invite-card {
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 24px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(143, 78, 0, 0.08);
+}
+
+.invite-label {
+  display: block;
+  font-size: 14px;
+  color: #877365;
+  margin-bottom: 12px;
+}
+
+.invite-code-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.invite-code {
+  font-size: 36px;
+  font-weight: 800;
+  color: #ff6b6b;
+  letter-spacing: 4px;
+}
+
+.invite-actions {
+  display: flex;
+  gap: 16px;
+}
+
+.invite-action {
+  font-size: 14px;
+  color: #ff9f43;
+  font-weight: 600;
+}
+
+.invite-hint {
+  display: block;
+  font-size: 12px;
+  color: #877365;
+}
+
+.btn-unbind {
+  height: 48px;
+  background: #ff6b6b;
+  color: #ffffff;
+  font-size: 16px;
+  border-radius: 24px;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
 .btn-logout {
   height: 48px;
   background: transparent;

@@ -17,7 +17,6 @@ Page({
     childName: '',
     childRelationship: '',
     childCustomNotes: '',
-    inviteCode: '',
     familyMembers: [],
     loading: false,
 
@@ -57,7 +56,6 @@ Page({
           childName: app.globalData.userInfo?.name || me?.name || '',
           childRelationship: me?.relationshipToElder || '',
           childCustomNotes: me?.customNotes || '',
-          inviteCode: family?.inviteCode || '',
           familyMembers: children || [],
         });
       }
@@ -155,39 +153,6 @@ Page({
       wx.showToast({ title: '保存失败，请重试', icon: 'none' });
     } finally {
       wx.hideLoading();
-      this.setData({ loading: false });
-    }
-  },
-
-  copyInviteCode() {
-    const code = this.data.inviteCode;
-    if (!code) return;
-    wx.setClipboardData({
-      data: code,
-      success: () => {
-        wx.showToast({ title: '邀请码已复制', icon: 'success' });
-      },
-    });
-  },
-
-  async refreshInviteCode() {
-    this.setData({ loading: true });
-    try {
-      const res = await app.request({
-        url: `/api/family/${this.data.familyId}/refresh-code`,
-        method: 'POST',
-        data: {},
-      });
-      if (res.statusCode === 200) {
-        this.setData({ inviteCode: res.data.inviteCode });
-        wx.showToast({ title: '邀请码已刷新', icon: 'success' });
-      } else {
-        wx.showToast({ title: res.data?.message || '刷新失败', icon: 'none' });
-      }
-    } catch (err) {
-      console.error('刷新邀请码失败:', err);
-      wx.showToast({ title: '网络错误', icon: 'none' });
-    } finally {
       this.setData({ loading: false });
     }
   },
