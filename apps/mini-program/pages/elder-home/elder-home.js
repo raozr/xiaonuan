@@ -7,20 +7,19 @@ Page({
     isSpeaking: false,
     isProcessing: false,
     sessionId: null,
-    aiText: '',
-    voiceText: '',
-    recognizedText: '',
     aiReplyText: '',
+    recognizedText: '',
+    waveHeights: [20, 35, 50, 30, 15],
   },
 
   socketOpen: false,
   reconnectAttempts: 0,
   reconnectTimer: null,
-  speakingTimer: null,
-  maxReconnectAttempts: 3,
+  waveTimer: null,
   recorderManager: null,
   innerAudioContext: null,
   isRecording: false,
+  listenersRegistered: false,
 
   async onLoad() {
     await this.loadUserInfo();
@@ -30,7 +29,7 @@ Page({
 
   onUnload() {
     this.clearReconnectTimer();
-    this.clearSpeakingTimer();
+    this.stopWaveAnimation();
     this.destroyAudio();
     if (this.socketOpen) {
       wx.closeSocket();
@@ -53,6 +52,7 @@ Page({
       console.error('[录音] 错误:', err);
       wx.showToast({ title: '录音失败', icon: 'none' });
       this.setData({ isListening: false, isProcessing: false });
+      this.stopWaveAnimation();
     });
   },
 
@@ -70,8 +70,6 @@ Page({
     }
   },
 
-  listenersRegistered: false,
-
   connectSocket() {
     const token = app.globalData.token || wx.getStorageSync('xiaonuan_token');
     const apiBase = app.globalData.apiBase || 'http://localhost:3000';
@@ -79,9 +77,7 @@ Page({
 
     console.log('[WebSocket] 连接地址:', wsUrl);
 
-    wx.connectSocket({
-      url: wsUrl,
-    });
+    wx.connectSocket({ url: wsUrl });
 
     if (this.listenersRegistered) return;
     this.listenersRegistered = true;
@@ -109,13 +105,14 @@ Page({
             isSpeaking: true,
             isProcessing: false,
           });
-
-          // 调用后端 DashScope HTTP TTS 接口
           this.synthesizeAndPlay(payload.text);
         }
 
         if (type === 'error') {
           console.error('[WebSocket] 服务端错误:', payload.message);
+          wx.showToast({ title: payload.message || '服务错误', icon: 'none' });
+          this.setData({ isProcessing: false, isSpeaking: false });
+          this.stopWaveAnimation();
         }
       } catch (err) {
         console.error('[WebSocket] 解析消息失败:', err);
@@ -143,7 +140,7 @@ Page({
   },
 
   scheduleReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+    if (this.reconnectAttempts >= 3) {
       console.log('已达到最大重连次数，停止重连');
       return;
     }
@@ -162,12 +159,7 @@ Page({
     }
   },
 
-  clearSpeakingTimer() {
-    if (this.speakingTimer) {
-      clearTimeout(this.speakingTimer);
-      this.speakingTimer = null;
-    }
-  },
+  // ===== 录音交互 =====
 
   onTouchStart() {
     if (this.isRecording) return;
@@ -175,11 +167,13 @@ Page({
 
     this.setData({
       isListening: true,
+      isProcessing: false,
       recognizedText: '',
       aiReplyText: '',
-      voiceText: '',
     });
+
     wx.vibrateShort({ type: 'light' });
+    this.startWaveAnimation();
 
     this.recorderManager.start({
       format: 'wav',
@@ -194,6 +188,7 @@ Page({
     this.isRecording = false;
 
     this.setData({ isListening: false });
+    this.stopWaveAnimation();
     this.recorderManager.stop();
   },
 
@@ -209,28 +204,17 @@ Page({
     this.setData({ isProcessing: true });
 
     try {
-      // 读取录音文件为 base64
       const audioBase64 = await this.readFileBase64(tempFilePath);
-
-      // 调用后端 ASR 接口识别语音
       const asrRes = await app.request({
         url: '/api/asr/transcribe',
         method: 'POST',
         timeout: 30000,
-        data: {
-          audioBase64,
-          format: 'wav',
-        },
+        data: { audioBase64, format: 'wav' },
       });
 
       if (asrRes.statusCode === 200 && asrRes.data.success) {
         const text = asrRes.data.text;
-        this.setData({
-          recognizedText: text,
-          isProcessing: true,
-        });
-
-        // 通过 WebSocket 发送识别文字，由后端 LLM 处理
+        this.setData({ recognizedText: text });
         this.sendMessage('message:voice_text', { text });
       } else {
         const msg = asrRes.data?.message || '语音识别失败';
@@ -256,6 +240,41 @@ Page({
     });
   },
 
+  // ===== 打断 =====
+
+  onInterrupt() {
+    this.destroyAudio();
+    this.stopWaveAnimation();
+    this.setData({
+      isSpeaking: false,
+      isProcessing: false,
+      aiReplyText: '',
+    });
+  },
+
+  // ===== 音波动画 =====
+
+  startWaveAnimation() {
+    this.stopWaveAnimation();
+    this.waveTimer = setInterval(() => {
+      const heights = Array.from(
+        { length: 5 },
+        () => Math.floor(Math.random() * 60) + 10
+      );
+      this.setData({ waveHeights: heights });
+    }, 150);
+  },
+
+  stopWaveAnimation() {
+    if (this.waveTimer) {
+      clearInterval(this.waveTimer);
+      this.waveTimer = null;
+    }
+    this.setData({ waveHeights: [20, 35, 50, 30, 15] });
+  },
+
+  // ===== TTS 与播放 =====
+
   async synthesizeAndPlay(text) {
     try {
       const apiRes = await app.request({
@@ -271,11 +290,13 @@ Page({
         const msg = apiRes.data?.message || '语音合成失败';
         wx.showToast({ title: msg, icon: 'none' });
         this.setData({ isSpeaking: false });
+        this.stopWaveAnimation();
       }
     } catch (err) {
       console.error('[TTS] 请求失败:', err);
       wx.showToast({ title: '语音合成失败', icon: 'none' });
       this.setData({ isSpeaking: false });
+      this.stopWaveAnimation();
     }
   },
 
@@ -293,18 +314,21 @@ Page({
 
     this.innerAudioContext.onPlay(() => {
       console.log('[音频] 开始播放');
-      this.setData({ isSpeaking: true });
+      this.setData({ isSpeaking: true, isProcessing: false });
+      this.startWaveAnimation();
     });
 
     this.innerAudioContext.onEnded(() => {
       console.log('[音频] 播放结束');
       this.setData({ isSpeaking: false });
+      this.stopWaveAnimation();
       this.destroyAudio();
     });
 
     this.innerAudioContext.onError((err) => {
       console.error('[音频] 播放错误:', err);
       this.setData({ isSpeaking: false });
+      this.stopWaveAnimation();
       this.destroyAudio();
     });
 
@@ -319,8 +343,17 @@ Page({
     }
   },
 
+  // ===== 导航 =====
+
+  goToHistory() {
+    wx.showToast({ title: '历史记录即将上线', icon: 'none' });
+  },
+
+  // ===== 退出 =====
+
   logout() {
     this.destroyAudio();
+    this.stopWaveAnimation();
     wx.removeStorageSync('xiaonuan_token');
     app.globalData.token = null;
     app.globalData.role = null;
