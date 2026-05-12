@@ -2,74 +2,54 @@ const app = getApp();
 
 Page({
   data: {
-    userInfo: null,
-    familyInfo: null,
-    todaySummary: null,
-    showGuide: false,
+    families: [],
+    loading: true
   },
 
-  async onLoad() {
-    this.setData({ userInfo: app.globalData.userInfo });
-    await this.loadFamilyInfo();
-    await this.loadTodaySummary();
+  onShow() {
+    this.fetchFamilies();
   },
 
-  async onShow() {
-    await this.loadFamilyInfo();
-  },
-
-  async loadFamilyInfo() {
+  async fetchFamilies() {
+    this.setData({ loading: true });
     try {
       const res = await app.request({
         url: '/api/family',
-        method: 'GET',
+        method: 'GET'
       });
-      if (res.statusCode === 200) {
-        const isDefaultElder = res.data.elder?.name === '老人';
-        this.setData({ familyInfo: res.data, showGuide: isDefaultElder });
+      if (res.data) {
+        this.setData({ families: res.data });
       }
-    } catch (err) {
-      console.error('加载家庭信息失败:', err);
+    } catch (e) {
+      wx.showToast({ title: '加载失败', icon: 'none' });
+    } finally {
+      this.setData({ loading: false });
     }
   },
 
-  async loadTodaySummary() {
-    // P0 MVP: 静态展示，后续接入真实数据
-    this.setData({
-      todaySummary: {
-        mood: '开心',
-        duration: '约 40 分钟',
-        topics: 3,
-        highlights: [
-          '聊了大儿子下周回家的事',
-          '回忆了杭州旅游的往事',
-          '说腰今天好多了',
-        ],
-      },
+  goToAddElder() {
+    wx.navigateTo({
+      url: '/pages/child-add-elder/child-add-elder'
     });
   },
 
-  dismissGuide() {
-    this.setData({ showGuide: false });
+  goToDetail(e) {
+    const familyId = e.currentTarget.dataset.id;
+    wx.navigateTo({
+      url: `/pages/child-elder-detail/child-elder-detail?familyId=${familyId}`
+    });
   },
 
-  goToFamily() {
-    wx.navigateTo({ url: '/pages/child-settings/child-settings' });
-  },
-
-  goToSettings() {
-    wx.navigateTo({ url: '/pages/child-settings/child-settings' });
-  },
-
-  createFamily() {
-    wx.navigateTo({ url: '/pages/bind-family/bind-family' });
-  },
-
-  logout() {
-    wx.removeStorageSync('xiaonuan_token');
-    app.globalData.token = null;
-    app.globalData.userInfo = null;
-    app.globalData.role = null;
-    wx.reLaunch({ url: '/pages/role-select/role-select' });
-  },
+  handleLogout() {
+    wx.showModal({
+      title: '提示',
+      content: '确认退出登录吗？',
+      success: (res) => {
+        if (res.confirm) {
+          app.logout();
+          wx.reLaunch({ url: '/pages/role-select/role-select' });
+        }
+      }
+    });
+  }
 });

@@ -1,0 +1,44 @@
+<view class="container">
+  <view class="header">
+    <view class="header-left">
+      <text class="title">小暖</text>
+      <text class="subtitle">{{(userInfo && userInfo.name) || '妈妈'}}的陪伴</text>
+    </view>
+    <text class="settings-icon" bindtap="goToSettings">设置</text>
+  </view>
+
+  <view class="guide-card" wx:if="{{showGuide}}">
+    <text class="guide-text">请完善老人信息，以便小暖更好地陪伴</text>
+    <view class="guide-actions">
+      <text class="guide-btn guide-btn-primary" bindtap="goToFamily">去完善</text>
+      <text class="guide-btn" bindtap="dismissGuide">稍后再说</text>
+    </view>
+  </view>
+
+  <view class="status-card">
+    <text class="date">今日状态</text>
+    <view class="mood-row">
+      <text class="mood">{{(todaySummary && todaySummary.mood) || '--'}}</text>
+      <text class="duration">{{(todaySummary && todaySummary.duration) || ''}}</text>
+    </view>
+    <text class="topics">话题数：{{(todaySummary && todaySummary.topics) || 0}} 个</text>
+
+    <view class="highlights" wx:if="{{todaySummary && todaySummary.highlights}}">
+      <text class="highlight-title">今日亮点：</text>
+      <view wx:for="{{todaySummary.highlights}}" wx:key="index" class="highlight-item">
+        <text class="dot">·</text>
+        <text class="highlight-text">{{item}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="action-card" bindtap="createFamily">
+    <text class="action-icon">+</text>
+    <view class="action-text">
+      <text class="action-title">告诉小暖一件事</text>
+      <text class="action-desc">投喂后影响下次问候话题</text>
+    </view>
+  </view>
+
+  <button class="btn-logout" bindtap="logout">退出登录</button>
+</view>

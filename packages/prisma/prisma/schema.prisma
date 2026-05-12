@@ -30,8 +30,8 @@ model ElderProfile {
   name              String
   age               Int?
   dialect           String?
-  deviceId          String?  @map("device_id")
-  openid            String?  @unique @map("openid")
+  deviceId          String?  @unique @map("device_id")
+  openid            String?  @map("openid")
   hobbies           String?  @map("hobbies")
   healthNotes       String?  @map("health_notes")
   topicsToAvoid     String?  @map("topics_to_avoid")
@@ -48,10 +48,10 @@ model ElderProfile {
 model ChildProfile {
   id                  String   @id @default(cuid())
   familyId            String   @map("family_id")
-  userId              String   @unique @map("user_id")
+  userId              String   @map("user_id")
   name                String?
-  phone               String   @unique
-  openid              String?  @unique @map("openid")
+  phone               String
+  openid              String?  @map("openid")
   isPrimary           Boolean  @default(false) @map("is_primary")
   relationshipToElder String?  @map("relationship_to_elder")
   customNotes         String?  @map("custom_notes")
@@ -59,16 +59,22 @@ model ChildProfile {
   updatedAt           DateTime @updatedAt @map("updated_at")
 
   family              Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, familyId])
   @@map("child_profiles")
 }
 
 model User {
   id        String   @id @default(cuid())
-  phone     String   @unique
+  name      String?
+  phone     String?  @unique
+  openid    String?  @unique @map("openid")
   role      UserRole
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+
+  childProfiles ChildProfile[]
 
   @@map("users")
 }

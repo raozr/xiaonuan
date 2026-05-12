@@ -12,7 +12,7 @@ import { generateCheckpoint } from '../memory/checkpoint-service.js';
 export function createWebSocketHandler(app: FastifyInstance) {
   return async (socket: WebSocket, req: FastifyRequest) => {
     // Auth
-    let user: { familyId?: string; role?: string } | null = null;
+    let user: { familyId?: string; role?: string; deviceId?: string; userId?: string } | null = null;
     try {
       const token =
         (req.query as Record<string, string>)?.token ||
@@ -21,15 +21,31 @@ export function createWebSocketHandler(app: FastifyInstance) {
         socket.close();
         return;
       }
-      user = app.jwt.verify(token) as { familyId?: string; role?: string };
+      user = app.jwt.verify(token) as { familyId?: string; role?: string; deviceId?: string; userId?: string };
     } catch {
       socket.close();
       return;
     }
 
     if (!user?.familyId) {
-      socket.close();
-      return;
+      // For children, familyId is optional in the token (they pass it per request or we need to find it)
+      // But for elders, it's mandatory.
+      if (user?.role !== 'CHILD') {
+        socket.close();
+        return;
+      }
+    }
+
+    // Verify elder deviceId if applicable
+    if (user?.role === 'ELDER' && user.deviceId) {
+      const profile = await prisma.elderProfile.findUnique({
+        where: { familyId: user.familyId },
+        select: { deviceId: true }
+      });
+      if (!profile || profile.deviceId !== user.deviceId) {
+        socket.close();
+        return;
+      }
     }
 
     let sessionId: string | null = null;

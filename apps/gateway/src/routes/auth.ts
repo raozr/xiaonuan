@@ -51,20 +51,22 @@ export async function authRoutes(app: FastifyInstance) {
       const result = await getSessionByCode(body.code);
       const openid = result.openid;
 
-      // Try child profile first
-      const childProfile = await prisma.childProfile.findUnique({
+      // Try user first (for children)
+      const user = await prisma.user.findUnique({
         where: { openid },
+        include: { childProfiles: true },
       });
-      if (childProfile) {
+
+      if (user && user.role === 'CHILD') {
         const token = app.jwt.sign(
-          { phone: childProfile.phone, role: 'CHILD', familyId: childProfile.familyId },
+          { userId: user.id, role: 'CHILD' },
           { expiresIn: '7d' }
         );
         return reply.send({ success: true, token, role: 'CHILD', expiresIn: 604800 });
       }
 
-      // Try elder profile
-      const elderProfile = await prisma.elderProfile.findUnique({
+      // Try elder profile (legacy)
+      const elderProfile = await prisma.elderProfile.findFirst({
         where: { openid },
       });
       if (elderProfile) {
@@ -98,9 +100,9 @@ export async function authRoutes(app: FastifyInstance) {
       const openid = result.openid;
 
       // Check if openid already exists
-      const existingChild = await prisma.childProfile.findUnique({ where: { openid } });
-      const existingElder = await prisma.elderProfile.findUnique({ where: { openid } });
-      if (existingChild || existingElder) {
+      const existingUser = await prisma.user.findUnique({ where: { openid } });
+      const existingElder = await prisma.elderProfile.findFirst({ where: { openid } });
+      if (existingUser || existingElder) {
         return reply.status(409).send({ success: false, message: '该微信账号已注册' });
       }
 
@@ -110,36 +112,26 @@ export async function authRoutes(app: FastifyInstance) {
         }
 
         // Check if phone already exists
-        const existingPhone = await prisma.childProfile.findUnique({ where: { phone } });
+        const existingPhone = await prisma.user.findUnique({ where: { phone } });
         if (existingPhone) {
           return reply.status(409).send({ success: false, message: '该手机号已被使用' });
         }
 
-        const family = await prisma.family.create({
+        // Create User
+        const user = await prisma.user.create({
           data: {
-            inviteCode: generateInviteCode(),
-            inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            elder: { create: { name: '老人' } },
-          },
-        });
-
-        const childProfile = await prisma.childProfile.create({
-          data: {
-            userId: openid,
-            name,
-            phone,
             openid,
-            isPrimary: true,
-            familyId: family.id,
+            phone,
+            role: 'CHILD',
           },
         });
 
         const token = app.jwt.sign(
-          { phone: childProfile.phone, role: 'CHILD', familyId: childProfile.familyId },
+          { userId: user.id, role: 'CHILD' },
           { expiresIn: '7d' }
         );
 
-        return reply.send({ success: true, token, role: 'CHILD', familyId: family.id });
+        return reply.send({ success: true, token, role: 'CHILD' });
       }
 
       if (role === 'ELDER') {

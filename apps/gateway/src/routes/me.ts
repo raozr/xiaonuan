@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '@xiaonuan/prisma';
 
 type UserPayload = {
+  userId?: string;
   role: string;
   phone?: string;
   familyId?: string;
@@ -16,21 +17,21 @@ export async function meRoutes(app: FastifyInstance) {
       return reply.status(401).send({ success: false, message: '未认证' });
     }
 
-    if (user.role === 'CHILD' && user.phone) {
-      const childProfile = await prisma.childProfile.findUnique({
-        where: { phone: user.phone },
-        include: { family: { include: { elder: true } } },
+    if (user.role === 'CHILD' && user.userId) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: user.userId },
+        include: { childProfiles: true },
       });
 
-      if (!childProfile) {
+      if (!dbUser) {
         return reply.status(404).send({ success: false, message: '用户不存在' });
       }
 
       return reply.send({
         role: 'CHILD',
-        name: childProfile.name,
-        familyId: childProfile.familyId,
-        elderName: childProfile.family.elder?.name,
+        name: dbUser.name,
+        phone: dbUser.phone,
+        familyCount: dbUser.childProfiles.length,
       });
     }
 
@@ -56,7 +57,7 @@ export async function meRoutes(app: FastifyInstance) {
   app.put('/', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user as UserPayload | undefined;
 
-    if (!user || user.role !== 'CHILD' || !user.phone) {
+    if (!user || user.role !== 'CHILD' || !user.userId) {
       return reply.status(401).send({ success: false, message: '未认证或非子女用户' });
     }
 
@@ -64,19 +65,15 @@ export async function meRoutes(app: FastifyInstance) {
     const updateData: Record<string, unknown> = {};
 
     if (typeof body.name === 'string') updateData.name = body.name;
-    if (typeof body.relationshipToElder === 'string') updateData.relationshipToElder = body.relationshipToElder;
-    if (typeof body.customNotes === 'string') updateData.customNotes = body.customNotes;
 
-    const updated = await prisma.childProfile.update({
-      where: { phone: user.phone },
+    const updated = await prisma.user.update({
+      where: { id: user.userId },
       data: updateData,
     });
 
     return reply.send({
       success: true,
       name: updated.name,
-      relationshipToElder: updated.relationshipToElder,
-      customNotes: updated.customNotes,
     });
   });
 }

@@ -4,6 +4,8 @@
     "pages/role-select/role-select",
     "pages/child-register/child-register",
     "pages/child-home/child-home",
+    "pages/child-elder-detail/child-elder-detail",
+    "pages/child-add-elder/child-add-elder",
     "pages/elder-home/elder-home",
     "pages/bind-family/bind-family",
     "pages/child-settings/child-settings"

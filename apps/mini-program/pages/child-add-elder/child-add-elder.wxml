@@ -1,0 +1,14 @@
+<view class="container">
+  <view class="header">
+    <text class="title">添加老人</text>
+  </view>
+
+  <view class="form">
+    <view class="form-item">
+      <text class="label">姓名</text>
+      <input class="input" placeholder="如何称呼老人？" bindinput="onInputName" value="{{name}}" />
+    </view>
+  </view>
+
+  <button class="btn-primary" bindtap="handleSubmit" loading="{{loading}}">确认添加</button>
+</view>

@@ -22,21 +22,20 @@ async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
 }
 
 export async function familyRoutes(app: FastifyInstance) {
+  // List all families for a child, or the single family for an elder
   app.get('/', { preHandler: [requireAuth] }, async (request, reply) => {
-    const user = request.user as { role: string; phone?: string; familyId?: string } | undefined;
+    const user = request.user;
     if (!user) {
       return reply.status(401).send({ success: false, message: '未认证' });
     }
 
-    if (user.role === 'CHILD' && user.phone) {
-      const childProfile = await prisma.childProfile.findUnique({
-        where: { phone: user.phone },
+    if (user.role === 'CHILD' && user.userId) {
+      const childProfiles = await prisma.childProfile.findMany({
+        where: { userId: user.userId },
         include: { family: { include: { elder: true } } },
       });
-      if (!childProfile || !childProfile.family) {
-        return reply.status(404).send({ success: false, message: '家庭不存在' });
-      }
-      return reply.send(childProfile.family);
+      const families = childProfiles.map(cp => cp.family);
+      return reply.send(families);
     }
 
     if (user.role === 'ELDER' && user.familyId) {
@@ -47,13 +46,41 @@ export async function familyRoutes(app: FastifyInstance) {
       if (!family) {
         return reply.status(404).send({ success: false, message: '家庭不存在' });
       }
-      return reply.send(family);
+      return reply.send([family]); // Return as array for consistency
     }
 
     return reply.status(400).send({ success: false, message: '无效的用户角色' });
   });
 
+  // Get a single family detail
+  app.get('/:familyId', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const user = request.user;
+
+    if (!user || !user.userId) {
+      return reply.status(401).send({ success: false, message: '未认证' });
+    }
+
+    // Verify ownership
+    const membership = await prisma.childProfile.findUnique({
+      where: { userId_familyId: { userId: user.userId, familyId } },
+      include: { family: { include: { elder: true, children: true } } }
+    });
+
+    if (!membership) {
+      return reply.status(403).send({ success: false, message: '无权访问该家庭' });
+    }
+
+    return reply.send(membership.family);
+  });
+
+  // Create a new family (Child only)
   app.post('/', { preHandler: [requireAuth] }, async (request, reply) => {
+    const user = request.user;
+    if (!user || user.role !== 'CHILD' || !user.userId) {
+      return reply.status(403).send({ success: false, message: '仅子女可创建家庭' });
+    }
+
     const body = request.body as Record<string, unknown>;
     const parsed = createFamilySchema.safeParse(body);
 
@@ -62,6 +89,12 @@ export async function familyRoutes(app: FastifyInstance) {
     }
 
     const { elderName, elderAge, elderDialect } = parsed.data;
+
+    // Get current user info to propagate to the new profile
+    const userData = await prisma.user.findUnique({ where: { id: user.userId } });
+    if (!userData) {
+      return reply.status(404).send({ success: false, message: '用户不存在' });
+    }
 
     const family = await prisma.family.create({
       data: {
@@ -74,6 +107,15 @@ export async function familyRoutes(app: FastifyInstance) {
             dialect: elderDialect,
           },
         },
+        children: {
+          create: {
+            userId: user.userId,
+            name: userData.phone, // Default name to phone or something sensible
+            phone: userData.phone || '',
+            openid: userData.openid,
+            isPrimary: true,
+          }
+        }
       },
       include: {
         elder: true,
@@ -88,15 +130,25 @@ export async function familyRoutes(app: FastifyInstance) {
     });
   });
 
-  app.post('/invite-code', { preHandler: [requireAuth] }, async (request, reply) => {
-    const body = request.body as { familyId?: string };
+  // Refresh invite code
+  app.post('/:familyId/refresh-code', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const user = request.user;
 
-    if (!body.familyId) {
-      return reply.status(400).send({ success: false, message: 'familyId 必填' });
+    if (!user || user.role !== 'CHILD' || !user.userId) {
+      return reply.status(403).send({ success: false, message: '无权操作' });
+    }
+
+    // Verify ownership
+    const membership = await prisma.childProfile.findUnique({
+      where: { userId_familyId: { userId: user.userId, familyId } }
+    });
+    if (!membership) {
+      return reply.status(403).send({ success: false, message: '无权访问该家庭' });
     }
 
     const family = await prisma.family.update({
-      where: { id: body.familyId },
+      where: { id: familyId },
       data: {
         inviteCode: generateInviteCode(),
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
@@ -109,17 +161,21 @@ export async function familyRoutes(app: FastifyInstance) {
     });
   });
 
-  app.put('/elder', { preHandler: [requireAuth] }, async (request, reply) => {
-    const user = request.user as { role: string; phone?: string; familyId?: string } | undefined;
-    if (!user || user.role !== 'CHILD' || !user.phone) {
-      return reply.status(401).send({ success: false, message: '未认证' });
+  // Update elder profile
+  app.put('/:familyId/elder', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const user = request.user;
+
+    if (!user || user.role !== 'CHILD' || !user.userId) {
+      return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
-    const childProfile = await prisma.childProfile.findUnique({
-      where: { phone: user.phone },
+    // Verify ownership
+    const membership = await prisma.childProfile.findUnique({
+      where: { userId_familyId: { userId: user.userId, familyId } }
     });
-    if (!childProfile) {
-      return reply.status(404).send({ success: false, message: '用户不存在' });
+    if (!membership) {
+      return reply.status(403).send({ success: false, message: '无权访问该家庭' });
     }
 
     const body = request.body as Record<string, unknown>;
@@ -134,62 +190,16 @@ export async function familyRoutes(app: FastifyInstance) {
     if (typeof body.greetingPreference === 'string') updateData.greetingPreference = body.greetingPreference;
 
     const updated = await prisma.elderProfile.update({
-      where: { familyId: childProfile.familyId },
+      where: { familyId },
       data: updateData,
     });
 
     return reply.send({ success: true, elder: updated });
   });
 
-  app.get('/settings', { preHandler: [requireAuth] }, async (request, reply) => {
-    const user = request.user as { role: string; phone?: string; familyId?: string } | undefined;
-    if (!user) {
-      return reply.status(401).send({ success: false, message: '未认证' });
-    }
-
-    if (user.role === 'CHILD' && user.phone) {
-      const childProfile = await prisma.childProfile.findUnique({
-        where: { phone: user.phone },
-        include: { family: { include: { elder: true, children: true } } },
-      });
-      if (!childProfile || !childProfile.family) {
-        return reply.status(404).send({ success: false, message: '家庭不存在' });
-      }
-      return reply.send({
-        family: {
-          id: childProfile.family.id,
-          inviteCode: childProfile.family.inviteCode,
-          inviteCodeExpiresAt: childProfile.family.inviteCodeExpiresAt,
-        },
-        elder: childProfile.family.elder,
-        children: childProfile.family.children,
-      });
-    }
-
-    if (user.role === 'ELDER' && user.familyId) {
-      const family = await prisma.family.findUnique({
-        where: { id: user.familyId },
-        include: { elder: true, children: true },
-      });
-      if (!family) {
-        return reply.status(404).send({ success: false, message: '家庭不存在' });
-      }
-      return reply.send({
-        family: {
-          id: family.id,
-          inviteCode: family.inviteCode,
-          inviteCodeExpiresAt: family.inviteCodeExpiresAt,
-        },
-        elder: family.elder,
-        children: family.children,
-      });
-    }
-
-    return reply.status(400).send({ success: false, message: '无效的用户角色' });
-  });
-
+  // Bind elder device
   app.post('/bind', async (request, reply) => {
-    const body = request.body as { inviteCode?: string; deviceId?: string; openid?: string };
+    const body = request.body as { inviteCode?: string; deviceId?: string };
 
     if (!body.inviteCode || !body.deviceId) {
       return reply.status(400).send({ success: false, message: '邀请码和设备标识必填' });
@@ -208,11 +218,14 @@ export async function familyRoutes(app: FastifyInstance) {
       return reply.status(410).send({ success: false, message: '邀请码已过期' });
     }
 
+    if (family.elder?.deviceId && family.elder.deviceId !== body.deviceId) {
+      return reply.status(409).send({ success: false, message: '该老人已被绑定，请先解绑' });
+    }
+
     await prisma.elderProfile.update({
       where: { familyId: family.id },
       data: {
         deviceId: body.deviceId,
-        ...(body.openid ? { openid: body.openid } : {}),
       },
     });
 
@@ -227,5 +240,30 @@ export async function familyRoutes(app: FastifyInstance) {
       role: 'ELDER',
       familyId: family.id,
     });
+  });
+
+  // Unbind elder device
+  app.delete('/:familyId/bind', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const user = request.user;
+
+    if (!user || user.role !== 'CHILD' || !user.userId) {
+      return reply.status(403).send({ success: false, message: '无权操作' });
+    }
+
+    // Verify ownership
+    const membership = await prisma.childProfile.findUnique({
+      where: { userId_familyId: { userId: user.userId, familyId } }
+    });
+    if (!membership) {
+      return reply.status(403).send({ success: false, message: '无权访问该家庭' });
+    }
+
+    await prisma.elderProfile.update({
+      where: { familyId },
+      data: { deviceId: null },
+    });
+
+    return reply.send({ success: true, message: '解绑成功' });
   });
 }

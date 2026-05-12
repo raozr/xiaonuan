@@ -19,6 +19,7 @@ function show_usage() {
     echo "  status   查看服务运行状态"
     echo "  logs     查看服务实时日志"
     echo "  build    重新构建服务镜像"
+    echo "  dev      启动本地开发模式 (pnpm run dev)"
     echo ""
 }
 
@@ -58,6 +59,11 @@ case "$1" in
     build)
         echo -e "${BLUE}开始重新构建镜像...${NC}"
         docker-compose build
+        ;;
+    dev)
+        echo -e "${GREEN}正在进入开发模式...${NC}"
+        check_env
+        pnpm run dev
         ;;
     *)
         show_usage

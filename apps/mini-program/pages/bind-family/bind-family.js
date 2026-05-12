@@ -149,8 +149,8 @@ Page({
 
   async bindElder() {
     const { inviteCode, elderName } = this.data;
-    if (!inviteCode || inviteCode.length !== 6) {
-      wx.showToast({ title: '请输入6位邀请码', icon: 'none' });
+    if (!inviteCode || inviteCode.length !== 8) {
+      wx.showToast({ title: '请输入8位邀请码', icon: 'none' });
       return;
     }
     if (!elderName.trim()) {

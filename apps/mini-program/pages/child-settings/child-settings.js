@@ -6,6 +6,7 @@ const DIALECTS = ['普通话', '四川话', '广东话', '上海话', '东北话
 
 Page({
   data: {
+    familyId: '',
     elderName: '',
     elderAge: null,
     elderDialect: '',
@@ -25,20 +26,25 @@ Page({
     dialects: DIALECTS,
   },
 
-  async onLoad() {
-    await this.loadSettings();
+  async onLoad(options) {
+    if (options.familyId) {
+      this.setData({ familyId: options.familyId });
+      await this.loadSettings();
+    }
   },
 
   async loadSettings() {
     try {
       const res = await app.request({
-        url: '/api/family/settings',
+        url: `/api/family/${this.data.familyId}`,
         method: 'GET',
       });
 
       if (res.statusCode === 200 && res.data) {
-        const { family, elder, children } = res.data;
-        const me = children.find((c) => c.name === app.globalData.userInfo?.name) || children[0] || {};
+        const family = res.data;
+        const elder = family.elder;
+        const children = family.children || [];
+        const me = children.find((c) => c.userId === app.globalData.userInfo?.id) || children[0] || {};
 
         this.setData({
           elderName: elder?.name || '',
@@ -48,7 +54,7 @@ Page({
           elderHealthNotes: elder?.healthNotes || '',
           elderTopicsToAvoid: elder?.topicsToAvoid || '',
           elderGreetingPreference: elder?.greetingPreference || '',
-          childName: me?.name || '',
+          childName: app.globalData.userInfo?.name || me?.name || '',
           childRelationship: me?.relationshipToElder || '',
           childCustomNotes: me?.customNotes || '',
           inviteCode: family?.inviteCode || '',
@@ -105,14 +111,10 @@ Page({
   },
 
   async save() {
-    const { elderName, elderAge, childName } = this.data;
+    const { elderName, elderAge, childName, familyId } = this.data;
 
     if (!elderName.trim()) {
       wx.showToast({ title: '请输入老人姓名', icon: 'none' });
-      return;
-    }
-    if (elderAge != null && (elderAge < 50 || elderAge > 120)) {
-      wx.showToast({ title: '年龄需在 50-120 岁之间', icon: 'none' });
       return;
     }
 
@@ -121,7 +123,7 @@ Page({
 
     try {
       const elderRes = await app.request({
-        url: '/api/family/elder',
+        url: `/api/family/${familyId}/elder`,
         method: 'PUT',
         data: {
           name: elderName.trim(),
@@ -139,8 +141,6 @@ Page({
         method: 'PUT',
         data: {
           name: childName.trim() || undefined,
-          relationshipToElder: this.data.childRelationship || undefined,
-          customNotes: this.data.childCustomNotes || undefined,
         },
       });
 
@@ -174,7 +174,7 @@ Page({
     this.setData({ loading: true });
     try {
       const res = await app.request({
-        url: '/api/family/invite-code',
+        url: `/api/family/${this.data.familyId}/refresh-code`,
         method: 'POST',
         data: {},
       });
