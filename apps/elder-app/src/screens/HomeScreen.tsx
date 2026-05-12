@@ -7,6 +7,8 @@ import {
   SafeAreaView,
   Animated,
   Alert,
+  ToastAndroid,
+  Platform,
 } from 'react-native';
 import { Mic, X, Volume2 } from 'lucide-react-native';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -20,17 +22,18 @@ interface HomeScreenProps {
 
 type InteractionState = 'IDLE' | 'LISTENING' | 'SPEAKING';
 
-const WS_URL = 'ws://localhost:3000/ws'; // Update with real production URL
+const WS_URL = 'ws://localhost:3000/ws';
+const MIN_RECORDING_MS = 500;
 
 export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
   const [state, setState] = useState<InteractionState>('IDLE');
   const [aiText, setAiText] = useState('您好，我是小暖，想和我聊聊吗？');
   const pulseAnim = useRef(new Animated.Value(1)).current;
-  
+  const pressStartTime = useRef<number>(0);
+
   const { isConnected, lastMessage, sendMessage } = useWebSocket(WS_URL, token);
   const { isRecording, isPlaying, startRecording, stopRecording, playAudio, stopAudio } = useVoice();
 
-  // Handle incoming AI messages
   useEffect(() => {
     if (lastMessage) {
       if (lastMessage.type === 'session:created' || lastMessage.type === 'session:resumed') {
@@ -46,14 +49,13 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
         }
       }
     }
-  }, [lastMessage]);
+  }, [lastMessage, onUnbind, playAudio]);
 
-  // Update UI state based on audio playback
   useEffect(() => {
     if (!isPlaying && state === 'SPEAKING') {
       setState('IDLE');
     }
-  }, [isPlaying]);
+  }, [isPlaying, state]);
 
   useEffect(() => {
     if (state === 'LISTENING') {
@@ -74,25 +76,39 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     } else {
       pulseAnim.setValue(1);
     }
-  }, [state]);
+  }, [state, pulseAnim]);
 
-  function handleMicPress() {
+  async function handleLongPress() {
     if (!isConnected) {
       Alert.alert('网络未连接', '正在尝试连接小暖...');
       return;
     }
+    pressStartTime.current = Date.now();
+    setState('LISTENING');
+    await startRecording();
+    sendMessage('session:create', {});
+  }
 
-    if (state === 'IDLE') {
-      setState('LISTENING');
-      startRecording();
-      sendMessage('session:create', {});
-    } else if (state === 'LISTENING') {
-      setState('IDLE'); // Wait for processing
-      stopRecording().then(uri => {
-        // In real app: convert audio to text (ASR) then send, or send audio chunk
-        sendMessage('message:voice_text', { text: '模拟语音识别内容' });
-      });
+  async function handlePressOut() {
+    if (state !== 'LISTENING') return;
+
+    const duration = Date.now() - pressStartTime.current;
+    setState('IDLE');
+    const uri = await stopRecording();
+
+    if (duration < MIN_RECORDING_MS) {
+      const msg = '说话时间太短';
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(msg, ToastAndroid.SHORT);
+      } else {
+        Alert.alert('提示', msg);
+      }
+      return;
     }
+
+    // TODO: integrate real ASR using uri
+    console.log('[HomeScreen] Recorded audio URI:', uri);
+    sendMessage('message:voice_text', { text: '模拟语音识别内容' });
   }
 
   function handleStop() {
@@ -138,7 +154,9 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
             state === 'LISTENING' && styles.micButtonActive,
             state === 'SPEAKING' && styles.micButtonSpeaking,
           ]}
-          onPress={handleMicPress}
+          onLongPress={handleLongPress}
+          onPressOut={handlePressOut}
+          delayLongPress={100}
         >
           {state === 'SPEAKING' ? (
             <Volume2 size={48} color="#FFF" />

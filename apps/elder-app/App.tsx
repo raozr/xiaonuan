@@ -1,18 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import uuid from 'react-native-uuid';
 import { BindScreen } from './src/screens/BindScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
 
 const STORAGE_KEYS = {
+  DEVICE_ID: 'xn:deviceId',
   TOKEN: 'xn:token',
   FAMILY_ID: 'xn:familyId',
-};
+} as const;
 
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
   const [familyId, setFamilyId] = useState<string | null>(null);
+  const [deviceId, setDeviceId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -20,8 +23,14 @@ export default function App() {
 
   async function checkAuth() {
     try {
+      let savedDeviceId = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
+      if (!savedDeviceId) {
+        savedDeviceId = (uuid.v4() as string);
+        await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_ID, savedDeviceId);
+      }
       const savedToken = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
       const savedFamilyId = await AsyncStorage.getItem(STORAGE_KEYS.FAMILY_ID);
+      setDeviceId(savedDeviceId);
       setToken(savedToken);
       setFamilyId(savedFamilyId);
     } catch (e) {
@@ -57,7 +66,7 @@ export default function App() {
       {token && familyId ? (
         <HomeScreen token={token} familyId={familyId} onUnbind={onUnbind} />
       ) : (
-        <BindScreen onBindSuccess={onBindSuccess} />
+        <BindScreen onBindSuccess={onBindSuccess} deviceId={deviceId} />
       )}
     </View>
   );

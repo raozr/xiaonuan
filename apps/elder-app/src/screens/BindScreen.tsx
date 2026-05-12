@@ -13,9 +13,10 @@ import {
 
 interface BindScreenProps {
   onBindSuccess: (token: string, familyId: string) => void;
+  deviceId: string | null;
 }
 
-export function BindScreen({ onBindSuccess }: BindScreenProps) {
+export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -25,11 +26,13 @@ export function BindScreen({ onBindSuccess }: BindScreenProps) {
       return;
     }
 
+    if (!deviceId) {
+      Alert.alert('错误', '设备标识未初始化，请重启应用');
+      return;
+    }
+
     setLoading(true);
     try {
-      // Note: In real app, deviceId should be generated once and persisted
-      const deviceId = 'mock-device-id-' + Math.random().toString(36).substring(7);
-      
       const response = await fetch('http://localhost:3000/api/family/bind', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,7 +60,7 @@ export function BindScreen({ onBindSuccess }: BindScreenProps) {
       <View style={styles.card}>
         <Text style={styles.title}>欢迎使用小暖</Text>
         <Text style={styles.subtitle}>请输入子女提供的 8 位绑定码</Text>
-        
+
         <TextInput
           style={styles.input}
           value={code}

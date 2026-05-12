@@ -1,44 +1,83 @@
-import { useState, useCallback } from 'react';
-// import { Audio } from 'expo-audio'; // Assuming expo-audio is available
+import { useState, useCallback, useRef } from 'react';
+import { Audio } from 'expo-av';
 
 export function useVoice() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const recordingRef = useRef<Audio.Recording | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   const startRecording = useCallback(async () => {
-    console.log('[Voice] Start recording');
-    setIsRecording(true);
-    // Real implementation:
-    // await Audio.requestPermissionsAsync();
-    // await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
-    // recording.current = new Audio.Recording();
-    // await recording.current.prepareToRecordAsync(...);
-    // await recording.current.startAsync();
+    try {
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        console.warn('[Voice] 录音权限被拒绝');
+        return;
+      }
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+      });
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
+      recordingRef.current = recording;
+      await recording.startAsync();
+      setIsRecording(true);
+    } catch (e) {
+      console.error('[Voice] 开始录音失败', e);
+    }
   }, []);
 
   const stopRecording = useCallback(async () => {
-    console.log('[Voice] Stop recording');
-    setIsRecording(false);
-    // Real implementation:
-    // await recording.current.stopAndUnloadAsync();
-    // const uri = recording.current.getURI();
-    return "mock-audio-uri";
+    try {
+      setIsRecording(false);
+      const recording = recordingRef.current;
+      if (!recording) return null;
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+      recordingRef.current = null;
+      return uri;
+    } catch (e) {
+      console.error('[Voice] 停止录音失败', e);
+      return null;
+    }
   }, []);
 
   const playAudio = useCallback(async (uri: string) => {
-    console.log('[Voice] Playing audio:', uri);
-    setIsPlaying(true);
-    // Real implementation:
-    // const { sound } = await Audio.Sound.createAsync({ uri });
-    // await sound.playAsync();
-    // sound.setOnPlaybackStatusUpdate((status) => { if (status.didJustFinish) setIsPlaying(false); });
+    try {
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
+      const { sound } = await Audio.Sound.createAsync(
+        { uri },
+        {},
+        (status) => {
+          if (status.isLoaded && status.didJustFinish) {
+            setIsPlaying(false);
+          }
+        }
+      );
+      soundRef.current = sound;
+      setIsPlaying(true);
+      await sound.playAsync();
+    } catch (e) {
+      console.error('[Voice] 播放音频失败', e);
+    }
   }, []);
 
   const stopAudio = useCallback(async () => {
-    console.log('[Voice] Stop audio');
-    setIsPlaying(false);
-    // Real implementation:
-    // await sound.current.stopAsync();
+    try {
+      const sound = soundRef.current;
+      if (sound) {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        soundRef.current = null;
+      }
+      setIsPlaying(false);
+    } catch (e) {
+      console.error('[Voice] 停止播放失败', e);
+    }
   }, []);
 
   return {
