@@ -1,0 +1,16 @@
+node_modules
+dist
+build
+.git
+.env
+*.log
+coverage
+.claude
+tasks
+docs
+doc
+SPEC*.md
+apps/gateway/public/tts/*
+apps/gateway/*.mjs
+apps/gateway/diag-api.ts
+.DS_Store
