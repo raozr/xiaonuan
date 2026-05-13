@@ -12,7 +12,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { Mic, History, User, Square } from 'lucide-react-native';
+import { Mic, Square } from 'lucide-react-native';
 import { useWebSocket, type WebSocketMessage } from '../hooks/useWebSocket';
 import { useVoice } from '../hooks/useVoice';
 
@@ -161,7 +161,7 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
   const headerTitle = !isConnected
     ? '连接中...'
     : state === 'IDLE'
-    ? '妈妈的陪伴'
+    ? '小暖的陪伴'
     : state === 'LISTENING'
     ? '正在倾听...'
     : state === 'PROCESSING'
@@ -174,19 +174,7 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <View style={styles.headerAvatar}>
-            <User size={24} color="#6d3a00" />
-          </View>
-        </View>
         <Text style={styles.headerTitle}>{headerTitle}</Text>
-        <TouchableOpacity
-          style={styles.headerRight}
-          onPress={() => Alert.alert('历史记录', '功能开发中...')}
-          activeOpacity={0.7}
-        >
-          <History size={28} color="#544437" />
-        </TouchableOpacity>
       </View>
 
       {/* Main Content */}
@@ -265,7 +253,7 @@ const styles = StyleSheet.create({
     height: 64,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
     paddingHorizontal: 24,
     backgroundColor: '#fff8f5',
   },
