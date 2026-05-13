@@ -6,7 +6,8 @@ Page({
     userInfo: null,
     familyInfo: null,
     todaySummary: null,
-    showGuide: false,
+    todayDate: '',
+    elderNameFirstChar: '',
     inviteCode: '',
   },
 
@@ -15,6 +16,7 @@ Page({
       this.setData({ familyId: options.familyId });
     }
     this.setData({ userInfo: app.globalData.userInfo });
+    this.formatTodayDate();
     await this.loadFamilyInfo();
     await this.loadTodaySummary();
   },
@@ -22,7 +24,17 @@ Page({
   async onShow() {
     if (this.data.familyId) {
       await this.loadFamilyInfo();
+      await this.loadTodaySummary();
     }
+  },
+
+  formatTodayDate() {
+    const now = new Date();
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const month = months[now.getMonth()];
+    const day = now.getDate();
+    const year = now.getFullYear();
+    this.setData({ todayDate: `${month} ${day}, ${year}` });
   },
 
   async loadFamilyInfo() {
@@ -32,43 +44,16 @@ Page({
         method: 'GET',
       });
       if (res.statusCode === 200) {
-        const isDefaultElder = res.data.elder?.name === '老人';
+        const elderName = res.data.elder?.name || '老人';
         this.setData({
           familyInfo: res.data,
-          showGuide: isDefaultElder,
+          elderNameFirstChar: elderName[0],
           inviteCode: res.data.inviteCode || '',
         });
       }
     } catch (err) {
       console.error('加载家庭信息失败:', err);
     }
-  },
-
-  async loadTodaySummary() {
-    this.setData({
-      todaySummary: {
-        mood: '开心',
-        duration: '约 40 分钟',
-        topics: 3,
-        highlights: [
-          '聊了大儿子下周回家的事',
-          '回忆了杭州旅游的往事',
-          '说腰今天好多了',
-        ],
-      },
-    });
-  },
-
-  dismissGuide() {
-    this.setData({ showGuide: false });
-  },
-
-  goToSettings() {
-    wx.navigateTo({ url: `/pages/child-settings/child-settings?familyId=${this.data.familyId}` });
-  },
-
-  createFamily() {
-    wx.navigateTo({ url: `/pages/bind-family/bind-family?familyId=${this.data.familyId}` });
   },
 
   copyInviteCode() {
@@ -101,38 +86,40 @@ Page({
     }
   },
 
-  async unbindElder() {
-    const that = this;
-    wx.showModal({
-      title: '解除绑定',
-      content: '解除后老人端将无法继续使用，确定吗？',
-      confirmColor: '#FF6B6B',
-      async success(res) {
-        if (res.confirm) {
-          try {
-            const reqRes = await app.request({
-              url: `/api/family/${that.data.familyId}/bind`,
-              method: 'DELETE',
-            });
-            if (reqRes.statusCode === 200) {
-              wx.showToast({ title: '已解绑', icon: 'success' });
-              setTimeout(() => {
-                wx.navigateBack();
-              }, 1500);
-            } else {
-              wx.showToast({ title: reqRes.data?.message || '解绑失败', icon: 'none' });
-            }
-          } catch (err) {
-            console.error('解绑失败:', err);
-            wx.showToast({ title: '网络错误', icon: 'none' });
-          }
-        }
-      },
-    });
+  async loadTodaySummary() {
+    try {
+      const res = await app.request({
+        url: `/api/family/${this.data.familyId}/daily-summary`,
+        method: 'GET',
+      });
+      if (res.statusCode === 200 && res.data.success && res.data.data) {
+        const data = res.data.data;
+        const durationMinutes = data.duration || 0;
+        const durationText = durationMinutes >= 60
+          ? `${Math.floor(durationMinutes / 60)} 小时 ${durationMinutes % 60} 分钟`
+          : `${durationMinutes} 分钟`;
+        this.setData({
+          todaySummary: {
+            mood: data.mood,
+            durationText,
+            highlights: data.highlights || [],
+            concerns: data.concerns,
+          },
+        });
+      } else {
+        this.setData({ todaySummary: null });
+      }
+    } catch (err) {
+      console.error('加载今日状态失败:', err);
+      this.setData({ todaySummary: null });
+    }
   },
 
-  logout() {
-    app.logout();
-    wx.reLaunch({ url: '/pages/role-select/role-select' });
+  goToFeed() {
+    wx.navigateTo({ url: `/pages/child-feed/child-feed?familyId=${this.data.familyId}` });
+  },
+
+  goToSettings() {
+    wx.navigateTo({ url: `/pages/child-settings/child-settings?familyId=${this.data.familyId}` });
   },
 });

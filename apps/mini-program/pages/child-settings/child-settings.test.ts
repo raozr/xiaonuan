@@ -215,4 +215,94 @@ describe('child-settings page', () => {
     );
     expect(wx.navigateBack).toHaveBeenCalled();
   });
+
+  it('should load invite code on mount', async () => {
+    requestMocks.push({
+      url: '/api/family/f1',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: {
+          id: 'f1',
+          inviteCode: '654321',
+          elder: { name: '王奶奶' },
+          children: [{ userId: 'u1', name: '小李' }],
+        },
+      },
+    });
+
+    const p = createPageInstance();
+    pageInstance = p;
+    await p.onLoad({ familyId: 'f1' });
+    await Promise.resolve();
+
+    expect(p.data.inviteCode).toBe('654321');
+  });
+
+  it('should copy invite code to clipboard', async () => {
+    requestMocks.push({
+      url: '/api/family/f1',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: {
+          id: 'f1',
+          inviteCode: '654321',
+          elder: { name: '王奶奶' },
+          children: [],
+        },
+      },
+    });
+
+    const p = createPageInstance();
+    pageInstance = p;
+    await p.onLoad({ familyId: 'f1' });
+    await Promise.resolve();
+
+    p.copyInviteCode();
+
+    expect(wx.setClipboardData).toHaveBeenCalledWith(
+      expect.objectContaining({ data: '654321' })
+    );
+    expect(wx.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '邀请码已复制' })
+    );
+  });
+
+  it('should refresh invite code', async () => {
+    requestMocks.push({
+      url: '/api/family/f1',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: {
+          id: 'f1',
+          inviteCode: 'OLD123',
+          elder: { name: '王奶奶' },
+          children: [],
+        },
+      },
+    });
+    requestMocks.push({
+      url: '/api/family/f1/refresh-code',
+      method: 'POST',
+      response: {
+        statusCode: 200,
+        data: { inviteCode: 'NEW987' },
+      },
+    });
+
+    const p = createPageInstance();
+    pageInstance = p;
+    await p.onLoad({ familyId: 'f1' });
+    await Promise.resolve();
+
+    await p.refreshInviteCode();
+    await Promise.resolve();
+
+    expect(p.data.inviteCode).toBe('NEW987');
+    expect(wx.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '邀请码已刷新' })
+    );
+  });
 });

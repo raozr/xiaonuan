@@ -18,6 +18,7 @@ Page({
     childRelationship: '',
     childCustomNotes: '',
     familyMembers: [],
+    inviteCode: '',
     loading: false,
 
     ageRange: AGE_RANGE,
@@ -57,6 +58,7 @@ Page({
           childRelationship: me?.relationshipToElder || '',
           childCustomNotes: me?.customNotes || '',
           familyMembers: children || [],
+          inviteCode: family.inviteCode || '',
         });
       }
     } catch (err) {
@@ -159,5 +161,40 @@ Page({
 
   goBack() {
     wx.navigateBack();
+  },
+
+  copyInviteCode() {
+    const code = this.data.inviteCode;
+    if (!code) return;
+    wx.setClipboardData({
+      data: code,
+      success: () => {
+        wx.showToast({ title: '邀请码已复制', icon: 'success' });
+      },
+    });
+  },
+
+  async refreshInviteCode() {
+    const { familyId } = this.data;
+    if (!familyId) return;
+    this.setData({ loading: true });
+    try {
+      const res = await app.request({
+        url: `/api/family/${familyId}/refresh-code`,
+        method: 'POST',
+        data: {},
+      });
+      if (res.statusCode === 200) {
+        this.setData({ inviteCode: res.data.inviteCode });
+        wx.showToast({ title: '邀请码已刷新', icon: 'success' });
+      } else {
+        wx.showToast({ title: res.data?.message || '刷新失败', icon: 'none' });
+      }
+    } catch (err) {
+      console.error('刷新邀请码失败:', err);
+      wx.showToast({ title: '网络错误', icon: 'none' });
+    } finally {
+      this.setData({ loading: false });
+    }
   },
 });

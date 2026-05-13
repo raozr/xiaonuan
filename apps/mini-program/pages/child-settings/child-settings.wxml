@@ -64,6 +64,19 @@
     </view>
   </view>
 
+  <!-- 老人端绑定码 -->
+  <view class="card">
+    <text class="card-title">老人端绑定码</text>
+    <view class="invite-code-row">
+      <text class="invite-code">{{inviteCode}}</text>
+      <view class="invite-actions">
+        <text class="invite-action" bindtap="copyInviteCode">复制</text>
+        <text class="invite-action refresh" bindtap="refreshInviteCode">重新生成</text>
+      </view>
+    </view>
+    <text class="invite-hint">让老人在 APP 中输入此 6 位数字即可绑定</text>
+  </view>
+
   <!-- 关于 -->
   <view class="card about-card">
     <text class="about-text">小暖 v0.1.0</text>

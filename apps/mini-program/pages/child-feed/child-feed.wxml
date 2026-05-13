@@ -1,0 +1,51 @@
+<view class="container">
+  <!-- Header -->
+  <view class="header">
+    <view class="back-btn" bindtap="goBack">←</view>
+    <text class="header-title">告诉小暖一件事</text>
+    <view class="header-placeholder"></view>
+  </view>
+
+  <!-- Input Area -->
+  <view class="input-card">
+    <!-- Mode Switch -->
+    <view class="mode-switch">
+      <view class="mode-btn {{inputMode === 'text' ? 'active' : ''}}" bindtap="switchMode" data-mode="text">文字</view>
+      <view class="mode-btn {{inputMode === 'voice' ? 'active' : ''}}" bindtap="switchMode" data-mode="voice">语音</view>
+    </view>
+
+    <!-- Text Input -->
+    <view class="text-input-area" wx:if="{{inputMode === 'text'}}">
+      <textarea class="text-area" placeholder="告诉小暖一件关于老人的事，比如明天要去医院复查..." value="{{textContent}}" bindinput="onTextInput" maxlength="500" />
+      <button class="send-btn" bindtap="sendText" disabled="{{!canSend}}">发送</button>
+    </view>
+
+    <!-- Voice Input -->
+    <view class="voice-input-area" wx:if="{{inputMode === 'voice'}}">
+      <view class="voice-hint">{{isRecording ? '松开发送' : '按住说话'}}</view>
+      <view class="voice-btn {{isRecording ? 'recording' : ''}}" bindtouchstart="startRecord" bindtouchend="stopRecord">
+        <text class="voice-icon">🎙️</text>
+      </view>
+      <view class="voice-tip">点击并按住录音，松开后自动发送</view>
+    </view>
+  </view>
+
+  <!-- History List -->
+  <view class="history-section">
+    <text class="history-title">历史记录</text>
+    <view class="history-list" wx:if="{{feeds.length > 0}}">
+      <view class="feed-item" wx:for="{{feeds}}" wx:key="id">
+        <view class="feed-badge {{item.type === 'VOICE' ? 'voice-badge' : 'text-badge'}}">
+          {{item.type === 'VOICE' ? '语音' : '文字'}}
+        </view>
+        <view class="feed-content">
+          <text class="feed-text">{{item.content}}</text>
+          <text class="feed-time">{{item.createdAt}}</text>
+        </view>
+      </view>
+    </view>
+    <view class="empty-state" wx:if="{{feeds.length === 0}}">
+      <text class="empty-text">还没有记录，快去告诉小暖一件事吧</text>
+    </view>
+  </view>
+</view>

@@ -68,13 +68,21 @@ describe('child-elder-detail page', () => {
     vi.clearAllMocks();
   });
 
-  it('should load family info and show guide for default elder name', async () => {
+  it('should load family info and set elder name first char', async () => {
     requestMocks.push({
       url: '/api/family/f1',
       method: 'GET',
       response: {
         statusCode: 200,
-        data: { id: 'f1', elder: { name: '老人' }, inviteCode: '12345678' },
+        data: { id: 'f1', elder: { name: '王奶奶' }, inviteCode: '123456' },
+      },
+    });
+    requestMocks.push({
+      url: '/api/family/f1/daily-summary',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: { success: true, data: null },
       },
     });
 
@@ -85,36 +93,36 @@ describe('child-elder-detail page', () => {
 
     expect(p.data.familyId).toBe('f1');
     expect(p.data.userInfo).toEqual(mockApp.globalData.userInfo);
-    expect(p.data.showGuide).toBe(true);
-    expect(p.data.inviteCode).toBe('12345678');
-  });
-
-  it('should hide guide when elder name is customized', async () => {
-    requestMocks.push({
-      url: '/api/family/f1',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: { id: 'f1', elder: { name: '王奶奶' }, inviteCode: '12345678' },
-      },
-    });
-
-    const p = createPageInstance();
-    pageInstance = p;
-    await p.onLoad({ familyId: 'f1' });
-    await Promise.resolve();
-
-    expect(p.data.showGuide).toBe(false);
     expect(p.data.familyInfo.elder.name).toBe('王奶奶');
+    expect(p.data.elderNameFirstChar).toBe('王');
+    expect(p.data.inviteCode).toBe('123456');
+    expect(p.data.todayDate).toMatch(/^[A-Za-z]+ \d+, \d{4}$/);
   });
 
-  it('should dismiss guide', async () => {
+  it('should load today summary with real data', async () => {
     requestMocks.push({
       url: '/api/family/f1',
       method: 'GET',
       response: {
         statusCode: 200,
-        data: { id: 'f1', elder: { name: '老人' }, inviteCode: '12345678' },
+        data: { id: 'f1', elder: { name: '李爷爷' } },
+      },
+    });
+    requestMocks.push({
+      url: '/api/family/f1/daily-summary',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: {
+          success: true,
+          data: {
+            mood: '开心',
+            duration: 45,
+            topics: 3,
+            highlights: ['聊了大儿子下周回家', '说腰今天好多了'],
+            concerns: null,
+          },
+        },
       },
     });
 
@@ -123,9 +131,82 @@ describe('child-elder-detail page', () => {
     await p.onLoad({ familyId: 'f1' });
     await Promise.resolve();
 
-    expect(p.data.showGuide).toBe(true);
-    p.dismissGuide();
-    expect(p.data.showGuide).toBe(false);
+    expect(p.data.todaySummary).not.toBeNull();
+    expect(p.data.todaySummary.mood).toBe('开心');
+    expect(p.data.todaySummary.durationText).toBe('45 分钟');
+    expect(p.data.todaySummary.highlights).toEqual(['聊了大儿子下周回家', '说腰今天好多了']);
+  });
+
+  it('should handle long duration correctly', async () => {
+    requestMocks.push({
+      url: '/api/family/f1',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: { id: 'f1', elder: { name: '李爷爷' } },
+      },
+    });
+    requestMocks.push({
+      url: '/api/family/f1/daily-summary',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: {
+          success: true,
+          data: {
+            mood: '开心',
+            duration: 125,
+            topics: 5,
+            highlights: [],
+            concerns: null,
+          },
+        },
+      },
+    });
+
+    const p = createPageInstance();
+    pageInstance = p;
+    await p.onLoad({ familyId: 'f1' });
+    await Promise.resolve();
+
+    expect(p.data.todaySummary.durationText).toBe('2 小时 5 分钟');
+  });
+
+  it('should set todaySummary to null when no summary exists', async () => {
+    requestMocks.push({
+      url: '/api/family/f1',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: { id: 'f1', elder: { name: '张奶奶' } },
+      },
+    });
+    requestMocks.push({
+      url: '/api/family/f1/daily-summary',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: { success: true, data: null },
+      },
+    });
+
+    const p = createPageInstance();
+    pageInstance = p;
+    await p.onLoad({ familyId: 'f1' });
+    await Promise.resolve();
+
+    expect(p.data.todaySummary).toBeNull();
+  });
+
+  it('should navigate to feed page', () => {
+    const p = createPageInstance();
+    pageInstance = p;
+    p.setData({ familyId: 'f1' });
+    p.goToFeed();
+
+    expect(wx.navigateTo).toHaveBeenCalledWith({
+      url: '/pages/child-feed/child-feed?familyId=f1',
+    });
   });
 
   it('should navigate to settings with familyId', () => {
@@ -140,93 +221,38 @@ describe('child-elder-detail page', () => {
   });
 
   it('should copy invite code to clipboard', async () => {
-    requestMocks.push({
-      url: '/api/family/f1',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: { id: 'f1', elder: { name: '王奶奶' }, inviteCode: '654321' },
-      },
-    });
-
     const p = createPageInstance();
     pageInstance = p;
-    await p.onLoad({ familyId: 'f1' });
-    await Promise.resolve();
-
+    p.setData({ inviteCode: '654321' });
     p.copyInviteCode();
 
     expect(wx.setClipboardData).toHaveBeenCalledWith(
       expect.objectContaining({ data: '654321' })
     );
+    expect(wx.showToast).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '邀请码已复制' })
+    );
   });
 
   it('should refresh invite code', async () => {
-    requestMocks.push({
-      url: '/api/family/f1',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: { id: 'f1', elder: { name: '王奶奶' }, inviteCode: 'OLD12345' },
-      },
-    });
     requestMocks.push({
       url: '/api/family/f1/refresh-code',
       method: 'POST',
       response: {
         statusCode: 200,
-        data: { inviteCode: 'NEW98765' },
+        data: { inviteCode: 'NEW987' },
       },
     });
 
     const p = createPageInstance();
     pageInstance = p;
-    await p.onLoad({ familyId: 'f1' });
-    await Promise.resolve();
-
+    p.setData({ familyId: 'f1', inviteCode: 'OLD123' });
     await p.refreshInviteCode();
     await Promise.resolve();
 
-    expect(p.data.inviteCode).toBe('NEW98765');
+    expect(p.data.inviteCode).toBe('NEW987');
     expect(wx.showToast).toHaveBeenCalledWith(
       expect.objectContaining({ title: '邀请码已刷新' })
-    );
-  });
-
-  it('should unbind elder on confirm', async () => {
-    requestMocks.push({
-      url: '/api/family/f1',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: { id: 'f1', elder: { name: '王奶奶' } },
-      },
-    });
-    requestMocks.push({
-      url: '/api/family/f1/bind',
-      method: 'DELETE',
-      response: {
-        statusCode: 200,
-        data: { success: true },
-      },
-    });
-
-    const p = createPageInstance();
-    pageInstance = p;
-    await p.onLoad({ familyId: 'f1' });
-    await Promise.resolve();
-
-    await p.unbindElder();
-    await Promise.resolve();
-
-    expect(mockApp.request).toHaveBeenCalledWith(
-      expect.objectContaining({
-        url: '/api/family/f1/bind',
-        method: 'DELETE',
-      })
-    );
-    expect(wx.showToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: '已解绑' })
     );
   });
 });
