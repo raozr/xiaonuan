@@ -1,8 +1,8 @@
 App({
   globalData: {
-    // 真机调试时改为电脑局域网 IP，如 'http://192.168.1.31:3000'
+    // 真机调试时改为电脑局域网 IP
     // 开发者工具模拟器用 'http://localhost:3000'
-    apiBase: 'http://192.168.1.29:3000',
+    apiBase: 'http://192.168.4.70:3000',
     token: null,
     role: null,
     userInfo: null,
@@ -26,14 +26,9 @@ App({
 
         if (res.statusCode === 200) {
           this.globalData.userInfo = res.data;
-          this.globalData.role = res.data.role;
-          console.log('已登录，角色:', res.data.role);
-
-          if (res.data.role === 'ELDER') {
-            wx.reLaunch({ url: '/pages/elder-home/elder-home' });
-          } else {
-            wx.reLaunch({ url: '/pages/child-home/child-home' });
-          }
+          this.globalData.role = 'CHILD';
+          console.log('已登录，跳转子女端首页');
+          wx.reLaunch({ url: '/pages/child-home/child-home' });
           return;
         }
       }
@@ -42,7 +37,11 @@ App({
       await this.silentLogin();
     } catch (err) {
       console.error('检查登录状态失败:', err);
-      wx.reLaunch({ url: '/pages/role-select/role-select' });
+      const hasToken = wx.getStorageSync('xiaonuan_token');
+      if (!hasToken) {
+        wx.reLaunch({ url: '/pages/child-register/child-register' });
+      }
+      // 已有 token 时可能是网络抖动，保留登录状态不强制跳转
     }
   },
 
@@ -70,29 +69,35 @@ App({
         this.globalData.token = res.data.token;
         this.globalData.role = res.data.role;
 
-        console.log('静默登录成功，角色:', res.data.role);
-
-        if (res.data.role === 'ELDER') {
-          wx.reLaunch({ url: '/pages/elder-home/elder-home' });
-        } else {
-          wx.reLaunch({ url: '/pages/child-home/child-home' });
-        }
+        console.log('静默登录成功，跳转子女端首页');
+        wx.reLaunch({ url: '/pages/child-home/child-home' });
         return;
       }
 
-      // New user — go to role-select with openid
+      // New user — go to register with openid
       if (res.statusCode === 200 && res.data.needRegister && res.data.openid) {
-        console.log('新用户，前往角色选择');
-        wx.reLaunch({ url: '/pages/role-select/role-select?openid=' + res.data.openid });
+        console.log('新用户，前往注册页');
+        wx.reLaunch({ url: '/pages/child-register/child-register?openid=' + res.data.openid });
         return;
       }
 
       console.log('静默登录失败，需要手动登录');
-      wx.reLaunch({ url: '/pages/role-select/role-select' });
+      wx.reLaunch({ url: '/pages/child-register/child-register' });
     } catch (err) {
       console.error('静默登录失败:', err);
-      wx.reLaunch({ url: '/pages/role-select/role-select' });
+      const hasToken = wx.getStorageSync('xiaonuan_token');
+      if (!hasToken) {
+        wx.reLaunch({ url: '/pages/child-register/child-register' });
+      }
+      // 已有 token 时网络错误不强制跳转，保留现有状态
     }
+  },
+
+  logout() {
+    wx.removeStorageSync('xiaonuan_token');
+    this.globalData.token = null;
+    this.globalData.role = null;
+    this.globalData.userInfo = null;
   },
 
   request(options) {

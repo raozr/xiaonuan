@@ -1,82 +1,110 @@
-import { useState, useCallback, useRef } from 'react';
-import { Audio } from 'expo-av';
+import { useState, useCallback, useRef, useEffect } from 'react';
+import {
+  useAudioRecorder,
+  useAudioRecorderState,
+  useAudioPlayer,
+  useAudioPlayerStatus,
+  RecordingPresets,
+  setAudioModeAsync,
+  AudioModule,
+} from 'expo-audio';
+import { File } from 'expo-file-system';
 
 export function useVoice() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
-  const recordingRef = useRef<Audio.Recording | null>(null);
-  const soundRef = useRef<Audio.Sound | null>(null);
+  const recordingUriRef = useRef<string | null>(null);
+
+  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorderState = useAudioRecorderState(recorder);
+
+  const player = useAudioPlayer(null);
+  const playerStatus = useAudioPlayerStatus(player);
+
+  useEffect(() => {
+    setIsRecording(recorderState.isRecording);
+  }, [recorderState.isRecording]);
+
+  useEffect(() => {
+    setIsPlaying(playerStatus.playing);
+  }, [playerStatus.playing]);
 
   const startRecording = useCallback(async () => {
     try {
-      const { status } = await Audio.requestPermissionsAsync();
-      if (status !== 'granted') {
+      const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+      if (!granted) {
         console.warn('[Voice] 录音权限被拒绝');
         return;
       }
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
+      await setAudioModeAsync({
+        allowsRecording: true,
+        playsInSilentMode: true,
       });
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
-      recordingRef.current = recording;
-      await recording.startAsync();
-      setIsRecording(true);
+
+      if (recorderState.isRecording) {
+        console.log('[Voice] Already recording, skipping');
+        return;
+      }
+
+      try {
+        await recorder.prepareToRecordAsync();
+      } catch (prepareErr: any) {
+        if (prepareErr?.message?.includes('already been prepared')) {
+          console.log('[Voice] Already prepared, recording directly');
+        } else {
+          throw prepareErr;
+        }
+      }
+
+      recorder.record();
     } catch (e) {
       console.error('[Voice] 开始录音失败', e);
     }
-  }, []);
+  }, [recorder, recorderState.isRecording]);
 
   const stopRecording = useCallback(async () => {
     try {
-      setIsRecording(false);
-      const recording = recordingRef.current;
-      if (!recording) return null;
-      await recording.stopAndUnloadAsync();
-      const uri = recording.getURI();
-      recordingRef.current = null;
+      if (!recorderState.isRecording) {
+        return recorder.uri;
+      }
+      await recorder.stop();
+      const uri = recorder.uri;
+      recordingUriRef.current = uri;
       return uri;
     } catch (e) {
       console.error('[Voice] 停止录音失败', e);
-      return null;
+      return recorder.uri;
     }
-  }, []);
+  }, [recorder, recorderState.isRecording]);
 
   const playAudio = useCallback(async (uri: string) => {
     try {
-      if (soundRef.current) {
-        await soundRef.current.unloadAsync();
-        soundRef.current = null;
-      }
-      const { sound } = await Audio.Sound.createAsync(
-        { uri },
-        {},
-        (status) => {
-          if (status.isLoaded && status.didJustFinish) {
-            setIsPlaying(false);
-          }
-        }
-      );
-      soundRef.current = sound;
-      setIsPlaying(true);
-      await sound.playAsync();
+      await player.replace({ uri });
+      await player.play();
     } catch (e) {
       console.error('[Voice] 播放音频失败', e);
     }
-  }, []);
+  }, [player]);
 
   const stopAudio = useCallback(async () => {
     try {
-      const sound = soundRef.current;
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-        soundRef.current = null;
-      }
-      setIsPlaying(false);
+      player.pause();
+      player.seekTo(0);
     } catch (e) {
       console.error('[Voice] 停止播放失败', e);
+    }
+  }, [player]);
+
+  const getRecordingBase64 = useCallback(async (): Promise<string | null> => {
+    const uri = recordingUriRef.current;
+    if (!uri) return null;
+    try {
+      const file = new File(uri);
+      const base64 = await file.base64();
+      return base64;
+    } catch (e) {
+      console.error('[Voice] 读取录音文件失败', e);
+      return null;
     }
   }, []);
 
@@ -87,5 +115,6 @@ export function useVoice() {
     stopRecording,
     playAudio,
     stopAudio,
+    getRecordingBase64,
   };
 }

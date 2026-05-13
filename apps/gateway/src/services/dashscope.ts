@@ -49,31 +49,45 @@ export async function chatCompletion(
     body.tools = options.tools;
   }
 
-  const res = await fetch(`${HTTP_BASE}/compatible-mode/v1/chat/completions`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${API_KEY}`,
-    },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30000);
 
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '未知错误');
-    throw new Error(`LLM 请求失败 [${res.status}]: ${errText}`);
+  try {
+    const res = await fetch(`${HTTP_BASE}/compatible-mode/v1/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${API_KEY}`,
+      },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      const errText = await res.text().catch(() => '未知错误');
+      throw new Error(`LLM 请求失败 [${res.status}]: ${errText}`);
+    }
+
+    const data = (await res.json()) as Record<string, unknown>;
+    const choices = data.choices as Array<Record<string, unknown>> | undefined;
+    const first = choices?.[0];
+    const msg = first?.message as ChatResponse | undefined;
+
+    if (!msg) {
+      throw new Error('LLM 返回内容为空');
+    }
+
+    return {
+      content: msg.content ?? null,
+      tool_calls: msg.tool_calls,
+    };
+  } catch (err) {
+    clearTimeout(timeout);
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('LLM 请求超时 (30s)');
+    }
+    throw err;
   }
-
-  const data = (await res.json()) as Record<string, unknown>;
-  const choices = data.choices as Array<Record<string, unknown>> | undefined;
-  const first = choices?.[0];
-  const msg = first?.message as ChatResponse | undefined;
-
-  if (!msg) {
-    throw new Error('LLM 返回内容为空');
-  }
-
-  return {
-    content: msg.content ?? null,
-    tool_calls: msg.tool_calls,
-  };
 }

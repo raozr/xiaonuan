@@ -5,6 +5,7 @@ import { chatCompletion } from '../services/dashscope.js';
 import { buildSystemPrompt } from './prompt-builder.js';
 import { getRecentMessages } from '../conversation/turn-manager.js';
 import { buildMemoryContext } from '../memory/context-builder.js';
+import { cleanLLMResponse } from './response-cleaner.js';
 
 export interface PiAgentConfig {
   familyId: string;
@@ -210,11 +211,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
         });
       }
 
-      let content = reply.content ?? '小暖刚才没听清，您能再说一遍吗？';
-      const responseMatch = content.match(/<response>([\s\S]*?)<\/response>/i);
-      if (responseMatch && responseMatch[1]) {
-        content = responseMatch[1].trim();
-      }
+      const content = cleanLLMResponse(reply.content ?? '小暖刚才没听清，您能再说一遍吗？');
       return content;
     } catch (err) {
       console.error('[PiAgent] LLM 调用失败:', err);

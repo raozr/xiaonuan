@@ -18,6 +18,7 @@ const mockApp = {
     }
     return Promise.resolve({ statusCode: 404, data: {} });
   }),
+  logout: vi.fn(),
 };
 
 (global as any).getApp = vi.fn(() => mockApp);
@@ -30,6 +31,8 @@ const mockApp = {
     if (key === 'xiaonuan_token') return 'test-token';
     return undefined;
   }),
+  showToast: vi.fn(),
+  showModal: vi.fn(({ success }) => success?.({ confirm: true })),
 };
 
 (global as any).Page = vi.fn((options) => {
@@ -63,95 +66,76 @@ describe('child-home page', () => {
     vi.clearAllMocks();
   });
 
-  it('should show guide when elder name is default "老人"', async () => {
+  it('should fetch families on show', async () => {
     requestMocks.push({
       url: '/api/family',
       method: 'GET',
       response: {
         statusCode: 200,
-        data: { elder: { name: '老人' } },
+        data: [
+          { id: 'f1', elder: { name: '王奶奶', isOnline: true } },
+          { id: 'f2', elder: { name: '张爷爷', isOnline: false } },
+        ],
       },
     });
 
     const p = createPageInstance();
     pageInstance = p;
-    await p.onLoad();
-    await Promise.resolve();
-
-    expect(p.data.showGuide).toBe(true);
-  });
-
-  it('should hide guide when elder name is not default', async () => {
-    requestMocks.push({
-      url: '/api/family',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: { elder: { name: '王奶奶' } },
-      },
-    });
-
-    const p = createPageInstance();
-    pageInstance = p;
-    await p.onLoad();
-    await Promise.resolve();
-
-    expect(p.data.showGuide).toBe(false);
-  });
-
-  it('should navigate to child-settings when guide "去完善" is tapped', async () => {
-    requestMocks.push({
-      url: '/api/family',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: { elder: { name: '老人' } },
-      },
-    });
-
-    const p = createPageInstance();
-    pageInstance = p;
-    await p.onLoad();
-    await Promise.resolve();
-
-    p.goToFamily();
-
-    expect(wx.navigateTo).toHaveBeenCalledWith({
-      url: '/pages/child-settings/child-settings',
-    });
-  });
-
-  it('should reload family info on show and hide guide if updated', async () => {
-    requestMocks.push({
-      url: '/api/family',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: { elder: { name: '老人' } },
-      },
-    });
-
-    const p = createPageInstance();
-    pageInstance = p;
-    await p.onLoad();
-    await Promise.resolve();
-
-    expect(p.data.showGuide).toBe(true);
-
-    // Simulate returning from settings with updated info
-    requestMocks = [{
-      url: '/api/family',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: { elder: { name: '王奶奶' } },
-      },
-    }];
-
     await p.onShow();
     await Promise.resolve();
 
-    expect(p.data.showGuide).toBe(false);
-    expect(p.data.familyInfo.elder.name).toBe('王奶奶');
+    expect(p.data.families).toHaveLength(2);
+    expect(p.data.families[0].elder.name).toBe('王奶奶');
+    expect(p.data.loading).toBe(false);
+  });
+
+  it('should show empty families array when no families', async () => {
+    requestMocks.push({
+      url: '/api/family',
+      method: 'GET',
+      response: {
+        statusCode: 200,
+        data: [],
+      },
+    });
+
+    const p = createPageInstance();
+    pageInstance = p;
+    await p.onShow();
+    await Promise.resolve();
+
+    expect(p.data.families).toHaveLength(0);
+    expect(p.data.loading).toBe(false);
+  });
+
+  it('should navigate to child-add-elder', () => {
+    const p = createPageInstance();
+    pageInstance = p;
+    p.goToAddElder();
+
+    expect(wx.navigateTo).toHaveBeenCalledWith({
+      url: '/pages/child-add-elder/child-add-elder',
+    });
+  });
+
+  it('should navigate to child-elder-detail with familyId', () => {
+    const p = createPageInstance();
+    pageInstance = p;
+    p.goToDetail({ currentTarget: { dataset: { id: 'f1' } } });
+
+    expect(wx.navigateTo).toHaveBeenCalledWith({
+      url: '/pages/child-elder-detail/child-elder-detail?familyId=f1',
+    });
+  });
+
+  it('should logout and redirect to register on confirm', () => {
+    const p = createPageInstance();
+    pageInstance = p;
+    p.handleLogout();
+
+    expect(mockApp.logout).toHaveBeenCalled();
+    expect(wx.reLaunch).toHaveBeenCalledWith({
+      url: '/pages/child-register/child-register',
+    });
   });
 });

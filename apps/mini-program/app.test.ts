@@ -10,7 +10,6 @@ let requestMocks: any[] = [];
     ...options,
     globalData: { ...options.globalData },
   };
-  // Bind methods
   Object.keys(options).forEach((key) => {
     if (typeof options[key] === 'function') {
       appInstance[key] = options[key].bind(appInstance);
@@ -36,14 +35,16 @@ let requestMocks: any[] = [];
   }),
 };
 
-// Import app.js after mocks are set up
 await import('./app.js');
+
+const API_BASE = appInstance.globalData.apiBase;
 
 describe('App auto-login flow', () => {
   beforeEach(() => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     requestMocks = [];
     vi.clearAllMocks();
+    wx.getStorageSync = vi.fn(() => '');
   });
 
   afterEach(() => {
@@ -51,19 +52,11 @@ describe('App auto-login flow', () => {
   });
 
   it('should auto-login with silent-login when no token exists', async () => {
-    // Simulate existing child user
     requestMocks.push({
-      url: 'http://localhost:3000/api/auth/silent-login',
+      url: `${API_BASE}/api/auth/silent-login`,
       response: {
         statusCode: 200,
         data: { success: true, token: 'auto_token_123', role: 'CHILD' },
-      },
-    });
-    requestMocks.push({
-      url: 'http://localhost:3000/api/me',
-      response: {
-        statusCode: 200,
-        data: { name: '小李', role: 'CHILD' },
       },
     });
 
@@ -72,7 +65,7 @@ describe('App auto-login flow', () => {
     expect(wx.login).toHaveBeenCalled();
     expect(wx.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: 'http://localhost:3000/api/auth/silent-login',
+        url: `${API_BASE}/api/auth/silent-login`,
         method: 'POST',
         data: { code: 'test_wx_code' },
       })
@@ -81,10 +74,9 @@ describe('App auto-login flow', () => {
     expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/child-home/child-home' });
   });
 
-  it('should redirect to role-select for new user with openid', async () => {
-    // Simulate new user (openid not found)
+  it('should redirect to child-register for new user with openid', async () => {
     requestMocks.push({
-      url: 'http://localhost:3000/api/auth/silent-login',
+      url: `${API_BASE}/api/auth/silent-login`,
       response: {
         statusCode: 200,
         data: { success: false, needRegister: true, openid: 'oNEWUSER123' },
@@ -94,18 +86,16 @@ describe('App auto-login flow', () => {
     await appInstance.checkLoginStatus();
 
     expect(wx.login).toHaveBeenCalled();
-    expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/role-select/role-select?openid=oNEWUSER123' });
+    expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/child-register/child-register?openid=oNEWUSER123' });
   });
 
-  it('should redirect to role-select on silent-login error', async () => {
-    // Simulate network error — do not provide a mock for silent-login URL
-    // so wx.request falls through to fail handler
+  it('should redirect to child-register on silent-login error', async () => {
     requestMocks = [];
 
     await appInstance.checkLoginStatus();
 
     expect(wx.login).toHaveBeenCalled();
-    expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/role-select/role-select' });
+    expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/child-register/child-register' });
   });
 
   it('should use existing token if valid', async () => {
@@ -115,16 +105,30 @@ describe('App auto-login flow', () => {
     });
 
     requestMocks.push({
-      url: 'http://localhost:3000/api/me',
+      url: `${API_BASE}/api/me`,
       response: {
         statusCode: 200,
-        data: { name: '张爷爷', role: 'ELDER' },
+        data: { name: '小李', role: 'CHILD' },
       },
     });
 
     await appInstance.checkLoginStatus();
 
     expect(wx.login).not.toHaveBeenCalled();
-    expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/elder-home/elder-home' });
+    expect(wx.reLaunch).toHaveBeenCalledWith({ url: '/pages/child-home/child-home' });
+  });
+
+  it('should keep token and not redirect on network error when token exists', async () => {
+    wx.getStorageSync = vi.fn((key) => {
+      if (key === 'xiaonuan_token') return 'existing_token';
+      return '';
+    });
+
+    requestMocks = [];
+
+    await appInstance.checkLoginStatus();
+
+    expect(wx.login).not.toHaveBeenCalled();
+    expect(wx.reLaunch).not.toHaveBeenCalled();
   });
 });

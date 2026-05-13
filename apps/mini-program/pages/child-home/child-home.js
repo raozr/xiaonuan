@@ -47,7 +47,7 @@ Page({
       success: (res) => {
         if (res.confirm) {
           app.logout();
-          wx.reLaunch({ url: '/pages/role-select/role-select' });
+          wx.reLaunch({ url: '/pages/child-register/child-register' });
         }
       }
     });

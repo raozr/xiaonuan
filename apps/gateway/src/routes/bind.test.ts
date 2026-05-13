@@ -55,7 +55,7 @@ describe('POST /api/family/bind', () => {
   });
 
   it('should return error for expired invite code', async () => {
-    const uniqueCode = `999${Date.now()}`.slice(-8);
+    const uniqueCode = `999${Date.now()}`.slice(-6);
     const family = await prisma.family.create({
       data: {
         inviteCode: uniqueCode,

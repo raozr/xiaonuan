@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -9,9 +9,11 @@ import {
   Alert,
   ToastAndroid,
   Platform,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
-import { Mic, X, Volume2 } from 'lucide-react-native';
-import { useWebSocket } from '../hooks/useWebSocket';
+import { Mic, History, User, Square } from 'lucide-react-native';
+import { useWebSocket, type WebSocketMessage } from '../hooks/useWebSocket';
 import { useVoice } from '../hooks/useVoice';
 
 interface HomeScreenProps {
@@ -20,9 +22,9 @@ interface HomeScreenProps {
   onUnbind: () => void;
 }
 
-type InteractionState = 'IDLE' | 'LISTENING' | 'SPEAKING';
+type InteractionState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'SPEAKING';
 
-const WS_URL = 'ws://localhost:3000/ws';
+const WS_URL = 'ws://192.168.4.70:3000/ws';
 const MIN_RECORDING_MS = 500;
 
 export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
@@ -30,39 +32,47 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
   const [aiText, setAiText] = useState('您好，我是小暖，想和我聊聊吗？');
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const pressStartTime = useRef<number>(0);
+  const sessionReadyRef = useRef(false);
+  const wasPlayingRef = useRef(false);
 
-  const { isConnected, lastMessage, sendMessage } = useWebSocket(WS_URL, token);
-  const { isRecording, isPlaying, startRecording, stopRecording, playAudio, stopAudio } = useVoice();
+  const { isRecording, isPlaying, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
 
-  useEffect(() => {
-    if (lastMessage) {
-      if (lastMessage.type === 'session:created' || lastMessage.type === 'session:resumed') {
-        // Session ready
-      } else if (lastMessage.type === 'ai:text') {
-        setAiText(lastMessage.payload.text);
-      } else if (lastMessage.type === 'ai:audio') {
-        setState('SPEAKING');
-        playAudio(lastMessage.payload.url);
-      } else if (lastMessage.type === 'error') {
-        if (lastMessage.payload.code === 401) {
-          Alert.alert('身份过期', '请重新绑定', [{ text: '确定', onPress: onUnbind }]);
-        }
+  const handleMessage = useCallback((msg: WebSocketMessage) => {
+    console.log('[HomeScreen] handleMessage:', msg.type, msg.payload);
+    if (msg.type === 'session:created' || msg.type === 'session:resumed') {
+      sessionReadyRef.current = true;
+      console.log('[HomeScreen] Session ready');
+    } else if (msg.type === 'message:ai_text') {
+      setAiText(msg.payload.text);
+    } else if (msg.type === 'ai:audio') {
+      setState('SPEAKING');
+      playAudio(msg.payload.url);
+    } else if (msg.type === 'error') {
+      console.error('[HomeScreen] Server error:', msg.payload);
+      if (msg.payload.code === 401) {
+        Alert.alert('身份过期', '请重新绑定', [{ text: '确定', onPress: onUnbind }]);
+      } else {
+        Alert.alert('提示', msg.payload.message || '处理失败');
+        setState('IDLE');
       }
     }
-  }, [lastMessage, onUnbind, playAudio]);
+  }, [onUnbind, playAudio]);
+
+  const { isConnected, sendMessage } = useWebSocket(WS_URL, token, handleMessage);
 
   useEffect(() => {
-    if (!isPlaying && state === 'SPEAKING') {
+    if (wasPlayingRef.current && !isPlaying && state === 'SPEAKING') {
       setState('IDLE');
     }
+    wasPlayingRef.current = isPlaying;
   }, [isPlaying, state]);
 
   useEffect(() => {
-    if (state === 'LISTENING') {
+    if (state === 'LISTENING' || state === 'SPEAKING') {
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.2,
+            toValue: 1.3,
             duration: 800,
             useNativeDriver: true,
           }),
@@ -85,18 +95,20 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     }
     pressStartTime.current = Date.now();
     setState('LISTENING');
+    if (!sessionReadyRef.current) {
+      sendMessage('session:create', {});
+    }
     await startRecording();
-    sendMessage('session:create', {});
   }
 
   async function handlePressOut() {
     if (state !== 'LISTENING') return;
 
     const duration = Date.now() - pressStartTime.current;
-    setState('IDLE');
     const uri = await stopRecording();
 
     if (duration < MIN_RECORDING_MS) {
+      setState('IDLE');
       const msg = '说话时间太短';
       if (Platform.OS === 'android') {
         ToastAndroid.show(msg, ToastAndroid.SHORT);
@@ -106,64 +118,139 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
       return;
     }
 
-    // TODO: integrate real ASR using uri
+    setState('PROCESSING');
     console.log('[HomeScreen] Recorded audio URI:', uri);
-    sendMessage('message:voice_text', { text: '模拟语音识别内容' });
+
+    // Wait for session ready (max 3s)
+    let waited = 0;
+    while (!sessionReadyRef.current && waited < 3000) {
+      await new Promise((r) => setTimeout(r, 100));
+      waited += 100;
+    }
+
+    if (!sessionReadyRef.current) {
+      Alert.alert('提示', '会话创建失败，请重试');
+      setState('IDLE');
+      return;
+    }
+
+    // Read audio file as base64 and send
+    const base64 = await getRecordingBase64();
+    if (!base64) {
+      Alert.alert('提示', '读取录音失败，请重试');
+      setState('IDLE');
+      return;
+    }
+
+    console.log('[HomeScreen] Sending voice audio, base64 length:', base64.length);
+    sendMessage('message:voice_audio', { audioBase64: base64 });
+    // Remain in PROCESSING until server responds with ai:audio or error
   }
 
   function handleStop() {
     if (state === 'SPEAKING') {
       stopAudio();
+      setState('IDLE');
     }
-    setState('IDLE');
-    stopRecording();
+    if (state === 'LISTENING') {
+      stopRecording();
+      setState('IDLE');
+    }
   }
+
+  const headerTitle = !isConnected
+    ? '连接中...'
+    : state === 'IDLE'
+    ? '妈妈的陪伴'
+    : state === 'LISTENING'
+    ? '正在倾听...'
+    : state === 'PROCESSING'
+    ? '小暖思考中...'
+    : '小暖正在说...';
+
+  const micLabel = state === 'LISTENING' ? '松开 发送' : '按住 说话';
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.statusText}>
-          {!isConnected ? '连接中...' : state === 'IDLE' ? '正在陪伴中' : state === 'LISTENING' ? '正在倾听...' : '小暖正在说...'}
-        </Text>
+        <View style={styles.headerLeft}>
+          <View style={styles.headerAvatar}>
+            <User size={24} color="#6d3a00" />
+          </View>
+        </View>
+        <Text style={styles.headerTitle}>{headerTitle}</Text>
+        <TouchableOpacity
+          style={styles.headerRight}
+          onPress={() => Alert.alert('历史记录', '功能开发中...')}
+          activeOpacity={0.7}
+        >
+          <History size={28} color="#544437" />
+        </TouchableOpacity>
       </View>
 
+      {/* Main Content */}
       <View style={styles.content}>
+        {/* Avatar Area */}
         <View style={styles.avatarContainer}>
-          <Animated.View style={[styles.avatarPulse, { transform: [{ scale: pulseAnim }] }]} />
+          <View style={styles.outerRing} />
+          <View style={styles.middleRing} />
+          <Animated.View
+            style={[
+              styles.pulseRing,
+              {
+                transform: [{ scale: pulseAnim }],
+                opacity: state === 'LISTENING' ? 0.45 : state === 'SPEAKING' ? 0.35 : 0.15,
+                backgroundColor: state === 'SPEAKING' ? '#4CAF50' : '#ff9f43',
+              },
+            ]}
+          />
           <View style={styles.avatar}>
-            <Text style={styles.avatarEmoji}>Warm</Text>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.avatarImage}
+              resizeMode="contain"
+            />
           </View>
         </View>
 
+        {/* AI Text Bubble - always visible */}
         <View style={styles.bubble}>
           <Text style={styles.bubbleText}>{aiText}</Text>
         </View>
       </View>
 
+      {/* Footer */}
       <View style={styles.footer}>
-        {state !== 'IDLE' && (
-          <TouchableOpacity style={styles.stopButton} onPress={handleStop}>
-            <X size={32} color="#FFF" />
+        {state === 'SPEAKING' ? (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[styles.micButton, styles.stopButtonMain]}
+            onPress={handleStop}
+          >
+            <Square size={32} color="#FFF" fill="#FFF" />
+            <Text style={styles.micButtonText}>停止</Text>
+          </TouchableOpacity>
+        ) : state === 'PROCESSING' ? (
+          <View style={[styles.micButton, styles.processingButton]}>
+            <ActivityIndicator size="large" color="#FFF" />
+            <Text style={styles.micButtonText}>处理中</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            activeOpacity={0.8}
+            style={[
+              styles.micButton,
+              state === 'LISTENING' && styles.micButtonActive,
+            ]}
+            onLongPress={handleLongPress}
+            onPressOut={handlePressOut}
+            delayLongPress={100}
+          >
+            <Mic size={40} color="#FFF" />
+            <Text style={styles.micButtonText}>{micLabel}</Text>
           </TouchableOpacity>
         )}
-
-        <TouchableOpacity
-          activeOpacity={0.8}
-          style={[
-            styles.micButton,
-            state === 'LISTENING' && styles.micButtonActive,
-            state === 'SPEAKING' && styles.micButtonSpeaking,
-          ]}
-          onLongPress={handleLongPress}
-          onPressOut={handlePressOut}
-          delayLongPress={100}
-        >
-          {state === 'SPEAKING' ? (
-            <Volume2 size={48} color="#FFF" />
-          ) : (
-            <Mic size={48} color="#FFF" />
-          )}
-        </TouchableOpacity>
       </View>
     </SafeAreaView>
   );
@@ -172,107 +259,155 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8F9FA',
+    backgroundColor: '#fff8f5',
   },
   header: {
-    padding: 20,
+    height: 64,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    backgroundColor: '#fff8f5',
   },
-  statusText: {
-    fontSize: 18,
-    color: '#ADB5BD',
-    fontWeight: '600',
+  headerLeft: {
+    width: 64,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  headerAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#ff9f43',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+    color: '#8f4e00',
+    textAlign: 'center',
+    flex: 1,
+  },
+  headerRight: {
+    width: 64,
+    height: 64,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 40,
+    paddingHorizontal: 24,
   },
   avatarContainer: {
-    width: 160,
-    height: 160,
+    width: 240,
+    height: 240,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 20,
+  },
+  outerRing: {
+    position: 'absolute',
+    width: 240,
+    height: 240,
+    borderRadius: 120,
+    backgroundColor: 'rgba(255, 159, 67, 0.12)',
+  },
+  middleRing: {
+    position: 'absolute',
+    width: 210,
+    height: 210,
+    borderRadius: 105,
+    backgroundColor: 'rgba(255, 159, 67, 0.22)',
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: '#ff9f43',
   },
   avatar: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: '#FF6B6B',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: '#ffffff',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 10,
-    shadowColor: '#FF6B6B',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
+    borderWidth: 3,
+    borderColor: '#f0dfd5',
+    overflow: 'hidden',
+    shadowColor: '#8f4e00',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  avatarEmoji: {
-    fontSize: 24,
-    color: '#FFF',
-    fontWeight: 'bold',
-  },
-  avatarPulse: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(255, 107, 107, 0.2)',
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   bubble: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 24,
+    backgroundColor: '#fcebe0',
+    borderRadius: 20,
+    padding: 20,
+    marginTop: 12,
     width: '100%',
-    elevation: 2,
+    maxWidth: 320,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
+    elevation: 2,
   },
   bubbleText: {
-    fontSize: 24,
-    lineHeight: 36,
-    color: '#212529',
+    fontSize: 20,
+    lineHeight: 30,
+    color: '#221a13',
     textAlign: 'center',
+    fontWeight: '500',
   },
   footer: {
-    height: 200,
+    height: 180,
     justifyContent: 'center',
     alignItems: 'center',
-    flexDirection: 'row',
+    paddingBottom: 32,
   },
   micButton: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: '#8f4e00',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 8,
-    shadowColor: '#FF6B6B',
+    shadowColor: '#8f4e00',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 10,
+    borderWidth: 4,
+    borderColor: '#fff8f5',
   },
   micButtonActive: {
-    backgroundColor: '#51CF66',
-    shadowColor: '#51CF66',
+    backgroundColor: '#6d3a00',
+    transform: [{ scale: 1.08 }],
   },
-  micButtonSpeaking: {
-    backgroundColor: '#339AF0',
-    shadowColor: '#339AF0',
+  stopButtonMain: {
+    backgroundColor: '#c0392b',
+    shadowColor: '#c0392b',
   },
-  stopButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#DEE2E6',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    left: 40,
+  processingButton: {
+    backgroundColor: '#8f4e00',
+    opacity: 0.7,
+  },
+  micButtonText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginTop: 6,
+    letterSpacing: 0.5,
   },
 });

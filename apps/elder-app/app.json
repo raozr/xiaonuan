@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "小暖长辈端",
+    "slug": "xiaonuan-elder-app",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "platforms": ["ios", "android"],
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "enabled": true
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.xiaonuan.elderapp"
+    },
+    "android": {
+      "package": "com.xiaonuan.elderapp"
+    }
+  }
+}

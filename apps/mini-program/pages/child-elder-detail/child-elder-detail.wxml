@@ -49,7 +49,7 @@
         <text class="invite-action refresh" bindtap="refreshInviteCode">重新生成</text>
       </view>
     </view>
-    <text class="invite-hint">让老人在 APP 中输入此 8 位数字即可绑定</text>
+    <text class="invite-hint">让老人在 APP 中输入此 6 位数字即可绑定</text>
   </view>
 
   <button class="btn-unbind" bindtap="unbindElder">解除绑定</button>

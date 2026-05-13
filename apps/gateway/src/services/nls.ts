@@ -87,7 +87,7 @@ export async function recognizeSpeech(audioBuffer: Buffer, format: string, sampl
   const token = await getToken();
   const query = new URLSearchParams({
     appkey: env.NLS_APP_KEY,
-    format: format === 'wav' ? 'wav' : 'pcm',
+    format: ['wav', 'pcm', 'm4a', 'mp3', 'opus'].includes(format) ? format : 'pcm',
     sample_rate: String(sampleRate),
   });
 
@@ -104,8 +104,8 @@ export async function recognizeSpeech(audioBuffer: Buffer, format: string, sampl
   const status = data.status as number | undefined;
   const result = data.result as string | undefined;
 
-  if (status === 20000000 && result) {
-    return result;
+  if (status === 20000000) {
+    return result ?? '';
   }
 
   throw new Error(`ASR 失败 [${status}]: ${data.message || '未知错误'}`);

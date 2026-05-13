@@ -4,7 +4,7 @@ import * as wechat from '../utils/wechat.js';
 import { prisma } from '@xiaonuan/prisma';
 
 function generateInviteCode() {
-  return Math.floor(10000000 + Math.random() * 90000000).toString();
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 describe('POST /api/auth/wechat-code', () => {

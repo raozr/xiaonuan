@@ -8,6 +8,8 @@ import {
   getSessionPhase,
 } from '../conversation/turn-manager.js';
 import { generateCheckpoint } from '../memory/checkpoint-service.js';
+import { recognizeSpeech } from '../services/nls.js';
+import { convertM4aToWav } from '../utils/audio-convert.js';
 
 export function createWebSocketHandler(app: FastifyInstance) {
   return async (socket: WebSocket, req: FastifyRequest) => {
@@ -108,7 +110,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           );
           await updateSessionPhase(sessionId, newPhase);
           sendMessage('phase:changed', { phase: newPhase });
-          await sendClosingMessage(sessionId, user!.familyId!, socket);
+          await sendClosingMessage(sessionId, user!.familyId!, socket, baseUrl);
           clearSilenceTimer();
         }
       } catch (err) {
@@ -116,9 +118,12 @@ export function createWebSocketHandler(app: FastifyInstance) {
       }
     }
 
+    const baseUrl = `${req.protocol}://${req.hostname}${req.port ? ':' + req.port : ''}`;
+
     socket.on('message', async (raw: Buffer) => {
       try {
         const { type, payload } = JSON.parse(raw.toString());
+        app.log.info(`[WS] received type=${type} sessionId=${sessionId}`);
 
         if (type === 'pong') {
           missedPongs = 0;
@@ -133,6 +138,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
             },
           });
           sessionId = session.id;
+          app.log.info(`[WS] session created id=${session.id}`);
           sendMessage('session:created', { sessionId: session.id });
           resetSilenceTimer();
           return;
@@ -162,7 +168,9 @@ export function createWebSocketHandler(app: FastifyInstance) {
         }
 
         if (type === 'message:voice_text') {
+          app.log.info(`[WS] handling voice_text sessionId=${sessionId}`);
           if (!sessionId) {
+            app.log.warn('[WS] voice_text rejected: no sessionId');
             sendMessage('error', { message: '会话未创建' });
             return;
           }
@@ -173,6 +181,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           }
 
           const currentPhase = await getSessionPhase(sessionId);
+          app.log.info(`[WS] currentPhase=${currentPhase}`);
 
           if (currentPhase === 'CLOSING') {
             const newPhase = definePhaseTransition(
@@ -184,7 +193,72 @@ export function createWebSocketHandler(app: FastifyInstance) {
           }
 
           clearSilenceTimer();
-          await handleVoiceText(sessionId, user!.familyId!, text, socket);
+          app.log.info('[WS] calling handleVoiceText...');
+          await handleVoiceText(sessionId, user!.familyId!, text, socket, baseUrl);
+          app.log.info('[WS] handleVoiceText done');
+          resetSilenceTimer();
+
+          if (currentPhase === 'GREETING') {
+            const newPhase = definePhaseTransition(
+              'GREETING',
+              'first_message_received'
+            );
+            await updateSessionPhase(sessionId, newPhase);
+            sendMessage('phase:changed', { phase: newPhase });
+          }
+
+          return;
+        }
+
+        if (type === 'message:voice_audio') {
+          app.log.info(`[WS] handling voice_audio sessionId=${sessionId}`);
+          if (!sessionId) {
+            app.log.warn('[WS] voice_audio rejected: no sessionId');
+            sendMessage('error', { message: '会话未创建' });
+            return;
+          }
+          const audioBase64 = payload?.audioBase64;
+          if (!audioBase64) {
+            sendMessage('error', { message: 'audioBase64 必填' });
+            return;
+          }
+
+          let text: string;
+          try {
+            app.log.info('[WS] starting ASR...');
+            const audioBuffer = Buffer.from(audioBase64, 'base64');
+            app.log.info('[WS] converting m4a to wav...');
+            const wavBuffer = await convertM4aToWav(audioBuffer);
+            app.log.info(`[WS] converted to wav, size=${wavBuffer.length}`);
+            text = await recognizeSpeech(wavBuffer, 'wav', 16000);
+            app.log.info(`[WS] ASR result: ${text}`);
+          } catch (asrErr: any) {
+            app.log.error('[WS] ASR failed:', asrErr.message || asrErr);
+            sendMessage('error', { message: asrErr.message || '语音识别失败' });
+            return;
+          }
+
+          if (!text.trim()) {
+            sendMessage('error', { message: '未能识别到语音内容' });
+            return;
+          }
+
+          const currentPhase = await getSessionPhase(sessionId);
+          app.log.info(`[WS] currentPhase=${currentPhase}`);
+
+          if (currentPhase === 'CLOSING') {
+            const newPhase = definePhaseTransition(
+              'CLOSING',
+              'elder_speaks_again'
+            );
+            await updateSessionPhase(sessionId, newPhase);
+            sendMessage('phase:changed', { phase: newPhase });
+          }
+
+          clearSilenceTimer();
+          app.log.info('[WS] calling handleVoiceText with ASR result...');
+          await handleVoiceText(sessionId, user!.familyId!, text, socket, baseUrl);
+          app.log.info('[WS] handleVoiceText done');
           resetSilenceTimer();
 
           if (currentPhase === 'GREETING') {
@@ -199,6 +273,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           return;
         }
       } catch (err) {
+        app.log.error('[WS] message handler error:', err);
         sendMessage('error', { message: '消息格式错误' });
       }
     });

@@ -26,7 +26,7 @@ Page({
   },
 
   async onLoad(options) {
-    if (options.familyId) {
+    if (options?.familyId) {
       this.setData({ familyId: options.familyId });
       await this.loadSettings();
     }

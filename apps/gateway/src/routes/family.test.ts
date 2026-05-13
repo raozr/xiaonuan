@@ -111,7 +111,7 @@ describe('GET /api/family/:familyId', () => {
 });
 
 describe('POST /api/family', () => {
-  it('should create a family with elder info and 8-digit invite code', async () => {
+  it('should create a family with elder info and 6-digit invite code', async () => {
     const user = await prisma.user.create({
       data: { phone: `13800${Date.now()}`, role: 'CHILD' },
     });
@@ -131,7 +131,7 @@ describe('POST /api/family', () => {
     expect(response.statusCode).toBe(201);
     const body = JSON.parse(response.body);
     expect(body.id).toBeDefined();
-    expect(body.inviteCode).toMatch(/^\d{8}$/);
+    expect(body.inviteCode).toMatch(/^\d{6}$/);
     expect(body.elder.name).toBe('王爷爷');
 
     await prisma.family.delete({ where: { id: body.id } });
@@ -170,7 +170,7 @@ describe('POST /api/family', () => {
 });
 
 describe('POST /api/family/:familyId/refresh-code', () => {
-  it('should regenerate 8-digit invite code for existing family', async () => {
+  it('should regenerate 6-digit invite code for existing family', async () => {
     const { user, family } = await createUserAndFamily('赵奶奶');
     const oldCode = family.inviteCode;
     const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
@@ -183,7 +183,7 @@ describe('POST /api/family/:familyId/refresh-code', () => {
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
-    expect(body.inviteCode).toMatch(/^\d{8}$/);
+    expect(body.inviteCode).toMatch(/^\d{6}$/);
     expect(body.inviteCode).not.toBe(oldCode);
 
     await prisma.family.delete({ where: { id: family.id } });

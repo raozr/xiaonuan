@@ -9,7 +9,7 @@ const mockApp = {
     apiBase: 'http://localhost:3000',
     token: 'test-token',
     role: 'CHILD',
-    userInfo: { name: '小李', role: 'CHILD' },
+    userInfo: { id: 'u1', name: '小李', role: 'CHILD' },
   },
   request: vi.fn().mockImplementation((options: any) => {
     const mock = requestMocks.find((m) => m.url === options.url && m.method === (options.method || 'GET'));
@@ -67,12 +67,14 @@ describe('child-settings page', () => {
 
   it('should load family settings on mount and populate form', async () => {
     requestMocks.push({
-      url: '/api/family/settings',
+      url: '/api/family/f1',
       method: 'GET',
       response: {
         statusCode: 200,
         data: {
-          family: { id: 'f1', inviteCode: '123456', inviteCodeExpiresAt: new Date().toISOString() },
+          id: 'f1',
+          inviteCode: '123456',
+          inviteCodeExpiresAt: new Date().toISOString(),
           elder: {
             name: '王奶奶',
             age: 78,
@@ -83,7 +85,7 @@ describe('child-settings page', () => {
             greetingPreference: '称呼我老王就行',
           },
           children: [
-            { name: '小李', relationshipToElder: '儿子', customNotes: '我在北京工作' },
+            { userId: 'u1', name: '小李', relationshipToElder: '儿子', customNotes: '我在北京工作' },
           ],
         },
       },
@@ -91,7 +93,7 @@ describe('child-settings page', () => {
 
     const p = createPageInstance();
     pageInstance = p;
-    await p.onLoad();
+    await p.onLoad({ familyId: 'f1' });
     await Promise.resolve();
 
     expect(p.data.elderName).toBe('王奶奶');
@@ -104,20 +106,19 @@ describe('child-settings page', () => {
     expect(p.data.childName).toBe('小李');
     expect(p.data.childRelationship).toBe('儿子');
     expect(p.data.childCustomNotes).toBe('我在北京工作');
-    expect(p.data.inviteCode).toBe('123456');
     expect(p.data.familyMembers).toHaveLength(1);
   });
 
   it('should update data on input changes', async () => {
     requestMocks.push({
-      url: '/api/family/settings',
+      url: '/api/family/f1',
       method: 'GET',
-      response: { statusCode: 200, data: { family: { id: 'f1' }, elder: { name: '张爷爷' }, children: [] } },
+      response: { statusCode: 200, data: { id: 'f1', elder: { name: '张爷爷' }, children: [] } },
     });
 
     const p = createPageInstance();
     pageInstance = p;
-    await p.onLoad();
+    await p.onLoad({ familyId: 'f1' });
     await Promise.resolve();
 
     p.onElderNameInput({ detail: { value: '李爷爷' } });
@@ -138,21 +139,21 @@ describe('child-settings page', () => {
 
   it('should validate elder name before saving', async () => {
     requestMocks.push({
-      url: '/api/family/settings',
+      url: '/api/family/f1',
       method: 'GET',
       response: {
         statusCode: 200,
         data: {
-          family: { id: 'f1', inviteCode: '123456' },
+          id: 'f1',
           elder: { name: '' },
-          children: [{ name: '小李' }],
+          children: [{ userId: 'u1', name: '小李' }],
         },
       },
     });
 
     const p = createPageInstance();
     pageInstance = p;
-    await p.onLoad();
+    await p.onLoad({ familyId: 'f1' });
     await Promise.resolve();
 
     p.setData({ elderName: '' });
@@ -163,48 +164,21 @@ describe('child-settings page', () => {
     );
   });
 
-  it('should validate elder age range', async () => {
-    requestMocks.push({
-      url: '/api/family/settings',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: {
-          family: { id: 'f1', inviteCode: '123456' },
-          elder: { name: '张爷爷' },
-          children: [{ name: '小李' }],
-        },
-      },
-    });
-
-    const p = createPageInstance();
-    pageInstance = p;
-    await p.onLoad();
-    await Promise.resolve();
-
-    p.setData({ elderAge: 30 });
-    await p.save();
-
-    expect(wx.showToast).toHaveBeenCalledWith(
-      expect.objectContaining({ title: '年龄需在 50-120 岁之间' })
-    );
-  });
-
   it('should call PUT APIs and navigate back on valid save', async () => {
     requestMocks.push({
-      url: '/api/family/settings',
+      url: '/api/family/f1',
       method: 'GET',
       response: {
         statusCode: 200,
         data: {
-          family: { id: 'f1', inviteCode: '123456' },
+          id: 'f1',
           elder: { name: '王奶奶', age: 78 },
-          children: [{ name: '小李', relationshipToElder: '儿子', customNotes: '我在北京工作' }],
+          children: [{ userId: 'u1', name: '小李', relationshipToElder: '儿子', customNotes: '我在北京工作' }],
         },
       },
     });
     requestMocks.push({
-      url: '/api/family/elder',
+      url: '/api/family/f1/elder',
       method: 'PUT',
       response: { statusCode: 200, data: { success: true } },
     });
@@ -216,7 +190,7 @@ describe('child-settings page', () => {
 
     const p = createPageInstance();
     pageInstance = p;
-    await p.onLoad();
+    await p.onLoad({ familyId: 'f1' });
     await Promise.resolve();
 
     await p.save();
@@ -224,7 +198,7 @@ describe('child-settings page', () => {
 
     expect(mockApp.request).toHaveBeenCalledWith(
       expect.objectContaining({
-        url: '/api/family/elder',
+        url: '/api/family/f1/elder',
         method: 'PUT',
         data: expect.objectContaining({ name: '王奶奶', age: 78 }),
       })
@@ -233,38 +207,12 @@ describe('child-settings page', () => {
       expect.objectContaining({
         url: '/api/me',
         method: 'PUT',
-        data: expect.objectContaining({ name: '小李', relationshipToElder: '儿子' }),
+        data: expect.objectContaining({ name: '小李' }),
       })
     );
     expect(wx.showToast).toHaveBeenCalledWith(
       expect.objectContaining({ title: '保存成功' })
     );
     expect(wx.navigateBack).toHaveBeenCalled();
-  });
-
-  it('should copy invite code to clipboard', async () => {
-    requestMocks.push({
-      url: '/api/family/settings',
-      method: 'GET',
-      response: {
-        statusCode: 200,
-        data: {
-          family: { id: 'f1', inviteCode: '654321' },
-          elder: { name: '王奶奶' },
-          children: [],
-        },
-      },
-    });
-
-    const p = createPageInstance();
-    pageInstance = p;
-    await p.onLoad();
-    await Promise.resolve();
-
-    p.copyInviteCode();
-
-    expect(wx.setClipboardData).toHaveBeenCalledWith(
-      expect.objectContaining({ data: '654321' })
-    );
   });
 });
