@@ -51,11 +51,11 @@ await app.register(async (apiRoutes) => {
   await ttsRoutes(apiRoutes);
 }, { prefix: '/api/tts' });
 
-// Serve static TTS audio files
+// Serve static files (tts, feeds)
 const staticPlugin = (await import('@fastify/static')).default;
 await app.register(staticPlugin, {
-  root: join(process.cwd(), 'public', 'tts'),
-  prefix: '/tts/',
+  root: join(process.cwd(), 'public'),
+  prefix: '/',
 });
 
 if (import.meta.url === `file://${process.argv[1]}`) {

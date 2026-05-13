@@ -393,3 +393,149 @@ describe('DELETE /api/family/:familyId', () => {
     await prisma.user.delete({ where: { id: secondaryUser.id } });
   });
 });
+
+describe('GET /api/family/:familyId/daily-summary', () => {
+  it('should return daily summary for today', async () => {
+    const { user, family } = await createUserAndFamily('今日老人');
+    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    await prisma.dailySummary.create({
+      data: {
+        familyId: family.id,
+        date: today,
+        moodLabel: '开心',
+        duration: 45,
+        topicCount: 3,
+        highlights: ['聊了大儿子下周回家', '说腰今天好多了'],
+        concerns: null,
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/family/${family.id}/daily-summary`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.data.mood).toBe('开心');
+    expect(body.data.duration).toBe(45);
+    expect(body.data.topics).toBe(3);
+    expect(body.data.highlights).toEqual(['聊了大儿子下周回家', '说腰今天好多了']);
+
+    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.user.delete({ where: { id: user.id } });
+  });
+
+  it('should return null when no summary exists', async () => {
+    const { user, family } = await createUserAndFamily('无状态老人');
+    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/family/${family.id}/daily-summary`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.data).toBeNull();
+
+    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.user.delete({ where: { id: user.id } });
+  });
+});
+
+describe('POST /api/family/:familyId/feeds', () => {
+  it('should create a text feed', async () => {
+    const { user, family } = await createUserAndFamily('投喂老人');
+    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/family/${family.id}/feeds`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        type: 'TEXT',
+        content: '妈妈明天要去医院复查',
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(body.data.content).toBe('妈妈明天要去医院复查');
+    expect(body.data.type).toBe('TEXT');
+
+    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.user.delete({ where: { id: user.id } });
+  });
+
+  it('should reject empty content for text feed', async () => {
+    const { user, family } = await createUserAndFamily('投喂老人2');
+    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/family/${family.id}/feeds`,
+      headers: { authorization: `Bearer ${token}` },
+      payload: {
+        type: 'TEXT',
+        content: '  ',
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+
+    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.user.delete({ where: { id: user.id } });
+  });
+});
+
+describe('GET /api/family/:familyId/feeds', () => {
+  it('should return feeds in descending order', async () => {
+    const { user, family } = await createUserAndFamily('历史老人');
+    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+
+    await prisma.familyFeed.create({
+      data: {
+        familyId: family.id,
+        type: 'TEXT',
+        content: '第一条',
+        category: 'EVENT',
+      },
+    });
+
+    await prisma.familyFeed.create({
+      data: {
+        familyId: family.id,
+        type: 'TEXT',
+        content: '第二条',
+        category: 'EVENT',
+      },
+    });
+
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/family/${family.id}/feeds`,
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = JSON.parse(response.body);
+    expect(body.success).toBe(true);
+    expect(Array.isArray(body.data)).toBe(true);
+    expect(body.data.length).toBe(2);
+    expect(body.data[0].content).toBe('第二条');
+    expect(body.data[1].content).toBe('第一条');
+
+    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.user.delete({ where: { id: user.id } });
+  });
+});

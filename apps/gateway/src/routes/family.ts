@@ -3,6 +3,10 @@ import { z } from 'zod';
 import { prisma } from '@xiaonuan/prisma';
 import { generateInviteCode } from '../utils/invite-code.js';
 import { verifyElderAuth } from '../middleware/auth.js';
+import { recognizeSpeech } from '../services/nls.js';
+import { randomUUID } from 'crypto';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
 
 const createFamilySchema = z.object({
   elderName: z.string().min(1),
@@ -339,5 +343,144 @@ export async function familyRoutes(app: FastifyInstance) {
     await prisma.family.delete({ where: { id: familyId } });
 
     return reply.send({ success: true, message: '家庭已删除' });
+  });
+
+  // Daily Summary
+  app.get('/:familyId/daily-summary', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const user = request.user;
+
+    if (!user || !user.userId) {
+      return reply.status(401).send({ success: false, message: '未认证' });
+    }
+
+    const member = await assertFamilyMember(user.userId, familyId, reply);
+    if (!member) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const summary = await prisma.dailySummary.findUnique({
+      where: {
+        familyId_date: {
+          familyId,
+          date: today,
+        },
+      },
+    });
+
+    if (!summary) {
+      return reply.send({ success: true, data: null });
+    }
+
+    return reply.send({
+      success: true,
+      data: {
+        mood: summary.moodLabel,
+        duration: summary.duration,
+        topics: summary.topicCount,
+        highlights: summary.highlights,
+        concerns: summary.concerns,
+      },
+    });
+  });
+
+  // Family Feeds
+  const createFeedSchema = z.object({
+    type: z.enum(['TEXT', 'VOICE']),
+    content: z.string().optional(),
+    audioBase64: z.string().optional(),
+  });
+
+  app.post('/:familyId/feeds', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const user = request.user;
+
+    if (!user || !user.userId) {
+      return reply.status(401).send({ success: false, message: '未认证' });
+    }
+
+    const member = await assertFamilyMember(user.userId, familyId, reply);
+    if (!member) return;
+
+    const body = request.body as Record<string, unknown>;
+    const parsed = createFeedSchema.safeParse(body);
+
+    if (!parsed.success) {
+      return reply.status(400).send({ success: false, message: '参数错误', errors: parsed.error.errors });
+    }
+
+    const { type, content, audioBase64 } = parsed.data;
+    const baseUrl = `${request.protocol}://${request.hostname}${request.port ? ':' + request.port : ''}`;
+
+    if (type === 'TEXT') {
+      if (!content || !content.trim()) {
+        return reply.status(400).send({ success: false, message: '内容不能为空' });
+      }
+
+      const feed = await prisma.familyFeed.create({
+        data: {
+          familyId,
+          type: 'TEXT',
+          content: content.trim(),
+          category: 'EVENT',
+        },
+      });
+
+      return reply.status(201).send({ success: true, data: feed });
+    }
+
+    // VOICE
+    if (!audioBase64) {
+      return reply.status(400).send({ success: false, message: '音频数据不能为空' });
+    }
+
+    const audioBuffer = Buffer.from(audioBase64, 'base64');
+    const fileName = `${randomUUID()}.mp3`;
+    const feedsDir = join(process.cwd(), 'public', 'feeds');
+    await mkdir(feedsDir, { recursive: true });
+    const filePath = join(feedsDir, fileName);
+    await writeFile(filePath, audioBuffer);
+
+    const audioUrl = `${baseUrl}/feeds/${fileName}`;
+
+    let asrText = '';
+    try {
+      asrText = await recognizeSpeech(audioBuffer, 'mp3', 16000);
+    } catch (asrErr: any) {
+      app.log.error('[Feed] ASR failed:', asrErr.message || String(asrErr));
+    }
+
+    const feed = await prisma.familyFeed.create({
+      data: {
+        familyId,
+        type: 'VOICE',
+        content: asrText || '(未能识别语音内容)',
+        category: 'EVENT',
+        audioUrl,
+      },
+    });
+
+    return reply.status(201).send({ success: true, data: feed });
+  });
+
+  app.get('/:familyId/feeds', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { familyId } = request.params as { familyId: string };
+    const user = request.user;
+
+    if (!user || !user.userId) {
+      return reply.status(401).send({ success: false, message: '未认证' });
+    }
+
+    const member = await assertFamilyMember(user.userId, familyId, reply);
+    if (!member) return;
+
+    const feeds = await prisma.familyFeed.findMany({
+      where: { familyId },
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+    });
+
+    return reply.send({ success: true, data: feeds });
   });
 }

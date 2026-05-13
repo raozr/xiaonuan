@@ -379,3 +379,127 @@ apps/gateway/src/state-machine/state-machine.test.ts # [新建] 状态机测试
 
 *Spec Version: 2.0*
 *Scope: 分层记忆系统 + Session Phase 状态机（不含主动问候 / Phase 4）*
+
+---
+
+## 9. 子女端老人详情页改造 (v0.3)
+
+*Added: 2026-05-13*
+
+### Objective
+
+改造微信小程序 `child-elder-detail` 页面，从当前简陋列表布局升级为参考设计稿 (`doc/design/zinv-today/`) 的 Material Design 3 风格卡片+时间轴布局。同时实现两个核心功能：
+
+1. **今日状态真实化**：从写死假数据改为调用后端 `DailySummary` 真实数据
+2. **告诉小暖一件事**：支持子女通过文字或语音向 AI 投喂信息，AI 在后续陪伴老人时引用；支持查看投喂历史
+
+保留现有绑定码功能，将其移入 Settings 页面。
+
+### Tech Stack
+
+复用项目现有技术栈，无新增依赖：
+- **Frontend**: 微信小程序原生框架 (WXML + WXSS + JS)
+- **Backend**: Fastify + TypeScript + Prisma + PostgreSQL
+- **Voice**: 微信小程序 `wx.getRecorderManager()` + 后端 ASR 复用现有 `services/nls.js`
+- **Design**: 参考 `doc/design/zinv-today/DESIGN.md` 颜色/字号/圆角规范
+
+### Commands
+
+```bash
+# Mini-program dev
+pnpm --filter mini-program dev
+
+# Gateway dev
+pnpm --filter gateway dev
+
+# Test gateway
+pnpm --filter gateway test
+```
+
+### Project Structure (新增/改动)
+
+```
+apps/mini-program/
+  pages/
+    child-elder-detail/          # 主页面（样式重构 + 真实数据）
+    child-feed/                  # 【新增】告诉小暖一件事 输入+历史页
+    child-settings/              # 【改造】新增绑定码卡片
+  components/
+    bottom-nav/                  # 【新增】自定义底部导航栏
+
+apps/gateway/src/routes/
+  family.ts                     # 【新增】daily-summary / feeds API
+```
+
+### Code Style (小程序侧)
+
+- **颜色**：使用设计规范 token，逐步迁移
+  ```css
+  .surface-container {
+    background-color: #ffffff;        /* surface-container-lowest */
+    border: 1px solid rgba(218, 194, 177, 0.5); /* outline-variant/50 */
+  }
+  .primary-btn {
+    background-color: #8f4e00;
+    color: #ffffff;
+    border-radius: 24px;
+  }
+  ```
+- **圆角**：大卡片 24px，小卡片/气泡 16px，按钮 24px
+- **阴影**：使用 `box-shadow` 而非 `elevation`，格式 `0 8px 30px rgba(143,78,0,0.1)`
+- **JS**: Page 数据初始化声明所有字段；网络请求统一 `app.request()`；错误统一 `wx.showToast`
+
+### Testing Strategy
+
+- **Gateway**: 在 `family.test.ts` 中追加 `daily-summary` 和 `feeds` 路由的单元测试，mock Prisma
+- **Mini-program**: 更新 `child-elder-detail.test.ts` 断言匹配新 DOM 结构
+- **Manual**: 小程序真机测试语音录音、播放、上传流程
+
+### Boundaries
+
+- **Always do**:
+  - 保持 24px 页面边距、最小 64px 触摸目标
+  - 无数据时显示友好空状态（如"今天还没有陪伴记录"），不白屏
+  - 语音上传前校验时长（至少 1 秒，最多 60 秒）
+
+- **Ask first**:
+  - 修改 `app.json` 增加全局 tabBar
+  - 新增 npm 依赖
+  - 修改 Prisma schema（本次仅使用现有 `DailySummary` / `FamilyFeed`，不新增表）
+
+- **Never do**:
+  - 删除或修改 `bind-family` 页面（仅修正 `child-elder-detail` 上错误的跳转）
+  - 修改 elder-app（老人端）任何代码
+  - 在小程序里直接暴露后端内网 IP
+
+### Success Criteria
+
+#### 样式改造
+- [ ] `child-elder-detail` 顶部显示老人头像（圆形 40px）+ "XX的陪伴" + 历史图标按钮
+- [ ] 今日状态区域为白色圆角大卡片（24px），内含情绪/时长两个 Bento Widget（圆角 16px，带图标）
+- [ ] 今日亮点改为时间轴样式：左侧彩色图标圆点 + 竖线，右侧内容卡片
+- [ ] "告诉小暖一件事"改为底部通栏 Primary 色大按钮（高度 88px，圆角 24px）
+- [ ] 页面底部有自定义底部导航栏（Home / History / Settings），当前页 Home 高亮
+- [ ] 绑定码从当前页面移除，移入 `child-settings` 页面并保留复制/重新生成功能
+
+#### 今日状态真实数据
+- [ ] 后端新增 `GET /api/family/:familyId/daily-summary`，返回当日 `DailySummary` 记录
+- [ ] 前端 `loadTodaySummary()` 调用真实 API，不再使用假数据
+- [ ] 无数据时展示空状态文案（如"今天还没有陪伴记录"），情绪显示 `--`，时长显示 `--`
+
+#### 告诉小暖一件事
+- [ ] 后端新增 `POST /api/family/:familyId/feeds`：创建 `FamilyFeed`（type: TEXT/VOICE, category: EVENT）
+- [ ] 后端新增 `GET /api/family/:familyId/feeds`：按时间倒序返回 feed 列表（分页 limit=20）
+- [ ] 前端点击大按钮进入 `child-feed` 页面，支持：
+  - 文本输入：多行文本框 + 发送按钮
+  - 语音输入：按住录音按钮录音，松开后自动上传，转文字后保存
+- [ ] `child-feed` 页面下半部分展示历史列表，按时间倒序，显示内容/类型/时间
+- [ ] 底部导航栏 History 入口点击后进入 `child-feed` 页面（或当前页切换视图）
+
+### Decisions
+
+| 决策项 | 确定方案 |
+|---|---|
+| 绑定码展示位置 | 移入 `child-settings` 页面 |
+| 底部导航栏 Memory Tab | 隐藏 |
+| 语音输入存储 | ASR 识别为文字存入 `FamilyFeed.content`，音频文件同时保存到磁盘并记录 `audioUrl` |
