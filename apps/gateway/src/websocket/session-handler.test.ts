@@ -39,6 +39,11 @@ describe('WebSocket Session Handler', () => {
           role: 'ELDER',
         })),
       },
+      log: {
+        error: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+      },
     };
 
     handler = createWebSocketHandler(mockApp);

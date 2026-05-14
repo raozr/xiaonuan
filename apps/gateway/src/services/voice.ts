@@ -1,5 +1,6 @@
 import { prisma } from '@xiaonuan/prisma';
 import { synthesizeVoice } from './voice-service-client.js';
+import { env } from '../config/env.js';
 
 const DEFAULT_VOICE_MALE = 'longanyang';
 const DEFAULT_VOICE_FEMALE = 'longanhuan';
@@ -28,7 +29,11 @@ export async function synthesizeForFamily(
   const voiceId = await resolveVoiceId(familyId);
   const result = await synthesizeVoice(text, voiceId);
 
-  const res = await fetch(result.audioUrl);
+  const audioUrl = result.audioUrl.startsWith('http')
+    ? result.audioUrl
+    : `${env.VOICE_SERVICE_URL}${result.audioUrl}`;
+
+  const res = await fetch(audioUrl);
   if (!res.ok) {
     throw new Error(`下载合成音频失败: ${res.status}`);
   }
