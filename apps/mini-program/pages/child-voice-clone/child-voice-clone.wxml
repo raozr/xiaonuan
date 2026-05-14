@@ -2,6 +2,17 @@
   <text class="page-title">声音复刻</text>
   <text class="page-subtitle">录制您的声音，让小暖用您的声音陪伴老人</text>
 
+  <!-- Prompt -->
+  <view class="section">
+    <view class="prompt-header">
+      <text class="section-title">参考文案</text>
+      <text class="prompt-switch" bindtap="changePrompt">换一段</text>
+    </view>
+    <view class="prompt-card">
+      <text class="prompt-text">{{prompts[currentPromptIndex]}}</text>
+    </view>
+  </view>
+
   <!-- Samples -->
   <view class="section">
     <text class="section-title">录制样本 ({{samples.length}}/3)</text>
@@ -41,5 +52,5 @@
     </view>
   </view>
 
-  <bottom-nav active="voice" />
+  <bottom-nav active="voice" familyId="{{familyId}}" />
 </view>

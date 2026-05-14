@@ -49,5 +49,5 @@
     </view>
   </view>
 
-  <bottom-nav active="feed" />
+  <bottom-nav active="feed" familyId="{{familyId}}" />
 </view>

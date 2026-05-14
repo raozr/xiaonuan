@@ -24,6 +24,32 @@
   margin-bottom: 40rpx;
 }
 
+.prompt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20rpx;
+}
+
+.prompt-switch {
+  font-size: 26rpx;
+  color: #8f4e00;
+  font-weight: 600;
+}
+
+.prompt-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 28rpx;
+  box-shadow: 0 2rpx 8rpx rgba(143, 78, 0, 0.05);
+}
+
+.prompt-text {
+  font-size: 28rpx;
+  color: #544437;
+  line-height: 1.7;
+}
+
 .section-title {
   display: block;
   font-size: 32rpx;

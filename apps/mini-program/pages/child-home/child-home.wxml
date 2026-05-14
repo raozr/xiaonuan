@@ -41,5 +41,4 @@
     <text class="logout-link" bindtap="handleLogout">退出登录</text>
   </view>
 
-  <bottom-nav active="home" />
 </view>

@@ -8,13 +8,28 @@ Page({
     samples: [],
     isRecording: false,
     loading: false,
+    currentPromptIndex: 0,
+    prompts: [
+      '大家好，我是小暖的家人。平时我最喜欢做的事情，就是在阳光明媚的下午，泡一杯热茶，坐在窗边看看窗外的风景。生活很美好，希望每一天都能开开心心的。',
+      '一二三四五，上山打老虎。老虎没打着，打到小松鼠。松鼠有几只，让我数一数。数来又数去，一二三四五。这段童谣节奏轻快，非常适合练习不同的音调和语速。',
+      '亲爱的，最近天气变凉了，一定要记得多穿点衣服，别感冒了。不管工作多忙，都要记得按时吃饭。我们都很想你，盼着你早点回家团聚。',
+    ],
   },
 
   recorderManager: null,
 
-  async onLoad() {
-    await this.resolveFamilyId();
-    if (this.data.familyId) {
+  changePrompt() {
+    const next = (this.data.currentPromptIndex + 1) % this.data.prompts.length;
+    this.setData({ currentPromptIndex: next });
+  },
+
+  async onLoad(options) {
+    let familyId = options?.familyId || '';
+    if (!familyId) {
+      familyId = await this.resolveFamilyId();
+    }
+    if (familyId) {
+      this.setData({ familyId });
       await this.loadClones();
     }
   },
@@ -29,11 +44,12 @@ Page({
     try {
       const res = await app.request({ url: '/api/family', method: 'GET' });
       if (res.statusCode === 200 && res.data && res.data.length > 0) {
-        this.setData({ familyId: res.data[0].id });
+        return res.data[0].id;
       }
     } catch (e) {
       console.error('获取家庭列表失败:', e);
     }
+    return '';
   },
 
   async loadClones() {
@@ -45,7 +61,7 @@ Page({
       if (res.statusCode === 200 && res.data.success) {
         this.setData({
           clones: res.data.data || [],
-          activeVoiceId: res.data.data.find((c) => c.status === 'READY')?.voiceId || '',
+          activeVoiceId: res.data.activeVoiceId || '',
         });
       }
     } catch (e) {

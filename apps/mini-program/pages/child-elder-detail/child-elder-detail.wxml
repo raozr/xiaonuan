@@ -77,3 +77,5 @@
   </view>
 
 </view>
+
+<bottom-nav active="overview" familyId="{{familyId}}" />

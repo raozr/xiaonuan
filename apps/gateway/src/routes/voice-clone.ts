@@ -63,6 +63,12 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
         },
       });
 
+      // 创建后自动激活该音色
+      await prisma.family.update({
+        where: { id: familyId },
+        data: { clonedVoiceId: result.voiceId },
+      });
+
       return reply.status(201).send({
         success: true,
         voiceId: result.voiceId,
@@ -171,12 +177,18 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
       return reply.status(403).send({ success: false, message: '无权访问' });
     }
 
-    const clones = await prisma.voiceClone.findMany({
-      where: { familyId },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [clones, family] = await Promise.all([
+      prisma.voiceClone.findMany({
+        where: { familyId },
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.family.findUnique({
+        where: { id: familyId },
+        select: { clonedVoiceId: true },
+      }),
+    ]);
 
-    return reply.send({ success: true, data: clones });
+    return reply.send({ success: true, data: clones, activeVoiceId: family?.clonedVoiceId ?? '' });
   });
 
   // Activate clone

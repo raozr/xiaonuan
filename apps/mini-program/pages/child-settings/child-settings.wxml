@@ -85,5 +85,5 @@
   <button class="btn-save" bindtap="save" loading="{{loading}}">保存</button>
   <button class="btn-back" bindtap="goBack">返回</button>
 
-  <bottom-nav active="settings" />
+  <bottom-nav active="settings" familyId="{{familyId}}" />
 </view>
