@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="小暖长辈端 — 用声音陪伴，让关爱触手可及。专为长辈设计的语音陪伴应用。">
+  <title>小暖长辈端 — 下载</title>
+  <style>
+    :root {
+      --primary: #E8785A;
+      --primary-dark: #D66A4E;
+      --primary-light: #FDF0EC;
+      --bg: #FFF8F3;
+      --surface: #FFFFFF;
+      --text: #3D2C24;
+      --text-secondary: #6B5B53;
+      --text-muted: #9E8E86;
+      --border: rgba(218, 194, 177, 0.5);
+      --shadow: 0 8px 30px rgba(143, 78, 0, 0.08);
+      --radius-lg: 24px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    img {
+      max-width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    .container {
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 48px 0 40px;
+      text-align: center;
+    }
+
+    .logo {
+      width: 96px;
+      height: 96px;
+      margin: 0 auto 24px;
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      background: var(--surface);
+      padding: 12px;
+    }
+
+    .logo img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      border-radius: var(--radius-md);
+    }
+
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .hero .tagline {
+      font-size: 18px;
+      color: var(--text-secondary);
+      margin-bottom: 32px;
+      font-weight: 400;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 16px 40px;
+      background: var(--primary);
+      color: #fff;
+      border-radius: var(--radius-lg);
+      font-size: 18px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      box-shadow: 0 4px 16px rgba(232, 120, 90, 0.35);
+      min-height: 56px;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 8px rgba(232, 120, 90, 0.3);
+    }
+
+    .btn svg {
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    .download-meta {
+      margin-top: 16px;
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin-top: 32px;
+      padding-top: 32px;
+      border-top: 1px solid var(--border);
+    }
+
+    .stat {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1.2;
+    }
+
+    .stat-label {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Sections */
+    .section {
+      padding: 40px 0;
+    }
+
+    .section-title {
+      font-size: 24px;
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .section-subtitle {
+      font-size: 16px;
+      color: var(--text-secondary);
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    /* Features */
+    .features {
+      display: grid;
+      gap: 16px;
+    }
+
+    .feature-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius-sm);
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    .feature-icon svg {
+      width: 24px;
+      height: 24px;
+      color: var(--primary);
+    }
+
+    .feature-card h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .feature-card p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    /* Preview (Phone mockup) */
+    .preview-section {
+      background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .phone-mockup {
+      width: 280px;
+      margin: 0 auto;
+      background: var(--text);
+      border-radius: 40px;
+      padding: 12px;
+      box-shadow: 0 20px 60px rgba(61, 44, 36, 0.2);
+    }
+
+    .phone-screen {
+      background: var(--bg);
+      border-radius: 32px;
+      overflow: hidden;
+      aspect-ratio: 9/19;
+      position: relative;
+    }
+
+    .phone-notch {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 120px;
+      height: 28px;
+      background: var(--text);
+      border-bottom-left-radius: 16px;
+      border-bottom-right-radius: 16px;
+      z-index: 2;
+    }
+
+    .screen-content {
+      padding: 48px 20px 20px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    .screen-logo {
+      width: 64px;
+      height: 64px;
+      border-radius: 16px;
+      background: var(--primary-light);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .screen-logo img {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+    }
+
+    .screen-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+
+    .screen-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .mic-button {
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: auto 0;
+      box-shadow: 0 8px 24px rgba(232, 120, 90, 0.3);
+    }
+
+    .mic-button svg {
+      width: 48px;
+      height: 48px;
+      color: #fff;
+    }
+
+    .screen-hint {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 16px;
+    }
+
+    /* Install Guide */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .step-number {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      color: var(--primary);
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .step-content h4 {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .step-note {
+      margin-top: 8px;
+      padding: 10px 12px;
+      background: #FFF9E6;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: #8A6D1B;
+      line-height: 1.4;
+    }
+
+    /* Footer */
+    .footer {
+      padding: 32px 0;
+      text-align: center;
+      border-top: 1px solid var(--border);
+    }
+
+    .footer p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .footer .brand {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    /* Desktop tweaks */
+    @media (min-width: 640px) {
+      .hero {
+        padding: 64px 0 48px;
+      }
+
+      .hero h1 {
+        font-size: 40px;
+      }
+
+      .hero .tagline {
+        font-size: 20px;
+      }
+
+      .features {
+        grid-template-columns: repeat(3, 1fr);
+      }
+
+      .section {
+        padding: 56px 0;
+      }
+
+      .phone-mockup {
+        width: 320px;
+      }
+    }
+
+    /* Reduced motion */
+    @media (prefers-reduced-motion: reduce) {
+      html {
+        scroll-behavior: auto;
+      }
+      .btn {
+        transition: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <section class="hero">
+    <div class="container">
+      <div class="logo">
+        <img src="landing/logo.png" alt="小暖长辈端">
+      </div>
+      <h1>小暖长辈端</h1>
+      <p class="tagline">用声音陪伴，让关爱触手可及</p>
+      <a class="btn" href="downloads/xiaonuan-elder.apk" download>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/>
+        </svg>
+        下载 Android 版
+      </a>
+      <p class="download-meta">APK 文件 · 适用于 Android 8.0 及以上</p>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-value">语音</div>
+          <div class="stat-label">一键对话</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">家人</div>
+          <div class="stat-label">声音克隆</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">实时</div>
+          <div class="stat-label">动态同步</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">核心功能</h2>
+      <p class="section-subtitle">专为长辈设计的智能陪伴体验</p>
+      <div class="features">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+            </svg>
+          </div>
+          <h3>语音聊天</h3>
+          <p>按住按钮说话，小暖随时回应。无需打字，像打电话一样自然交流。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z"/>
+            </svg>
+          </div>
+          <h3>家庭动态</h3>
+          <p>子女分享的生活点滴，自动转为语音播报。让老人随时感受家人关怀。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/>
+            </svg>
+          </div>
+          <h3>语音克隆</h3>
+          <p>录制家人声音，让 AI 用熟悉的声音陪伴老人，温暖更亲近。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section preview-section">
+    <div class="container">
+      <h2 class="section-title">界面预览</h2>
+      <p class="section-subtitle">简洁设计，老人也能轻松上手</p>
+      <div class="phone-mockup">
+        <div class="phone-screen">
+          <div class="phone-notch"></div>
+          <div class="screen-content">
+            <div class="screen-logo">
+              <img src="landing/logo.png" alt="小暖">
+            </div>
+            <div class="screen-title">小暖</div>
+            <div class="screen-subtitle">随时陪伴您</div>
+            <div class="mic-button">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"/>
+              </svg>
+            </div>
+            <p class="screen-hint">按住说话，松开发送</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">安装步骤</h2>
+      <p class="section-subtitle">简单三步，即可开始使用</p>
+      <div class="steps">
+        <div class="step">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>下载安装包</h4>
+            <p>点击上方"下载 Android 版"按钮，将 APK 文件保存到手机。</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>允许安装未知来源应用</h4>
+            <p>打开下载的 APK 文件，若系统提示"禁止安装"，请在设置中允许"安装未知来源应用"。</p>
+            <div class="step-note">不同品牌手机路径略有不同，通常在 设置 → 安全 → 未知来源 中开启。</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>完成安装并登录</h4>
+            <p>按提示完成安装，打开应用后使用子女分享的邀请码绑定家庭即可开始使用。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <p><span class="brand">小暖</span> · 用科技传递温暖</p>
+    </div>
+  </footer>
+
+  <script>
+    (function() {
+      // Detect if user is on iOS and show a gentle hint
+      var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      if (isIOS) {
+        var meta = document.querySelector('.download-meta');
+        if (meta) {
+          meta.textContent = '当前页面仅提供 Android 版下载，iOS 版本敬请期待。';
+          meta.style.color = '#9E8E86';
+        }
+      }
+
+      // Track download button clicks with a simple console log
+      var btn = document.querySelector('.btn');
+      if (btn) {
+        btn.addEventListener('click', function() {
+          console.log('[Landing] Download clicked');
+        });
+      }
+    })();
+  </script>
+</body>
+</html>

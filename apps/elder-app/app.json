@@ -5,6 +5,7 @@
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
+    "icon": "./assets/logo-smalll.jpg",
     "platforms": ["ios", "android"],
     "updates": {
       "fallbackToCacheTimeout": 0,
@@ -18,7 +19,11 @@
       "bundleIdentifier": "com.xiaonuan.elderapp"
     },
     "android": {
-      "package": "com.xiaonuan.elderapp"
+      "package": "com.xiaonuan.elderapp",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo-smalll.jpg",
+        "backgroundColor": "#FFF8F3"
+      }
     }
   }
 }
