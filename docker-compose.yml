@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: xiaonuan
       POSTGRES_DB: xiaonuan
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./data/postgres:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U xiaonuan']
       interval: 5s
@@ -20,7 +20,7 @@ services:
     image: qdrant/qdrant:v1.12.0
     container_name: xiaonuan-qdrant
     volumes:
-      - qdrant_data:/qdrant/storage
+      - ./data/qdrant:/qdrant/storage
     networks:
       - app-network
 
@@ -28,7 +28,7 @@ services:
     image: redis:7-alpine
     container_name: xiaonuan-redis
     volumes:
-      - redis_data:/data
+      - ./data/redis:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -48,7 +48,7 @@ services:
       - AUDIO_STORAGE_PATH=/app/data/audio
       - PORT=8000
     volumes:
-      - voice_audio_data:/app/data/audio
+      - ./data/voice-audio:/app/data/audio
     networks:
       - app-network
 
@@ -89,9 +89,3 @@ services:
 networks:
   app-network:
     external: true
-
-volumes:
-  postgres_data:
-  qdrant_data:
-  redis_data:
-  voice_audio_data:
