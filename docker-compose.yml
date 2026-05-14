@@ -69,7 +69,9 @@ services:
         condition: service_started
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=${PORT:-3000}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
       - DATABASE_URL=postgresql://xiaonuan:xiaonuan@xiaonuan-postgres:5432/xiaonuan
       - QDRANT_URL=http://xiaonuan-qdrant:6333
       - REDIS_URL=redis://xiaonuan-redis:6379
