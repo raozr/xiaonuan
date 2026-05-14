@@ -29,14 +29,20 @@ async def transcribe(
             temp_path = tmp.name
 
         text = bailian_asr.transcribe(temp_path)
+        logger.info(f"ASR transcribed text='{text}'")
 
         if not text or not text.strip():
             return {"success": False, "message": "未能识别到语音内容"}
 
         return {"success": True, "text": text}
     except Exception as e:
-        logger.error(f"ASR endpoint error: {e}")
-        raise HTTPException(status_code=500, detail="语音识别失败")
+        import traceback
+        err_detail = f"ASR endpoint error: {e}\n{traceback.format_exc()}"
+        logger.error(err_detail)
+        # Write to local log file so we can read it directly
+        with open("/tmp/voice-service-asr.log", "a", encoding="utf-8") as f:
+            f.write(err_detail + "\n---\n")
+        raise HTTPException(status_code=500, detail=f"语音识别失败: {e}")
     finally:
         if temp_path and os.path.exists(temp_path):
             os.remove(temp_path)

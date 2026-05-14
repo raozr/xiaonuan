@@ -37,6 +37,7 @@ def synthesize(text: str, voice_id: Optional[str] = None) -> bytes:
         raise ValueError("Text exceeds 1000 character limit")
 
     voice = voice_id or DEFAULT_VOICES["female"]
+    logger.info(f"TTS synthesizing with voice={voice} (requested voice_id={voice_id})")
 
     try:
         synthesizer = SpeechSynthesizer(

@@ -20,8 +20,12 @@ def _upload_file_to_bailian(file_path: str) -> str:
     url = "https://dashscope.aliyuncs.com/api/v1/files"
     headers = {"Authorization": f"Bearer {settings.bailian_api_key}"}
 
+    # Determine MIME type based on actual file extension
+    ext = os.path.splitext(file_path)[1].lower()
+    mime_type = "audio/wav" if ext == ".wav" else "audio/mpeg"
+
     with open(file_path, "rb") as f:
-        files = {"file": (os.path.basename(file_path), f, "audio/mpeg")}
+        files = {"file": (os.path.basename(file_path), f, mime_type)}
         response = httpx.post(url, headers=headers, files=files, timeout=30.0)
 
     response.raise_for_status()
