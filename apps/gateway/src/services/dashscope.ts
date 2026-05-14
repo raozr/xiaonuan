@@ -34,7 +34,7 @@ export interface ChatResponse {
   }>;
 }
 
-export async function chatCompletion(
+async function _chatCompletionOnce(
   messages: ChatMessage[],
   options?: { temperature?: number; maxTokens?: number; tools?: any[] }
 ): Promise<ChatResponse> {
@@ -43,6 +43,7 @@ export async function chatCompletion(
     messages,
     temperature: options?.temperature ?? 0.85,
     max_tokens: options?.maxTokens ?? 1024,
+    enable_thinking: false,
   };
 
   if (options?.tools && options.tools.length > 0) {
@@ -50,7 +51,7 @@ export async function chatCompletion(
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30000);
+  const timeout = setTimeout(() => controller.abort(), 60000);
 
   try {
     const res = await fetch(`${HTTP_BASE}/compatible-mode/v1/chat/completions`, {
@@ -71,6 +72,7 @@ export async function chatCompletion(
     }
 
     const data = (await res.json()) as Record<string, unknown>;
+    console.log('[Dashscope] LLM raw response:', JSON.stringify(data).slice(0, 2000));
     const choices = data.choices as Array<Record<string, unknown>> | undefined;
     const first = choices?.[0];
     const msg = first?.message as ChatResponse | undefined;
@@ -86,7 +88,22 @@ export async function chatCompletion(
   } catch (err) {
     clearTimeout(timeout);
     if (err instanceof Error && err.name === 'AbortError') {
-      throw new Error('LLM 请求超时 (30s)');
+      throw new Error('LLM 请求超时 (60s)');
+    }
+    throw err;
+  }
+}
+
+export async function chatCompletion(
+  messages: ChatMessage[],
+  options?: { temperature?: number; maxTokens?: number; tools?: any[] }
+): Promise<ChatResponse> {
+  try {
+    return await _chatCompletionOnce(messages, options);
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('超时')) {
+      console.warn('[Dashscope] LLM 超时，尝试重试...');
+      return await _chatCompletionOnce(messages, options);
     }
     throw err;
   }

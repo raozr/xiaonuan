@@ -164,11 +164,13 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
     ];
 
     try {
+      console.log('[PiAgent] LLM input (last user msg):', input);
       let reply = await chatCompletion(messages, {
         temperature: 0.85,
         maxTokens: 512,
         tools: agentTools,
       });
+      console.log('[PiAgent] LLM raw reply.content:', JSON.stringify(reply.content));
 
       // Handle tool calls loop (up to 3 turns)
       let toolTurns = 0;
@@ -209,13 +211,19 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
           maxTokens: 512,
           tools: agentTools,
         });
+        console.log('[PiAgent] LLM raw reply.content (after tools):', JSON.stringify(reply.content));
       }
 
-      const content = cleanLLMResponse(reply.content ?? '小暖刚才没听清，您能再说一遍吗？');
+      const content = cleanLLMResponse(reply.content ?? '哎呀，小暖刚才走神了，您再说一遍好吗？');
+      console.log('[PiAgent] LLM cleaned content:', content);
       return content;
     } catch (err) {
-      console.error('[PiAgent] LLM 调用失败:', err);
-      return '小暖刚才没听清，您能再说一遍吗？';
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('[PiAgent] LLM 调用失败:', errMsg);
+      if (errMsg.includes('超时')) {
+        return '哎呀，小暖刚才走神了，您再说一遍好吗？';
+      }
+      return '今天网络有点慢，您能再说一遍吗？';
     }
   }
 
