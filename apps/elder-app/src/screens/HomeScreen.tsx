@@ -34,6 +34,7 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
   const pressStartTime = useRef<number>(0);
   const sessionReadyRef = useRef(false);
   const wasPlayingRef = useRef(false);
+  const lastAudioUrlRef = useRef<string | null>(null);
 
   const { isRecording, isPlaying, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
 
@@ -45,8 +46,14 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     } else if (msg.type === 'message:ai_text') {
       setAiText(msg.payload.text);
     } else if (msg.type === 'ai:audio') {
+      const url = msg.payload.url as string;
+      if (lastAudioUrlRef.current === url) {
+        console.log('[HomeScreen] Skip duplicate audio:', url);
+        return;
+      }
+      lastAudioUrlRef.current = url;
       setState('SPEAKING');
-      playAudio(msg.payload.url);
+      playAudio(url);
     } else if (msg.type === 'error') {
       console.error('[HomeScreen] Server error:', msg.payload);
       if (msg.payload.code === 401) {

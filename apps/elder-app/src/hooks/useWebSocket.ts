@@ -53,7 +53,7 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
     };
 
     ws.current.onclose = (e) => {
-      console.log('[WS] Disconnected', e.reason);
+      console.log('[WS] Disconnected code=', e.code, 'reason=', e.reason);
       setIsConnected(false);
 
       clearReconnectTimer();
@@ -65,7 +65,11 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
     };
 
     ws.current.onerror = (e) => {
-      console.error('[WS] Error', e);
+      console.error('[WS] Error event:', {
+        type: e.type,
+        target: (e.target as WebSocket)?.url,
+        readyState: (e.target as WebSocket)?.readyState,
+      });
     };
   }, [url, token, clearReconnectTimer]);
 
