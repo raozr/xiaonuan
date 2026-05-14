@@ -108,16 +108,29 @@ function wait_for_health() {
 function do_backup() {
     mkdir -p "${BACKUP_DIR}"
     local timestamp=$(date +%Y%m%d_%H%M%S)
-    local backup_file="${BACKUP_DIR}/postgres_${timestamp}.sql.gz"
 
-    echo -e "${BLUE}正在备份数据库...${NC}"
+    # 1. 数据库标准 SQL 备份（可跨版本恢复）
+    local sql_file="${BACKUP_DIR}/postgres_${timestamp}.sql.gz"
+    echo -e "${BLUE}正在备份 PostgreSQL...${NC}"
     if ${COMPOSE_CMD} ps | grep -q xiaonuan-postgres; then
-        ${COMPOSE_CMD} exec postgres pg_dump -U xiaonuan xiaonuan | gzip > "${backup_file}"
-        echo -e "${GREEN}备份完成: ${backup_file}${NC}"
+        ${COMPOSE_CMD} exec -T postgres pg_dump -U xiaonuan xiaonuan | gzip > "${sql_file}"
+        echo -e "${GREEN}SQL 备份完成: ${sql_file}${NC}"
     else
         echo -e "${RED}错误: postgres 容器未运行，无法备份${NC}"
         exit 1
     fi
+
+    # 2. 完整数据目录打包（含向量库、语音文件）
+    local data_file="${BACKUP_DIR}/data_full_${timestamp}.tar.gz"
+    echo -e "${BLUE}正在打包 data/ 目录...${NC}"
+    if [ -d "data" ]; then
+        tar czf "${data_file}" data/
+        echo -e "${GREEN}数据打包完成: ${data_file}${NC}"
+    else
+        echo -e "${YELLOW}警告: data/ 目录不存在，跳过完整打包${NC}"
+    fi
+
+    echo -e "${GREEN}所有备份已完成，存放于 ${BACKUP_DIR}/${NC}"
 }
 
 function do_clean() {
