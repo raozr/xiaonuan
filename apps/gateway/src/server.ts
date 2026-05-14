@@ -30,7 +30,14 @@ await app.register(jwt, {
   secret: env.JWT_SECRET,
 });
 
-await app.register(websocket);
+await app.register(websocket, {
+  errorHandler: (error, socket, request) => {
+    request.log.error(error);
+    if (socket.readyState === 1) {
+      socket.close(1011, 'Internal server error');
+    }
+  }
+});
 
 await app.register(healthRoutes, { prefix: '/health' });
 await app.register(authRoutes, { prefix: '/api/auth' });

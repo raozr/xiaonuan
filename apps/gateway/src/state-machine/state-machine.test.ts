@@ -11,11 +11,11 @@ describe('definePhaseTransition', () => {
   });
 
   it('GREETING + elder_silent_30s -> CLOSING', () => {
-    expect(definePhaseTransition('GREETING', 'elder_silent_30s')).toBe('CLOSING');
+    expect(definePhaseTransition('GREETING', 'elder_silent_timeout')).toBe('CLOSING');
   });
 
-  it('ACTIVE_CHAT + elder_silent_30s -> CLOSING', () => {
-    expect(definePhaseTransition('ACTIVE_CHAT', 'elder_silent_30s')).toBe('CLOSING');
+  it('ACTIVE_CHAT + elder_silent_timeout -> CLOSING', () => {
+    expect(definePhaseTransition('ACTIVE_CHAT', 'elder_silent_timeout')).toBe('CLOSING');
   });
 
   it('ACTIVE_CHAT + session_close -> ENDED', () => {
@@ -34,14 +34,14 @@ describe('definePhaseTransition', () => {
     expect(definePhaseTransition('CLOSING', 'session_close')).toBe('ENDED');
   });
 
-  it('CLOSING + elder_silent_30s stays CLOSING', () => {
-    expect(definePhaseTransition('CLOSING', 'elder_silent_30s')).toBe('CLOSING');
+  it('CLOSING + elder_silent_timeout stays CLOSING', () => {
+    expect(definePhaseTransition('CLOSING', 'elder_silent_timeout')).toBe('CLOSING');
   });
 
   it('ENDED + any event stays ENDED', () => {
     const events: PhaseEvent[] = [
       'first_message_received',
-      'elder_silent_30s',
+      'elder_silent_timeout',
       'elder_speaks_again',
       'session_close',
     ];

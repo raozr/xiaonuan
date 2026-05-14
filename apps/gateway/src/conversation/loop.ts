@@ -3,6 +3,7 @@ import {
   saveMessage,
   incrementTurnCount,
   getSessionPhase,
+  getRecentMessages,
 } from './turn-manager.js';
 import { buildSystemPrompt } from '../agent/prompt-builder.js';
 import { chatCompletion } from '../services/dashscope.js';
@@ -119,16 +120,18 @@ export async function sendClosingMessage(
   baseUrl: string = 'http://192.168.4.70:3000'
 ) {
   try {
+    const recentMessages = await getRecentMessages(sessionId, 6);
     const systemPrompt = await buildSystemPrompt(familyId, [], {
       time: new Date(),
       turnCount: 0,
       memoryText: '',
     });
-    const messages = [
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       {
         role: 'system' as const,
-        content: `${systemPrompt}\n\n当前情境：老人已 30 秒未说话，请温和地道别，说一句简短的关心话（2-3句话）。`,
+        content: `${systemPrompt}\n\n当前情境：老人已 3 分钟未说话。请根据上面的聊天记录，结合老人最近提到的事（比如运动、钓鱼、休息等），说一句简短、温暖、有针对性的关心话（2-3句话），不要泛泛地说"歇着"。`,
       },
+      ...recentMessages,
       { role: 'user' as const, content: '（静默）' },
     ];
     const reply = await chatCompletion(messages, {

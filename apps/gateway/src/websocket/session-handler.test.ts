@@ -22,6 +22,7 @@ describe('WebSocket Session Handler', () => {
       }),
       send: vi.fn(),
       close: vi.fn(),
+      readyState: 1,
     };
 
     testFamily = await prisma.family.create({
@@ -149,7 +150,10 @@ describe('WebSocket Session Handler', () => {
     vi.useRealTimers();
   });
 
-  it('should transition to CLOSING after 30s silence from GREETING', async () => {
+  it('should transition to CLOSING after 3min silence since last reply', async () => {
+    const { handleVoiceText } = await import('../conversation/loop.js');
+    vi.mocked(handleVoiceText).mockResolvedValueOnce(undefined);
+
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const req = {
       query: { token: 'valid-jwt' },
@@ -159,11 +163,17 @@ describe('WebSocket Session Handler', () => {
     await handler(mockSocket, req);
     messageHandler!(JSON.stringify({ type: 'session:create', payload: {} }));
 
-    // Wait for prisma session creation + resetSilenceTimer registration
+    // Wait for prisma session creation
     await new Promise((r) => setTimeout(r, 200));
 
-    // Fast-forward 30s silence
-    vi.advanceTimersByTime(30000);
+    // 新会话在 GREETING 阶段不会自动计时，需先有一次对话
+    messageHandler!(
+      JSON.stringify({ type: 'message:voice_text', payload: { text: '你好' } })
+    );
+    await new Promise((r) => setTimeout(r, 200));
+
+    // Fast-forward 3min silence after the reply
+    vi.advanceTimersByTime(180000);
 
     // Wait for handleSilence async operations
     await new Promise((r) => setTimeout(r, 200));
@@ -171,16 +181,18 @@ describe('WebSocket Session Handler', () => {
     const sentMessages = mockSocket.send.mock.calls.map((call: any) =>
       JSON.parse(call[0])
     );
-    const phaseChanged = sentMessages.find(
-      (m: any) => m.type === 'phase:changed'
+    const phaseChangesToClosing = sentMessages.filter(
+      (m: any) => m.type === 'phase:changed' && m.payload.phase === 'CLOSING'
     );
-    expect(phaseChanged).toBeDefined();
-    expect(phaseChanged.payload.phase).toBe('CLOSING');
+    expect(phaseChangesToClosing).toHaveLength(1);
 
     vi.useRealTimers();
   });
 
   it('should not re-trigger CLOSING after already in CLOSING state', async () => {
+    const { handleVoiceText } = await import('../conversation/loop.js');
+    vi.mocked(handleVoiceText).mockResolvedValueOnce(undefined);
+
     vi.useFakeTimers({ shouldAdvanceTime: true });
     const req = {
       query: { token: 'valid-jwt' },
@@ -192,8 +204,14 @@ describe('WebSocket Session Handler', () => {
 
     await new Promise((r) => setTimeout(r, 200));
 
-    // First 30s silence -> CLOSING
-    vi.advanceTimersByTime(30000);
+    // Trigger a conversation first so timer starts
+    messageHandler!(
+      JSON.stringify({ type: 'message:voice_text', payload: { text: '你好' } })
+    );
+    await new Promise((r) => setTimeout(r, 200));
+
+    // First 3min silence -> CLOSING
+    vi.advanceTimersByTime(180000);
     await new Promise((r) => setTimeout(r, 200));
 
     const phaseChanges = mockSocket.send.mock.calls
@@ -201,8 +219,8 @@ describe('WebSocket Session Handler', () => {
       .filter((m: any) => m.type === 'phase:changed' && m.payload.phase === 'CLOSING');
     expect(phaseChanges).toHaveLength(1);
 
-    // Advance another 30s - timer should be cleared, no duplicate CLOSING
-    vi.advanceTimersByTime(30000);
+    // Advance another 3min - timer should be cleared, no duplicate CLOSING
+    vi.advanceTimersByTime(180000);
     await new Promise((r) => setTimeout(r, 200));
 
     const phaseChangesAfter = mockSocket.send.mock.calls

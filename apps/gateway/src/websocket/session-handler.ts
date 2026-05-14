@@ -11,54 +11,31 @@ import { generateCheckpoint } from '../memory/checkpoint-service.js';
 import { transcribeVoice } from '../services/voice-service-client.js';
 import { convertM4aToWav } from '../utils/audio-convert.js';
 
+type AuthUser = { familyId?: string; role?: string; deviceId?: string; userId?: string };
+
 export function createWebSocketHandler(app: FastifyInstance) {
   return async (socket: WebSocket, req: FastifyRequest) => {
-    // Auth
-    let user: { familyId?: string; role?: string; deviceId?: string; userId?: string } | null = null;
-    try {
-      const token =
-        (req.query as Record<string, string>)?.token ||
-        req.headers.authorization?.replace('Bearer ', '');
-      if (!token) {
-        socket.close();
-        return;
-      }
-      user = app.jwt.verify(token) as { familyId?: string; role?: string; deviceId?: string; userId?: string };
-    } catch {
-      socket.close();
-      return;
-    }
-
-    if (!user?.familyId) {
-      // For children, familyId is optional in the token (they pass it per request or we need to find it)
-      // But for elders, it's mandatory.
-      if (user?.role !== 'CHILD') {
-        socket.close();
-        return;
-      }
-    }
-
-    // Verify elder deviceId if applicable
-    if (user?.role === 'ELDER' && user.deviceId) {
-      const profile = await prisma.elderProfile.findUnique({
-        where: { familyId: user.familyId },
-        select: { deviceId: true }
-      });
-      if (!profile || profile.deviceId !== user.deviceId) {
-        socket.close();
-        return;
-      }
-    }
-
     let sessionId: string | null = null;
     let missedPongs = 0;
     let heartbeatInterval: NodeJS.Timeout | null = null;
     let silenceTimeout: NodeJS.Timeout | null = null;
     let checkpointTimeout: NodeJS.Timeout | null = null;
+    let authenticatedUser: AuthUser | null = null;
+    let closingMessageSent = false;
+
+    let authResolve!: (user: AuthUser) => void;
+    let authReject!: (reason: string) => void;
+    const authPromise = new Promise<AuthUser>((resolve, reject) => {
+      authResolve = resolve;
+      authReject = reject;
+    });
+
+    const baseUrl = `${req.protocol}://${req.hostname}${req.port ? ':' + req.port : ''}`;
 
     startHeartbeat();
 
     function sendMessage(type: string, payload: unknown) {
+      if (socket.readyState !== 1) return;
       socket.send(
         JSON.stringify({ type, payload, timestamp: Date.now() })
       );
@@ -67,7 +44,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
     function startHeartbeat() {
       heartbeatInterval = setInterval(() => {
         if (missedPongs >= 2) {
-          socket.close();
+          socket.close(1001, 'Heartbeat timeout');
           return;
         }
         missedPongs++;
@@ -89,7 +66,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
       }
       silenceTimeout = setTimeout(() => {
         handleSilence();
-      }, 30000);
+      }, 180000);
     }
 
     function clearSilenceTimer() {
@@ -101,16 +78,20 @@ export function createWebSocketHandler(app: FastifyInstance) {
 
     async function handleSilence() {
       if (!sessionId) return;
+      if (closingMessageSent) return;
+      const user = authenticatedUser;
+      if (!user?.familyId) return;
       try {
         const currentPhase = await getSessionPhase(sessionId);
         if (currentPhase === 'ACTIVE_CHAT' || currentPhase === 'GREETING') {
           const newPhase = definePhaseTransition(
             currentPhase,
-            'elder_silent_30s'
+            'elder_silent_timeout'
           );
           await updateSessionPhase(sessionId, newPhase);
           sendMessage('phase:changed', { phase: newPhase });
-          await sendClosingMessage(sessionId, user!.familyId!, socket, baseUrl);
+          await sendClosingMessage(sessionId, user.familyId, socket, baseUrl);
+          closingMessageSent = true;
           clearSilenceTimer();
         }
       } catch (err) {
@@ -118,9 +99,15 @@ export function createWebSocketHandler(app: FastifyInstance) {
       }
     }
 
-    const baseUrl = `${req.protocol}://${req.hostname}${req.port ? ':' + req.port : ''}`;
-
+    // Register handlers IMMEDIATELY before any async auth
     socket.on('message', async (raw: Buffer) => {
+      let user: AuthUser;
+      try {
+        user = await authPromise;
+      } catch {
+        return;
+      }
+
       try {
         const { type, payload } = JSON.parse(raw.toString());
         app.log.info(`[WS] received type=${type} sessionId=${sessionId}`);
@@ -133,14 +120,14 @@ export function createWebSocketHandler(app: FastifyInstance) {
         if (type === 'session:create') {
           const session = await prisma.session.create({
             data: {
-              familyId: user!.familyId!,
+              familyId: user.familyId!,
               phase: 'GREETING',
             },
           });
           sessionId = session.id;
           app.log.info(`[WS] session created id=${session.id}`);
           sendMessage('session:created', { sessionId: session.id });
-          resetSilenceTimer();
+          // 新会话在老人首次说话前不启动静默计时，避免还没说话就收到道别
           return;
         }
 
@@ -151,7 +138,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
             return;
           }
           const session = await prisma.session.findFirst({
-            where: { id: targetId, familyId: user!.familyId! },
+            where: { id: targetId, familyId: user.familyId! },
           });
           if (!session) {
             sendMessage('error', { message: '会话不存在' });
@@ -194,9 +181,12 @@ export function createWebSocketHandler(app: FastifyInstance) {
 
           clearSilenceTimer();
           app.log.info('[WS] calling handleVoiceText...');
-          await handleVoiceText(sessionId, user!.familyId!, text, socket, baseUrl);
-          app.log.info('[WS] handleVoiceText done');
-          resetSilenceTimer();
+          try {
+            await handleVoiceText(sessionId, user.familyId!, text, socket, baseUrl);
+          } finally {
+            app.log.info('[WS] handleVoiceText done');
+            resetSilenceTimer();
+          }
 
           if (currentPhase === 'GREETING') {
             const newPhase = definePhaseTransition(
@@ -234,8 +224,14 @@ export function createWebSocketHandler(app: FastifyInstance) {
             text = asrResult.success ? (asrResult.text ?? '') : '';
             app.log.info(`[WS] ASR result: ${text}`);
           } catch (asrErr: any) {
-            app.log.error('[WS] ASR failed:', asrErr.message || asrErr);
-            sendMessage('error', { message: asrErr.message || '语音识别失败' });
+            const errMsg = asrErr instanceof Error ? asrErr.message : String(asrErr);
+            app.log.error(`[WS] ASR failed: ${errMsg}`);
+            // Write to local log file for direct inspection
+            try {
+              const fs = await import('fs/promises');
+              await fs.appendFile('/tmp/gateway-asr.log', `[${new Date().toISOString()}] ASR failed: ${errMsg}\n`, 'utf-8');
+            } catch {}
+            sendMessage('error', { message: errMsg || '语音识别失败' });
             return;
           }
 
@@ -258,9 +254,12 @@ export function createWebSocketHandler(app: FastifyInstance) {
 
           clearSilenceTimer();
           app.log.info('[WS] calling handleVoiceText with ASR result...');
-          await handleVoiceText(sessionId, user!.familyId!, text, socket, baseUrl);
-          app.log.info('[WS] handleVoiceText done');
-          resetSilenceTimer();
+          try {
+            await handleVoiceText(sessionId, user.familyId!, text, socket, baseUrl);
+          } finally {
+            app.log.info('[WS] handleVoiceText done');
+            resetSilenceTimer();
+          }
 
           if (currentPhase === 'GREETING') {
             const newPhase = definePhaseTransition(
@@ -282,6 +281,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
     socket.on('close', () => {
       stopHeartbeat();
       clearSilenceTimer();
+      authReject('Socket closed');
       if (sessionId) {
         checkpointTimeout = setTimeout(async () => {
           try {
@@ -301,5 +301,52 @@ export function createWebSocketHandler(app: FastifyInstance) {
         }, 5 * 60 * 1000);
       }
     });
+
+    // Perform auth
+    try {
+      const token =
+        (req.query as Record<string, string>)?.token ||
+        req.headers.authorization?.replace('Bearer ', '');
+      if (!token) {
+        authReject('Missing token');
+        socket.close(1008, 'Missing token');
+        return;
+      }
+      const user = app.jwt.verify(token) as AuthUser;
+
+      if (!user?.familyId) {
+        if (user?.role !== 'CHILD') {
+          authReject('Missing familyId');
+          socket.close(1008, 'Missing familyId');
+          return;
+        }
+      }
+
+      if (user?.role === 'ELDER' && user.deviceId) {
+        try {
+          const profile = await prisma.elderProfile.findUnique({
+            where: { familyId: user.familyId },
+            select: { deviceId: true }
+          });
+          if (!profile || profile.deviceId !== user.deviceId) {
+            authReject('Invalid device');
+            socket.close(1008, 'Invalid device');
+            return;
+          }
+        } catch (err) {
+          app.log.error(`[WebSocket] 验证老人设备失败: ${err instanceof Error ? err.message : String(err)}`);
+          authReject('Server error');
+          socket.close(1011, 'Server error');
+          return;
+        }
+      }
+
+      authenticatedUser = user;
+      authResolve(user);
+    } catch {
+      authReject('Invalid token');
+      socket.close(1008, 'Invalid token');
+      return;
+    }
   };
 }
