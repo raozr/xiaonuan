@@ -24,7 +24,7 @@ async function createUserAndFamily(elderName: string, overrides?: { inviteCode?:
         create: {
           userId: user.id,
           name: user.phone,
-          phone: user.phone,
+          phone: user.phone ?? '',
           isPrimary: true,
         },
       },
@@ -373,7 +373,7 @@ describe('DELETE /api/family/:familyId', () => {
         userId: secondaryUser.id,
         familyId: family.id,
         name: secondaryUser.phone,
-        phone: secondaryUser.phone,
+        phone: secondaryUser.phone ?? '',
         isPrimary: false,
       },
     });

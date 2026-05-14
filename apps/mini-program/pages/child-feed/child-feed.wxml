@@ -48,4 +48,6 @@
       <text class="empty-text">还没有记录，快去告诉小暖一件事吧</text>
     </view>
   </view>
+
+  <bottom-nav active="feed" />
 </view>

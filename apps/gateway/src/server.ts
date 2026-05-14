@@ -12,6 +12,7 @@ import { meRoutes } from './routes/me.js';
 import { sessionRoutes } from './routes/session.js';
 import { asrRoutes } from './routes/asr.js';
 import { ttsRoutes } from './routes/tts.js';
+import { voiceCloneRoutes } from './routes/voice-clone.js';
 import { authenticate } from './middleware/auth.js';
 
 const app = Fastify({
@@ -50,6 +51,11 @@ await app.register(async (apiRoutes) => {
   await authenticate(apiRoutes);
   await ttsRoutes(apiRoutes);
 }, { prefix: '/api/tts' });
+
+await app.register(async (apiRoutes) => {
+  await authenticate(apiRoutes);
+  await voiceCloneRoutes(apiRoutes);
+}, { prefix: '/api/voice-clone' });
 
 // Serve static files (tts, feeds)
 const staticPlugin = (await import('@fastify/static')).default;

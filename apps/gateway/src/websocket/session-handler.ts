@@ -8,7 +8,7 @@ import {
   getSessionPhase,
 } from '../conversation/turn-manager.js';
 import { generateCheckpoint } from '../memory/checkpoint-service.js';
-import { recognizeSpeech } from '../services/nls.js';
+import { transcribeVoice } from '../services/voice-service-client.js';
 import { convertM4aToWav } from '../utils/audio-convert.js';
 
 export function createWebSocketHandler(app: FastifyInstance) {
@@ -230,7 +230,8 @@ export function createWebSocketHandler(app: FastifyInstance) {
             app.log.info('[WS] converting m4a to wav...');
             const wavBuffer = await convertM4aToWav(audioBuffer);
             app.log.info(`[WS] converted to wav, size=${wavBuffer.length}`);
-            text = await recognizeSpeech(wavBuffer, 'wav', 16000);
+            const asrResult = await transcribeVoice(wavBuffer, 'wav', 16000);
+            text = asrResult.success ? (asrResult.text ?? '') : '';
             app.log.info(`[WS] ASR result: ${text}`);
           } catch (asrErr: any) {
             app.log.error('[WS] ASR failed:', asrErr.message || asrErr);
@@ -273,7 +274,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           return;
         }
       } catch (err) {
-        app.log.error('[WS] message handler error:', err);
+        app.log.error(`[WS] message handler error: ${err instanceof Error ? err.message : String(err)}`);
         sendMessage('error', { message: '消息格式错误' });
       }
     });

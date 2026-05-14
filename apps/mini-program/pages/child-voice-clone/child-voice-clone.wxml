@@ -1,0 +1,45 @@
+<view class="container">
+  <text class="page-title">声音复刻</text>
+  <text class="page-subtitle">录制您的声音，让小暖用您的声音陪伴老人</text>
+
+  <!-- Samples -->
+  <view class="section">
+    <text class="section-title">录制样本 ({{samples.length}}/3)</text>
+    <view class="sample-list" wx:if="{{samples.length > 0}}">
+      <view class="sample-item" wx:for="{{samples}}" wx:key="index">
+        <text class="sample-name">样本 {{index + 1}}</text>
+        <text class="sample-remove" bindtap="removeSample" data-index="{{index}}">删除</text>
+      </view>
+    </view>
+    <view class="record-area">
+      <view class="record-btn {{isRecording ? 'recording' : ''}}" bindtouchstart="startRecord" bindtouchend="stopRecord">
+        <text class="record-icon">🎙️</text>
+      </view>
+      <text class="record-hint">{{isRecording ? '松手结束' : '按住说话'}}</text>
+    </view>
+  </view>
+
+  <button class="btn-primary" bindtap="createClone" loading="{{loading}}" disabled="{{samples.length === 0 || loading}}">
+    开始复刻
+  </button>
+
+  <!-- Clones List -->
+  <view class="section" wx:if="{{clones.length > 0}}">
+    <text class="section-title">已复刻音色</text>
+    <view class="clone-list">
+      <view class="clone-card" wx:for="{{clones}}" wx:key="id">
+        <view class="clone-info">
+          <text class="clone-status {{item.status}}">{{item.status === 'READY' ? '可用' : item.status}}</text>
+          <text class="clone-date">{{item.createdAt}}</text>
+        </view>
+        <view class="clone-actions">
+          <text class="action-text activate" wx:if="{{item.voiceId !== activeVoiceId}}" bindtap="activateClone" data-voice-id="{{item.voiceId}}">激活</text>
+          <text class="action-text active" wx:if="{{item.voiceId === activeVoiceId}}">已激活</text>
+          <text class="action-text delete" bindtap="deleteClone" data-voice-id="{{item.voiceId}}">删除</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <bottom-nav active="voice" />
+</view>

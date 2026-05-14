@@ -1,13 +1,16 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { synthesizeSpeech } from '../services/nls.js';
+import { synthesizeVoice } from '../services/voice-service-client.js';
+import { resolveVoiceId } from '../services/voice.js';
 import { authenticate } from '../middleware/auth.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { randomUUID } from 'crypto';
+import { prisma } from '@xiaonuan/prisma';
 
 const ttsSchema = z.object({
   text: z.string().min(1).max(1000),
+  familyId: z.string().optional(),
 });
 
 const TTS_DIR = path.resolve(process.cwd(), 'public', 'tts');
@@ -34,7 +37,29 @@ export async function ttsRoutes(app: FastifyInstance) {
     try {
       request.log.info({ text: parsed.data.text }, '开始语音合成...');
 
-      const audioBuffer = await synthesizeSpeech(parsed.data.text);
+      let voiceId: string | undefined;
+      const user = request.user;
+
+      if (user?.role === 'ELDER' && user.familyId) {
+        voiceId = await resolveVoiceId(user.familyId);
+      } else if (user?.role === 'CHILD' && parsed.data.familyId && user.userId) {
+        const member = await prisma.childProfile.findUnique({
+          where: { userId_familyId: { userId: user.userId, familyId: parsed.data.familyId } },
+        });
+        if (member) {
+          voiceId = await resolveVoiceId(parsed.data.familyId);
+        }
+      }
+
+      const result = await synthesizeVoice(parsed.data.text, voiceId);
+
+      const downloadRes = await fetch(result.audioUrl);
+      if (!downloadRes.ok) {
+        throw new Error(`下载合成音频失败: ${downloadRes.status}`);
+      }
+      const arrayBuffer = await downloadRes.arrayBuffer();
+      const audioBuffer = Buffer.from(arrayBuffer);
+
       if (!audioBuffer || audioBuffer.length === 0) {
         throw new Error('TTS 未返回音频数据');
       }

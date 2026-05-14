@@ -2,5 +2,5 @@
   "usingComponents": {
     "bottom-nav": "/components/bottom-nav/bottom-nav"
   },
-  "navigationBarTitleText": "告诉小暖一件事"
+  "navigationBarTitleText": "声音复刻"
 }

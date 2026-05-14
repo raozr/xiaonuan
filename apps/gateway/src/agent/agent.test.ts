@@ -275,7 +275,7 @@ describe('buildSystemPrompt', () => {
           create: {
             userId: user.id,
             name: '小李',
-            phone: user.phone,
+            phone: user.phone ?? '',
             relationshipToElder: '儿子',
             customNotes: '我在北京工作',
           },
@@ -324,7 +324,7 @@ describe('buildSystemPrompt', () => {
           create: {
             userId: user.id,
             name: '小张',
-            phone: user.phone,
+            phone: user.phone ?? '',
           },
         },
       },

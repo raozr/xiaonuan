@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '@xiaonuan/prisma';
 import { generateInviteCode } from '../utils/invite-code.js';
 import { verifyElderAuth } from '../middleware/auth.js';
-import { recognizeSpeech } from '../services/nls.js';
+import { transcribeVoice } from '../services/voice-service-client.js';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
@@ -446,7 +446,8 @@ export async function familyRoutes(app: FastifyInstance) {
 
     let asrText = '';
     try {
-      asrText = await recognizeSpeech(audioBuffer, 'mp3', 16000);
+      const asrResult = await transcribeVoice(audioBuffer, 'mp3', 16000);
+      asrText = asrResult.success ? (asrResult.text ?? '') : '';
     } catch (asrErr: any) {
       app.log.error('[Feed] ASR failed:', asrErr.message || String(asrErr));
     }

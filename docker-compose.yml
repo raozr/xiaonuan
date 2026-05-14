@@ -44,6 +44,23 @@ services:
     networks:
       - xiaonuan-network
 
+  voice-service:
+    build:
+      context: ./apps/voice-service
+      dockerfile: Dockerfile
+    container_name: xiaonuan-voice-service
+    restart: always
+    ports:
+      - '8000:8000'
+    environment:
+      - BAILIAN_API_KEY=${DASHSCOPE_API_KEY}
+      - AUDIO_STORAGE_PATH=/app/data/audio
+      - PORT=8000
+    volumes:
+      - voice_audio_data:/app/data/audio
+    networks:
+      - xiaonuan-network
+
   gateway:
     build:
       context: .
@@ -59,6 +76,8 @@ services:
         condition: service_started
       redis:
         condition: service_healthy
+      voice-service:
+        condition: service_started
     environment:
       - NODE_ENV=production
       - PORT=3000
@@ -72,6 +91,7 @@ services:
       - NLS_APP_KEY=${NLS_APP_KEY}
       - NLS_ACCESS_KEY_ID=${NLS_ACCESS_KEY_ID}
       - NLS_ACCESS_KEY_SECRET=${NLS_ACCESS_KEY_SECRET}
+      - VOICE_SERVICE_URL=http://voice-service:8000
     networks:
       - xiaonuan-network
 
@@ -83,3 +103,4 @@ volumes:
   postgres_data:
   qdrant_data:
   redis_data:
+  voice_audio_data:

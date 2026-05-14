@@ -12,12 +12,23 @@ Page({
 
   recorderManager: null,
 
-  onLoad(options) {
-    if (options.familyId) {
-      this.setData({ familyId: options.familyId });
+  async onLoad(options) {
+    let familyId = options.familyId || '';
+    if (!familyId) {
+      try {
+        const res = await app.request({ url: '/api/family', method: 'GET' });
+        if (res.statusCode === 200 && res.data && res.data.length > 0) {
+          familyId = res.data[0].id;
+        }
+      } catch (e) {
+        console.error('获取家庭列表失败:', e);
+      }
     }
+    this.setData({ familyId });
     this.initRecorder();
-    this.loadFeeds();
+    if (familyId) {
+      this.loadFeeds();
+    }
   },
 
   initRecorder() {

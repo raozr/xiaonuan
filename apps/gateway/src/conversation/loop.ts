@@ -7,7 +7,7 @@ import {
 import { buildSystemPrompt } from '../agent/prompt-builder.js';
 import { chatCompletion } from '../services/dashscope.js';
 import { generateCheckpoint } from '../memory/checkpoint-service.js';
-import { synthesizeSpeech } from '../services/nls.js';
+import { synthesizeForFamily } from '../services/voice.js';
 import { cleanLLMResponse } from '../agent/response-cleaner.js';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
@@ -64,7 +64,7 @@ export async function handleVoiceText(
     let audioUrl: string | null = null;
     try {
       console.log('[Loop] starting TTS...');
-      const audioBuffer = await synthesizeSpeech(aiText);
+      const { audioBuffer } = await synthesizeForFamily(familyId, aiText);
       const fileName = `${randomUUID()}.mp3`;
       const ttsDir = join(process.cwd(), 'public', 'tts');
       await mkdir(ttsDir, { recursive: true });
@@ -147,7 +147,7 @@ export async function sendClosingMessage(
 
     // TTS for closing message
     try {
-      const audioBuffer = await synthesizeSpeech(aiText);
+      const { audioBuffer } = await synthesizeForFamily(familyId, aiText);
       const fileName = `${randomUUID()}.mp3`;
       const ttsDir = join(process.cwd(), 'public', 'tts');
       await mkdir(ttsDir, { recursive: true });

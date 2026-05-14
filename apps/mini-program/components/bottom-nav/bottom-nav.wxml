@@ -1,14 +1,13 @@
 <view class="bottom-nav">
-  <view class="nav-item {{active === 'home' ? 'active' : ''}}" bindtap="onHomeTap">
-    <text class="nav-icon">🏠</text>
-    <text class="nav-label">首页</text>
-  </view>
-  <view class="nav-item {{active === 'history' ? 'active' : ''}}" bindtap="onHistoryTap">
-    <text class="nav-icon">🕐</text>
-    <text class="nav-label">历史</text>
-  </view>
-  <view class="nav-item {{active === 'settings' ? 'active' : ''}}" bindtap="onSettingsTap">
-    <text class="nav-icon">⚙️</text>
-    <text class="nav-label">设置</text>
+  <view
+    class="nav-item {{active === item.key ? 'active' : ''}}"
+    wx:for="{{tabs}}"
+    wx:key="key"
+    data-key="{{item.key}}"
+    data-url="{{item.url}}"
+    bindtap="onTap"
+  >
+    <text class="nav-icon">{{item.icon}}</text>
+    <text class="nav-label">{{item.label}}</text>
   </view>
 </view>

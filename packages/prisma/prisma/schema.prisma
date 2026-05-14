@@ -8,18 +8,20 @@ datasource db {
 }
 
 model Family {
-  id          String   @id @default(cuid())
-  inviteCode  String   @unique @map("invite_code")
+  id            String   @id @default(cuid())
+  inviteCode    String   @unique @map("invite_code")
   inviteCodeExpiresAt DateTime? @map("invite_code_expires_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  clonedVoiceId String?  @map("cloned_voice_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
 
-  elder       ElderProfile?
-  children    ChildProfile[]
-  sessions    Session[]
-  feeds       FamilyFeed[]
+  elder         ElderProfile?
+  children      ChildProfile[]
+  sessions      Session[]
+  feeds         FamilyFeed[]
   dailySummaries DailySummary[]
-  habitLogs   HabitLog[]
+  habitLogs     HabitLog[]
+  voiceClones   VoiceClone[]
 
   @@map("families")
 }
@@ -28,6 +30,7 @@ model ElderProfile {
   id                String   @id @default(cuid())
   familyId          String   @unique @map("family_id")
   name              String
+  gender            Gender?
   age               Int?
   dialect           String?
   deviceId          String?  @unique @map("device_id")
@@ -195,4 +198,31 @@ model HabitLog {
   family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
 
   @@map("habit_logs")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+model VoiceClone {
+  id          String   @id @default(cuid())
+  familyId    String   @map("family_id")
+  createdBy   String   @map("created_by")
+  voiceId     String   @map("voice_id")
+  status      VoiceCloneStatus
+  sampleUrls  String[] @map("sample_urls")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+
+  @@map("voice_clones")
+}
+
+enum VoiceCloneStatus {
+  PENDING
+  TRAINING
+  READY
+  FAILED
 }

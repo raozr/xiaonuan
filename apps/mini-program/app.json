@@ -6,7 +6,8 @@
     "pages/child-elder-detail/child-elder-detail",
     "pages/child-add-elder/child-add-elder",
     "pages/child-settings/child-settings",
-    "pages/child-feed/child-feed"
+    "pages/child-feed/child-feed",
+    "pages/child-voice-clone/child-voice-clone"
   ],
   "window": {
     "backgroundTextStyle": "light",

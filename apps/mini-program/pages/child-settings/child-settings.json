@@ -1,4 +1,6 @@
 {
-  "navigationBarTitleText": "家庭设置",
-  "usingComponents": {}
+  "usingComponents": {
+    "bottom-nav": "/components/bottom-nav/bottom-nav"
+  },
+  "navigationBarTitleText": "家庭设置"
 }

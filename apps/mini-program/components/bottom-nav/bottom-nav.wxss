@@ -3,14 +3,14 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background-color: #f6e5da;
-  border-radius: 24px 24px 0 0;
-  box-shadow: 0 -4px 20px rgba(143, 78, 0, 0.1);
+  height: 120rpx;
+  background: #ffffff;
+  border-top: 1rpx solid #f0ebe6;
   display: flex;
   justify-content: space-around;
   align-items: center;
-  padding: 8px 16px 24px;
-  z-index: 50;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 100;
 }
 
 .nav-item {
@@ -18,28 +18,22 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8px 24px;
-  border-radius: 24px;
-  opacity: 0.7;
-  transition: all 0.2s ease;
-}
-
-.nav-item.active {
-  background-color: #ff9f43;
-  opacity: 1;
+  gap: 6rpx;
+  flex: 1;
+  height: 100%;
 }
 
 .nav-icon {
-  font-size: 20px;
-  margin-bottom: 2px;
+  font-size: 40rpx;
+  line-height: 1.2;
 }
 
 .nav-label {
-  font-size: 12px;
-  font-weight: 700;
-  color: #506873;
+  font-size: 22rpx;
+  color: #877365;
 }
 
 .nav-item.active .nav-label {
-  color: #ffffff;
+  color: #8f4e00;
+  font-weight: 600;
 }
