@@ -43,7 +43,8 @@ export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
 
     setLoading(true);
     try {
-      const response = await fetch('http://192.168.4.70:3000/api/family/bind', {
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.4.70:3000';
+      const response = await fetch(`${API_URL}/api/family/bind`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteCode: code, deviceId }),

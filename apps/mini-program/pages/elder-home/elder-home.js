@@ -72,7 +72,7 @@ Page({
 
   connectSocket() {
     const token = app.globalData.token || wx.getStorageSync('xiaonuan_token');
-    const apiBase = app.globalData.apiBase || 'http://localhost:3000';
+    const apiBase = app.globalData.apiBase;
     const wsUrl = apiBase.replace(/^http/, 'ws') + '/ws?token=' + token;
 
     console.log('[WebSocket] 连接地址:', wsUrl);
@@ -303,7 +303,7 @@ Page({
   playAudio(audioUrl) {
     this.destroyAudio();
 
-    const apiBase = app.globalData.apiBase || 'http://localhost:3000';
+    const apiBase = app.globalData.apiBase;
     const src = audioUrl.startsWith('http') ? audioUrl : apiBase + audioUrl;
 
     console.log('[音频] 播放:', src);

@@ -24,7 +24,8 @@ interface HomeScreenProps {
 
 type InteractionState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'SPEAKING';
 
-const WS_URL = 'ws://192.168.4.70:3000/ws';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.4.70:3000';
+const WS_URL = API_URL.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/ws';
 const MIN_RECORDING_MS = 500;
 
 export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
