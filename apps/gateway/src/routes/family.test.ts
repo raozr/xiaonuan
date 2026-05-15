@@ -278,7 +278,7 @@ describe('POST /api/family/bind', () => {
     await prisma.family.delete({ where: { id: family.id } });
   });
 
-  it('should reject second device with same invite code', async () => {
+  it('should allow new device to rebind with same invite code', async () => {
     const { family } = await createUserAndFamily('已绑定老人');
 
     const first = await app.inject({
@@ -287,15 +287,27 @@ describe('POST /api/family/bind', () => {
       payload: { inviteCode: family.inviteCode, deviceId: 'device-a' },
     });
     expect(first.statusCode).toBe(200);
+    const firstBody = JSON.parse(first.body);
+    const firstToken = firstBody.token;
 
+    // Reinstall scenario: new deviceId tries to bind again
     const second = await app.inject({
       method: 'POST',
       url: '/api/family/bind',
       payload: { inviteCode: family.inviteCode, deviceId: 'device-b' },
     });
-    expect(second.statusCode).toBe(409);
-    const body = JSON.parse(second.body);
-    expect(body.message).toContain('已被绑定');
+    expect(second.statusCode).toBe(200);
+    const secondBody = JSON.parse(second.body);
+    expect(secondBody.success).toBe(true);
+    expect(secondBody.token).toBeDefined();
+
+    // Old device token should be rejected
+    const oldDeviceCheck = await app.inject({
+      method: 'GET',
+      url: `/api/family/${family.id}`,
+      headers: { authorization: `Bearer ${firstToken}` },
+    });
+    expect(oldDeviceCheck.statusCode).toBe(401);
 
     await prisma.family.delete({ where: { id: family.id } });
   });

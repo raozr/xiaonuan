@@ -280,10 +280,6 @@ export async function familyRoutes(app: FastifyInstance) {
       return reply.status(410).send({ success: false, message: '邀请码已过期' });
     }
 
-    if (family.elder?.deviceId && family.elder.deviceId !== body.deviceId) {
-      return reply.status(409).send({ success: false, message: '该老人已被绑定，请先解绑' });
-    }
-
     await prisma.elderProfile.update({
       where: { familyId: family.id },
       data: {
