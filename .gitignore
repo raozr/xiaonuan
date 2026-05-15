@@ -21,5 +21,4 @@ apps/gateway/*.mjs
 apps/gateway/diag-api.ts
 apps/gateway/public/tts/
 apps/gateway/public/feeds/
-apps/gateway/public/downloads/
 apps/elder-app/.expo/

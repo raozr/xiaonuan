@@ -6,7 +6,10 @@
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "icon": "./assets/logo-smalll.jpg",
-    "platforms": ["ios", "android"],
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "updates": {
       "fallbackToCacheTimeout": 0,
       "enabled": true
@@ -23,6 +26,11 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-smalll.jpg",
         "backgroundColor": "#FFF8F3"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "10700253-bfa8-45f3-a7ba-3539e0272885"
       }
     }
   }
