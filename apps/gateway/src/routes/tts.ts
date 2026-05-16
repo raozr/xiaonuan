@@ -75,9 +75,8 @@ export async function ttsRoutes(app: FastifyInstance) {
         audioUrl: `/tts/${fileName}`,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '语音合成失败';
-      request.log.error({ err: message }, '语音合成失败');
-      return reply.status(500).send({ success: false, message });
+      request.log.error(err);
+      return reply.status(500).send({ success: false, message: '语音合成失败，请稍后再试' });
     }
   });
 }

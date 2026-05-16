@@ -35,9 +35,8 @@ export async function authRoutes(app: FastifyInstance) {
       const result = await getSessionByCode(body.code);
       return reply.send({ success: true, openid: result.openid, sessionKey: result.session_key });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '微信登录失败';
-      request.log.error({ code: body.code, appid: env.WECHAT_APPID, err: message }, '微信 jscode2session 失败');
-      return reply.status(500).send({ success: false, message });
+      request.log.error({ code: body.code, appid: env.WECHAT_APPID, err }, '微信 jscode2session 失败');
+      return reply.status(500).send({ success: false, message: '微信登录失败，请稍后再试' });
     }
   });
 
@@ -80,8 +79,8 @@ export async function authRoutes(app: FastifyInstance) {
       // Unknown openid — new user
       return reply.send({ success: false, needRegister: true, openid });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '微信登录失败';
-      return reply.status(500).send({ success: false, message });
+      request.log.error(err);
+      return reply.status(500).send({ success: false, message: '微信登录失败，请稍后再试' });
     }
   });
 
@@ -168,8 +167,8 @@ export async function authRoutes(app: FastifyInstance) {
 
       return reply.status(400).send({ success: false, message: '无效的角色' });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '注册失败';
-      return reply.status(500).send({ success: false, message });
+      request.log.error(err);
+      return reply.status(500).send({ success: false, message: '注册失败，请稍后再试' });
     }
   });
 }

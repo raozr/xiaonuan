@@ -51,9 +51,8 @@ export async function pcAuthRoutes(app: FastifyInstance) {
 
       return reply.send({ success: true, token, role: 'CHILD', expiresIn: 604800 });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '注册失败';
-      request.log.error({ err: message }, 'PC注册失败');
-      return reply.status(500).send({ success: false, message });
+      request.log.error(err);
+      return reply.status(500).send({ success: false, message: '注册失败，请稍后再试' });
     }
   });
 
@@ -88,9 +87,8 @@ export async function pcAuthRoutes(app: FastifyInstance) {
 
       return reply.send({ success: true, token, role: 'CHILD', expiresIn: 604800 });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '登录失败';
-      request.log.error({ err: message }, 'PC登录失败');
-      return reply.status(500).send({ success: false, message });
+      request.log.error(err);
+      return reply.status(500).send({ success: false, message: '登录失败，请稍后再试' });
     }
   });
 }

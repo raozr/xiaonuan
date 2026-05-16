@@ -75,9 +75,8 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
         status: result.status,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '语音复刻失败';
-      request.log.error({ err: message }, '语音复刻失败');
-      return reply.status(500).send({ success: false, message });
+      request.log.error(err);
+      return reply.status(500).send({ success: false, message: '语音复刻失败，请稍后再试' });
     }
   });
 
@@ -114,8 +113,8 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
         createdAt: clone.createdAt,
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '查询失败';
-      return reply.status(500).send({ success: false, message });
+      request.log.error(err);
+      return reply.status(500).send({ success: false, message: '查询失败，请稍后再试' });
     }
   });
 
@@ -153,9 +152,8 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
 
       return reply.send({ success: true, message: '已删除' });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '删除失败';
-      request.log.error({ err: message }, '删除音色失败');
-      return reply.status(500).send({ success: false, message });
+      request.log.error(err);
+      return reply.status(500).send({ success: false, message: '删除失败，请稍后再试' });
     }
   });
 

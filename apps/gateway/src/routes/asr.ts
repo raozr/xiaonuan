@@ -34,9 +34,8 @@ export async function asrRoutes(app: FastifyInstance) {
 
       return reply.send({ success: true, text: result.text });
     } catch (err) {
-      const message = err instanceof Error ? err.message : '语音识别处理失败';
-      request.log.error({ err: message }, '语音识别失败');
-      return reply.status(500).send({ success: false, message });
+      request.log.error(err);
+      return reply.status(500).send({ success: false, message: '语音识别失败，请稍后再试' });
     }
   });
 }

@@ -52,7 +52,7 @@ describe('POST /api/auth/wechat-code', () => {
     expect(response.statusCode).toBe(500);
     const body = JSON.parse(response.body);
     expect(body.success).toBe(false);
-    expect(body.message).toBe('invalid code');
+    expect(body.message).toBe('微信登录失败，请稍后再试');
   });
 });
 
@@ -399,6 +399,6 @@ describe('POST /api/auth/silent-login', () => {
     expect(response.statusCode).toBe(500);
     const body = JSON.parse(response.body);
     expect(body.success).toBe(false);
-    expect(body.message).toBe('invalid code');
+    expect(body.message).toBe('微信登录失败，请稍后再试');
   });
 });
