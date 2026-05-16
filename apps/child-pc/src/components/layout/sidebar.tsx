@@ -2,13 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Settings, MessageSquare, Mic, Plus } from 'lucide-react';
+import { Home, Settings, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: '我的老人', icon: Home },
-  { href: '/feed', label: '告诉小暖', icon: MessageSquare },
-  { href: '/voice-clone', label: '声音复刻', icon: Mic },
   { href: '/settings', label: '设置', icon: Settings },
 ];
 
