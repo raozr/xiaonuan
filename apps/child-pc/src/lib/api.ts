@@ -165,7 +165,7 @@ export function fetchFeeds(familyId: string) {
   return request<{ success: boolean; data: FamilyFeed[] }>(`/family/${familyId}/feeds`);
 }
 
-export function createFeed(familyId: string, data: { type: 'TEXT' | 'VOICE'; content: string; audioUrl?: string }) {
+export function createFeed(familyId: string, data: { type: 'TEXT' | 'VOICE'; content: string; audioBase64?: string }) {
   return request<{ success: boolean; data: FamilyFeed }>(`/family/${familyId}/feeds`, {
     method: 'POST',
     body: JSON.stringify(data),
