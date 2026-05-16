@@ -27,6 +27,14 @@ await app.register(cors, {
   credentials: true,
 });
 
+app.setErrorHandler((error, request, reply) => {
+  request.log.error(error);
+  return reply.status(500).send({
+    success: false,
+    message: '服务器繁忙，请稍后再试',
+  });
+});
+
 await app.register(jwt, {
   secret: env.JWT_SECRET,
 });
