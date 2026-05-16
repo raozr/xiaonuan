@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { AppState, type AppStateStatus } from 'react-native';
 
 export interface WebSocketMessage {
   type: string;
@@ -12,6 +13,7 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
   const reconnectCount = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onMessageRef = useRef(onMessage);
+  const appState = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
@@ -55,8 +57,14 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
     ws.current.onclose = (e) => {
       console.log('[WS] Disconnected code=', e.code, 'reason=', e.reason);
       setIsConnected(false);
+      ws.current = null;
 
       clearReconnectTimer();
+
+      if (appState.current === 'background') {
+        return;
+      }
+
       const timeout = Math.min(Math.pow(2, reconnectCount.current) * 1000, 60000);
       reconnectTimer.current = setTimeout(() => {
         reconnectCount.current++;
@@ -65,17 +73,38 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
     };
 
     ws.current.onerror = (e) => {
-      console.error('[WS] Error event:', {
+      const target = e.target as WebSocket | undefined;
+      if (target?.readyState === WebSocket.CLOSED) {
+        return;
+      }
+      console.warn('[WS] Error event:', {
         type: e.type,
-        target: (e.target as WebSocket)?.url,
-        readyState: (e.target as WebSocket)?.readyState,
+        target: target?.url,
+        readyState: target?.readyState,
       });
     };
   }, [url, token, clearReconnectTimer]);
 
   useEffect(() => {
     connect();
+
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      const prevState = appState.current;
+      appState.current = nextAppState;
+
+      if (prevState === 'background' && nextAppState === 'active') {
+        if (ws.current?.readyState !== WebSocket.OPEN) {
+          reconnectCount.current = 0;
+          connect();
+        }
+      } else if (nextAppState === 'background') {
+        clearReconnectTimer();
+        ws.current?.close();
+      }
+    });
+
     return () => {
+      subscription.remove();
       clearReconnectTimer();
       ws.current?.close();
     };
