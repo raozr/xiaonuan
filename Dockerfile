@@ -47,16 +47,6 @@ WORKDIR /app
 # 注意：在 monorepo 中，运行 gateway 需要 workspace 中的其它 package
 COPY --from=build /app ./
 
-# 下载静态 ffmpeg 二进制（使用 cache，避免重复下载）
-ENV FFMPEG_PATH=/usr/local/bin/ffmpeg
-RUN --mount=type=cache,id=ffmpeg,target=/tmp/ffmpeg-cache \
-    if [ ! -f /usr/local/bin/ffmpeg ]; then \
-      wget -qO /tmp/ffmpeg-cache/ffmpeg-6.1-linux-x64.tar.xz \
-        https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v6.1/ffmpeg-6.1-linux-x64.tar.xz \
-      && tar -xf /tmp/ffmpeg-cache/ffmpeg-6.1-linux-x64.tar.xz -C /usr/local/bin ffmpeg \
-      && chmod +x /usr/local/bin/ffmpeg; \
-    fi
-
 # 设置环境变量
 ENV NODE_ENV=production
 ENV PORT=3000
