@@ -79,7 +79,7 @@ export async function handleVoiceText(
     }
 
     // 6. Send text + audio response (defensive re-clean before sending)
-    const cleanText = cleanLLMResponse(aiText);
+    const cleanText = cleanLLMResponse(aiText) || '我在听，您继续说。';
     const textMsg = JSON.stringify({
       type: 'message:ai_text',
       payload: { text: cleanText },
@@ -139,7 +139,7 @@ export async function sendClosingMessage(
       temperature: 0.85,
       maxTokens: 128,
     });
-    const aiText = cleanLLMResponse(reply.content ?? '再见。');
+    const aiText = cleanLLMResponse(reply.content ?? '再见。') || '那您先歇着，我在这儿陪您。';
     await saveMessage(sessionId, 'AI', aiText);
     socket.send(
       JSON.stringify({

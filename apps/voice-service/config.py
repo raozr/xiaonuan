@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     bailian_api_key: str = ""
     audio_storage_path: str = "./data/audio"
-    tts_model: str = "cosyvoice-v3-flash"
+    tts_model: str = "cosyvoice-v3-plus"
     asr_model: str = "paraformer-v2"
     log_level: str = "INFO"
 
