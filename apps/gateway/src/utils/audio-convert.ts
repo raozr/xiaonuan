@@ -1,10 +1,15 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process';
-import ffmpegPathModule from 'ffmpeg-static';
 
-const ffmpegPath =
-  process.env.FFMPEG_PATH ??
-  (ffmpegPathModule as unknown as string | null) ??
-  'ffmpeg';
+// ffmpeg-static is optional; prefer system ffmpeg via env var or PATH
+let ffmpegPath = process.env.FFMPEG_PATH ?? 'ffmpeg';
+try {
+  const ffmpegStatic = require('ffmpeg-static');
+  if (ffmpegStatic) {
+    ffmpegPath = ffmpegStatic;
+  }
+} catch {
+  // ffmpeg-static not installed, use system ffmpeg
+}
 
 export async function convertM4aToWav(inputBuffer: Buffer): Promise<Buffer> {
   return new Promise((resolve, reject) => {

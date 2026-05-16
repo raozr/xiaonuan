@@ -20,10 +20,8 @@ COPY apps/mini-program/package.json ./apps/mini-program/
 COPY packages/prisma/package.json ./packages/prisma/
 COPY packages/skills/package.json ./packages/skills/
 
-# 安装依赖（挂载 ffmpeg-static 下载缓存，避免重复从 GitHub 下载）
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
-    --mount=type=cache,id=ffmpeg-static,target=/root/.cache/ffmpeg-static \
-    pnpm install --frozen-lockfile
+# 安装依赖
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # 复制所有源代码
 COPY . .
@@ -37,6 +35,9 @@ RUN pnpm build
 # 第二阶段：运行阶段
 FROM node:22-alpine AS runner
 
+# 安装系统 ffmpeg（替代 ffmpeg-static，避免 GitHub 下载）
+RUN apk add --no-cache ffmpeg
+
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
@@ -46,6 +47,9 @@ WORKDIR /app
 # 从构建阶段复制必要文件
 # 注意：在 monorepo 中，运行 gateway 需要 workspace 中的其它 package
 COPY --from=build /app ./
+
+# 指向系统 ffmpeg
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
 
 # 设置环境变量
 ENV NODE_ENV=production
