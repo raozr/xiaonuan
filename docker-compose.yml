@@ -86,6 +86,21 @@ services:
     networks:
       - app-network
 
+  child-pc:
+    build:
+      context: .
+      dockerfile: apps/child-pc/Dockerfile
+    container_name: xiaonuan-child-pc
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://xiaonuan-gateway:3000}
+    networks:
+      - app-network
+
 networks:
   app-network:
     external: true
