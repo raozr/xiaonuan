@@ -48,4 +48,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # 启动 child-pc 服务（standalone 模式必须用 node server.js，不能用 next start）
-CMD ["node", ".next/standalone/server.js"]
+CMD ["node", ".next/standalone/apps/child-pc/server.js"]
