@@ -11,7 +11,7 @@ function getApiBase() {
     return 'https://www.quirklabs.top/xiaonuan';
   }
   // 开发/体验版使用本地地址
-  return 'http://192.168.4.70:3000';
+  return 'http://192.168.1.31:3000';
 }
 
 App({

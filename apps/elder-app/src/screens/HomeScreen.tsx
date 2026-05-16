@@ -26,7 +26,7 @@ type InteractionState = 'IDLE' | 'LISTENING' | 'PROCESSING' | 'SPEAKING';
 
 // 生产构建强制使用线上地址，避免环境变量未注入导致回退到本地地址
 const API_URL = __DEV__
-  ? (process.env.EXPO_PUBLIC_API_URL || 'http://192.168.4.70:3000')
+  ? (process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.31:3000')
   : 'https://www.quirklabs.top/xiaonuan';
 const WS_URL = API_URL.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/ws';
 const MIN_RECORDING_MS = 500;
