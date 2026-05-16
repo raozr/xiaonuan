@@ -183,7 +183,7 @@ export interface VoiceClone {
 }
 
 export function fetchVoiceClones(familyId: string) {
-  return request<VoiceClone[]>(`/voice-clone?familyId=${familyId}`);
+  return request<{ success: boolean; data: VoiceClone[]; activeVoiceId: string }>(`/voice-clone/family/${familyId}`);
 }
 
 export function createVoiceClone(data: { familyId: string; samples: { filename: string; base64: string }[] }) {
@@ -193,8 +193,8 @@ export function createVoiceClone(data: { familyId: string; samples: { filename: 
   });
 }
 
-export function activateVoiceClone(familyId: string, voiceId: string) {
-  return request<{ success: boolean }>(`/voice-clone/activate?familyId=${familyId}&voiceId=${voiceId}`, {
+export function activateVoiceClone(voiceId: string) {
+  return request<{ success: boolean }>(`/voice-clone/${voiceId}/activate`, {
     method: 'POST',
   });
 }
