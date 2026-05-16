@@ -20,8 +20,7 @@ COPY apps/mini-program/package.json ./apps/mini-program/
 COPY packages/prisma/package.json ./packages/prisma/
 COPY packages/skills/package.json ./packages/skills/
 
-# 安装依赖（跳过 ffmpeg-static postinstall，避免外网下载）
-ENV FFMPEG_STATIC_SKIP_DOWNLOAD=true
+# 安装依赖
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # 复制所有源代码
