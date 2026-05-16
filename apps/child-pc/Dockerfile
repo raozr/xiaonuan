@@ -37,6 +37,9 @@ WORKDIR /app
 # 从构建阶段复制必要文件
 COPY --from=build /app ./
 
+# 切换到项目目录运行（standalone server.js 依赖项目根目录作为 cwd）
+WORKDIR /app/apps/child-pc
+
 # 设置环境变量
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -45,4 +48,4 @@ ENV PORT=3000
 EXPOSE 3000
 
 # 启动 child-pc 服务（standalone 模式必须用 node server.js，不能用 next start）
-CMD ["node", "apps/child-pc/.next/standalone/server.js"]
+CMD ["node", ".next/standalone/server.js"]
