@@ -139,18 +139,15 @@ export function refreshInviteCode(familyId: string) {
 }
 
 export interface DailySummary {
-  id: string;
-  familyId: string;
-  date: string;
-  moodLabel: string;
+  mood: string;
   duration: number;
-  topicCount: number;
+  topics: number;
   highlights: string[];
   concerns: string | null;
 }
 
 export function fetchDailySummary(familyId: string) {
-  return request<DailySummary>(`/family/${familyId}/daily-summary`);
+  return request<{ success: boolean; data: DailySummary | null }>(`/family/${familyId}/daily-summary`);
 }
 
 // Feed APIs
@@ -165,11 +162,11 @@ export interface FamilyFeed {
 }
 
 export function fetchFeeds(familyId: string) {
-  return request<FamilyFeed[]>(`/family/${familyId}/feeds`);
+  return request<{ success: boolean; data: FamilyFeed[] }>(`/family/${familyId}/feeds`);
 }
 
 export function createFeed(familyId: string, data: { type: 'TEXT' | 'VOICE'; content: string; audioUrl?: string }) {
-  return request<FamilyFeed>(`/family/${familyId}/feeds`, {
+  return request<{ success: boolean; data: FamilyFeed }>(`/family/${familyId}/feeds`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
