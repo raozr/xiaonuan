@@ -1,152 +1,15 @@
 'use client';
 
-import { useEffect, useState, useRef, useCallback } from 'react';
-import {
-  fetchFamilies,
-  fetchVoiceClones,
-  createVoiceClone,
-  activateVoiceClone,
-  deleteVoiceClone,
-  type Family,
-  type VoiceClone,
-} from '@/lib/api';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useCurrentFamily } from '@/components/providers/current-family-provider';
+import { VoiceClonePanel } from '@/components/voice-clone-panel';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Mic, Square, Trash2, Sparkles, Loader2 } from 'lucide-react';
-
-const prompts = [
-  '今天天气真不错，我想出去走走，晒晒太阳。',
-  '你还记得我小时候的那件事吗？那时候真开心啊。',
-  '晚上我想吃点清淡的，帮我看看有什么好吃的。',
-];
+import { Users } from 'lucide-react';
+import Link from 'next/link';
 
 export default function VoiceClonePage() {
-  const [families, setFamilies] = useState<Family[]>([]);
-  const [selectedFamilyId, setSelectedFamilyId] = useState('');
-  const [clones, setClones] = useState<VoiceClone[]>([]);
-  const [activeVoiceId, setActiveVoiceId] = useState('');
-  const [samples, setSamples] = useState<{ id: string; blob: Blob; url: string }[]>([]);
-  const [promptIndex, setPromptIndex] = useState(0);
-  const [recording, setRecording] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState('');
+  const { currentFamilyId, currentFamily, isLoading: familyLoading } = useCurrentFamily();
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-
-  const loadFamilies = useCallback(async () => {
-    try {
-      const f = await fetchFamilies();
-      setFamilies(f);
-      if (f.length > 0) setSelectedFamilyId(f[0].id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '加载失败');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const loadClones = useCallback(async () => {
-    if (!selectedFamilyId) return;
-    try {
-      const res = await fetchVoiceClones(selectedFamilyId);
-      setClones(res.data);
-      setActiveVoiceId(res.activeVoiceId);
-    } catch {
-      setClones([]);
-      setActiveVoiceId('');
-    }
-  }, [selectedFamilyId]);
-
-  useEffect(() => {
-    loadFamilies();
-  }, [loadFamilies]);
-
-  useEffect(() => {
-    loadClones();
-  }, [loadClones]);
-
-  const startRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mediaRecorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = mediaRecorder;
-      audioChunksRef.current = [];
-
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunksRef.current.push(e.data);
-      };
-
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        stream.getTracks().forEach((t) => t.stop());
-        const url = URL.createObjectURL(blob);
-        setSamples((prev) => [...prev, { id: crypto.randomUUID(), blob, url }]);
-      };
-
-      mediaRecorder.start();
-      setRecording(true);
-    } catch {
-      setError('无法访问麦克风');
-    }
-  };
-
-  const stopRecording = () => {
-    mediaRecorderRef.current?.stop();
-    setRecording(false);
-  };
-
-  const removeSample = (id: string) => {
-    setSamples((prev) => prev.filter((s) => s.id !== id));
-  };
-
-  const handleCreateClone = async () => {
-    if (!selectedFamilyId || samples.length === 0) return;
-    setCreating(true);
-    try {
-      const converted = await Promise.all(
-        samples.map(async (s, i) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(s.blob);
-          return new Promise<{ filename: string; base64: string }>((resolve) => {
-            reader.onloadend = () => {
-              const base64 = (reader.result as string).split(',')[1];
-              resolve({ filename: `sample_${i + 1}.webm`, base64 });
-            };
-          });
-        })
-      );
-      await createVoiceClone({ familyId: selectedFamilyId, samples: converted });
-      setSamples([]);
-      await loadClones();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '创建失败');
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const handleActivate = async (voiceId: string) => {
-    try {
-      await activateVoiceClone(voiceId);
-      setActiveVoiceId(voiceId);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '激活失败');
-    }
-  };
-
-  const handleDelete = async (voiceId: string) => {
-    try {
-      await deleteVoiceClone(voiceId);
-      await loadClones();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '删除失败');
-    }
-  };
-
-  if (loading) {
+  if (familyLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -154,121 +17,27 @@ export default function VoiceClonePage() {
     );
   }
 
+  if (!currentFamily) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
+        <Users className="h-12 w-12 text-muted-foreground" />
+        <p className="text-muted-foreground">您还没有关联老人</p>
+        <Link href="/">
+          <Button>去添加老人</Button>
+        </Link>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-3xl">
-      <h1 className="text-2xl font-bold">声音复刻</h1>
-      {error && <p className="text-destructive text-sm">{error}</p>}
-
-      {/* Family selector */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm text-muted-foreground">选择老人:</span>
-        <div className="flex gap-2">
-          {families.map((f) => (
-            <Button
-              key={f.id}
-              variant={selectedFamilyId === f.id ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedFamilyId(f.id)}
-            >
-              {f.elder.name}
-            </Button>
-          ))}
-        </div>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">声音复刻</h1>
+        <span className="text-sm text-muted-foreground">
+          当前老人：{currentFamily.elder.name}
+        </span>
       </div>
-
-      {/* Recording section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">录制样本</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="bg-muted rounded-lg p-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium">参考文案</span>
-              <Button variant="ghost" size="sm" onClick={() => setPromptIndex((i) => (i + 1) % prompts.length)}>
-                换一段
-              </Button>
-            </div>
-            <p className="text-muted-foreground">{prompts[promptIndex]}</p>
-          </div>
-
-          {samples.length > 0 && (
-            <div className="space-y-2">
-              <span className="text-sm font-medium">已录制样本 ({samples.length}/3)</span>
-              {samples.map((s, i) => (
-                <div key={s.id} className="flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
-                  <span className="text-sm">样本 {i + 1}</span>
-                  <audio src={s.url} controls className="flex-1 h-8" />
-                  <Button variant="ghost" size="sm" onClick={() => removeSample(s.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex flex-col items-center gap-3 py-4">
-            <button
-              onMouseDown={startRecording}
-              onMouseUp={stopRecording}
-              onTouchStart={startRecording}
-              onTouchEnd={stopRecording}
-              className={`h-16 w-16 rounded-full flex items-center justify-center transition-colors ${
-                recording
-                  ? 'bg-red-500 text-white animate-pulse'
-                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
-              }`}
-            >
-              {recording ? <Square className="h-6 w-6" /> : <Mic className="h-6 w-6" />}
-            </button>
-            <p className="text-sm text-muted-foreground">
-              {recording ? '录音中，松开发送' : '按住录音，松开后保存样本'}
-            </p>
-          </div>
-
-          <Button
-            className="w-full"
-            disabled={samples.length === 0 || creating}
-            onClick={handleCreateClone}
-          >
-            {creating ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Sparkles className="h-4 w-4 mr-1" />}
-            开始复刻
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Clones list */}
-      {clones.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-lg font-semibold">已复刻音色</h2>
-          {clones.map((clone) => (
-            <Card key={clone.id}>
-              <CardContent className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge variant={clone.status === 'READY' ? 'default' : 'secondary'}>
-                    {clone.status === 'READY' ? '可用' : clone.status}
-                  </Badge>
-                  <span className="text-sm text-muted-foreground">
-                    {new Date(clone.createdAt).toLocaleDateString('zh-CN')}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  {activeVoiceId === clone.voiceId ? (
-                    <Badge variant="outline">已激活</Badge>
-                  ) : (
-                    <Button variant="outline" size="sm" onClick={() => handleActivate(clone.voiceId)}>
-                      激活
-                    </Button>
-                  )}
-                  <Button variant="ghost" size="sm" onClick={() => handleDelete(clone.voiceId)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+      <VoiceClonePanel familyId={currentFamilyId} />
     </div>
   );
 }

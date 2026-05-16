@@ -1,43 +1,41 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchMe, updateMe, fetchFamilies, updateElder, refreshInviteCode, type Family, type ElderProfile } from '@/lib/api';
+import { fetchMe, updateMe, updateElder, refreshInviteCode, type ElderProfile } from '@/lib/api';
 import { useAuth } from '@/components/providers/auth-provider';
+import { useCurrentFamily } from '@/components/providers/current-family-provider';
+import { ElderForm } from '@/components/elder-form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Copy, RefreshCw, Save, Users, ChevronDown } from 'lucide-react';
+import Link from 'next/link';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { Copy, RefreshCw, ChevronDown, Save } from 'lucide-react';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+type SettingsTab = 'account' | 'elder';
 
 export default function SettingsPage() {
   const { user } = useAuth();
-  const [families, setFamilies] = useState<Family[]>([]);
+  const { currentFamily, currentFamilyId, families, isLoading: familyLoading, refreshFamilies, setCurrentFamilyId } = useCurrentFamily();
+  const [activeTab, setActiveTab] = useState<SettingsTab>('account');
   const [childName, setChildName] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
-  const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [refreshingId, setRefreshingId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    Promise.all([fetchMe(), fetchFamilies()])
-      .then(([me, f]) => {
+    fetchMe()
+      .then((me) => {
         setChildName(me.name || '');
-        setFamilies(f);
       })
       .catch((err) => setError(err.message))
       .finally(() => setLoading(false));
@@ -60,15 +58,12 @@ export default function SettingsPage() {
     }
   };
 
-  const handleSaveElder = async (familyId: string, data: Partial<ElderProfile>) => {
+  const handleSaveElder = async (data: Partial<ElderProfile>) => {
+    if (!currentFamilyId) return;
     setSaving(true);
     try {
-      await updateElder(familyId, data);
-      setFamilies((prev) =>
-        prev.map((f) =>
-          f.id === familyId ? { ...f, elder: { ...f.elder, ...data } } : f
-        )
-      );
+      await updateElder(currentFamilyId, data);
+      await refreshFamilies();
       showMessage('老人信息已保存');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
@@ -77,29 +72,27 @@ export default function SettingsPage() {
     }
   };
 
-  const handleCopy = async (familyId: string, code: string) => {
-    await navigator.clipboard.writeText(code);
-    setCopiedId(familyId);
-    setTimeout(() => setCopiedId(null), 2000);
+  const handleCopyInviteCode = async () => {
+    if (!currentFamily?.inviteCode) return;
+    await navigator.clipboard.writeText(currentFamily.inviteCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleRefresh = async (familyId: string) => {
-    setRefreshingId(familyId);
+  const handleRefreshInviteCode = async () => {
+    if (!currentFamilyId) return;
+    setRefreshing(true);
     try {
-      const res = await refreshInviteCode(familyId);
-      setFamilies((prev) =>
-        prev.map((f) =>
-          f.id === familyId ? { ...f, inviteCode: res.inviteCode } : f
-        )
-      );
+      await refreshInviteCode(currentFamilyId);
+      await refreshFamilies();
     } catch (err) {
       setError(err instanceof Error ? err.message : '刷新失败');
     } finally {
-      setRefreshingId(null);
+      setRefreshing(false);
     }
   };
 
-  if (loading) {
+  if (loading || familyLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -116,171 +109,115 @@ export default function SettingsPage() {
       )}
       {error && <p className="text-destructive text-sm">{error}</p>}
 
-      {/* 子女信息 */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">子女信息</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="childName">姓名</Label>
-            <Input
-              id="childName"
-              value={childName}
-              onChange={(e) => setChildName(e.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>手机号</Label>
-            <Input value={user?.phone || ''} disabled />
-          </div>
-          <Button onClick={handleSaveChildInfo} disabled={saving}>
-            <Save className="h-4 w-4 mr-1" />
-            保存
-          </Button>
-        </CardContent>
-      </Card>
+      <div className="flex gap-2">
+        <Button
+          variant={activeTab === 'account' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveTab('account')}
+        >
+          我的账号
+        </Button>
+        <Button
+          variant={activeTab === 'elder' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => setActiveTab('elder')}
+        >
+          老人信息
+        </Button>
+      </div>
 
-      {/* 老人信息 */}
-      {families.map((family) => (
-        <Collapsible key={family.id} defaultOpen>
-          <Card>
-            <CollapsibleTrigger className="w-full">
+      {activeTab === 'account' && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">子女信息</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="childName">姓名</Label>
+              <Input
+                id="childName"
+                value={childName}
+                onChange={(e) => setChildName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>手机号</Label>
+              <Input value={user?.phone || ''} disabled />
+            </div>
+            <Button onClick={handleSaveChildInfo} disabled={saving}>
+              <Save className="h-4 w-4 mr-1" />
+              保存
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === 'elder' && (
+        <>
+          {!currentFamily ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-12 text-center space-y-4">
+                <Users className="h-12 w-12 text-muted-foreground" />
+                <p className="text-muted-foreground">您还没有关联老人</p>
+                <Link href="/">
+                  <Button>去添加老人</Button>
+                </Link>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">{family.elder.name} 的信息</CardTitle>
-                <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-lg">老人信息</CardTitle>
+                {families.length > 1 && (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors outline-none">
+                      <span>{currentFamily.elder.name}</span>
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      {families.map((f) => (
+                        <DropdownMenuItem
+                          key={f.id}
+                          onClick={() => setCurrentFamilyId(f.id)}
+                          className="flex items-center justify-between"
+                        >
+                          <span>{f.elder.name}</span>
+                          {f.id === currentFamily.id && (
+                            <span className="text-xs text-muted-foreground">当前</span>
+                          )}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                )}
               </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
               <CardContent className="space-y-4">
                 <ElderForm
-                  elder={family.elder}
-                  onSave={(data) => handleSaveElder(family.id, data)}
+                  elder={currentFamily.elder}
+                  onSave={handleSaveElder}
                   saving={saving}
                 />
                 <div className="pt-4 border-t">
                   <p className="text-sm font-medium mb-2">老人端绑定码</p>
                   <div className="flex items-center gap-3">
-                    <code className="bg-muted px-3 py-1.5 rounded font-mono">{family.inviteCode}</code>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleCopy(family.id, family.inviteCode)}
-                    >
+                    <code className="bg-muted px-3 py-1.5 rounded font-mono">
+                      {currentFamily.inviteCode}
+                    </code>
+                    <Button variant="outline" size="sm" onClick={handleCopyInviteCode}>
                       <Copy className="h-4 w-4 mr-1" />
-                      {copiedId === family.id ? '已复制' : '复制'}
+                      {copied ? '已复制' : '复制'}
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleRefresh(family.id)}
-                      disabled={refreshingId === family.id}
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-1 ${refreshingId === family.id ? 'animate-spin' : ''}`} />
+                    <Button variant="outline" size="sm" onClick={handleRefreshInviteCode} disabled={refreshing}>
+                      <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
                       重新生成
                     </Button>
                   </div>
                 </div>
               </CardContent>
-            </CollapsibleContent>
-          </Card>
-        </Collapsible>
-      ))}
-    </div>
-  );
-}
-
-function ElderForm({
-  elder,
-  onSave,
-  saving,
-}: {
-  elder: ElderProfile;
-  onSave: (data: Partial<ElderProfile>) => void;
-  saving: boolean;
-}) {
-  const [form, setForm] = useState({
-    name: elder.name,
-    age: elder.age?.toString() || '',
-    dialect: elder.dialect || '',
-    hobbies: elder.hobbies || '',
-    healthNotes: elder.healthNotes || '',
-    topicsToAvoid: elder.topicsToAvoid || '',
-    greetingPreference: elder.greetingPreference || '',
-  });
-
-  const handleChange = (field: string, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handleSubmit = () => {
-    onSave({
-      name: form.name,
-      age: form.age ? parseInt(form.age, 10) : undefined,
-      dialect: form.dialect,
-      hobbies: form.hobbies,
-      healthNotes: form.healthNotes,
-      topicsToAvoid: form.topicsToAvoid,
-      greetingPreference: form.greetingPreference,
-    });
-  };
-
-  return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>姓名</Label>
-          <Input value={form.name} onChange={(e) => handleChange('name', e.target.value)} />
-        </div>
-        <div className="space-y-2">
-          <Label>年龄</Label>
-          <Input
-            type="number"
-            value={form.age}
-            onChange={(e) => handleChange('age', e.target.value)}
-          />
-        </div>
-      </div>
-      <div className="space-y-2">
-        <Label>方言</Label>
-        <Input value={form.dialect} onChange={(e) => handleChange('dialect', e.target.value)} placeholder="如普通话、粤语、四川话" />
-      </div>
-      <div className="space-y-2">
-        <Label>爱好</Label>
-        <Textarea
-          value={form.hobbies}
-          onChange={(e) => handleChange('hobbies', e.target.value)}
-          placeholder="如养花、听京剧、下棋等"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>健康注意事项</Label>
-        <Textarea
-          value={form.healthNotes}
-          onChange={(e) => handleChange('healthNotes', e.target.value)}
-          placeholder="如腰不好、避免剧烈运动等"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>回避话题</Label>
-        <Textarea
-          value={form.topicsToAvoid}
-          onChange={(e) => handleChange('topicsToAvoid', e.target.value)}
-          placeholder="如已故的老伴等敏感话题"
-        />
-      </div>
-      <div className="space-y-2">
-        <Label>问候偏好</Label>
-        <Input
-          value={form.greetingPreference}
-          onChange={(e) => handleChange('greetingPreference', e.target.value)}
-          placeholder="称呼我老王就行"
-        />
-      </div>
-      <Button onClick={handleSubmit} disabled={saving}>
-        <Save className="h-4 w-4 mr-1" />
-        保存老人信息
-      </Button>
+            </Card>
+          )}
+        </>
+      )}
     </div>
   );
 }
