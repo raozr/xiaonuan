@@ -1,7 +1,6 @@
 'use client';
 
 import { useAuth } from '@/components/providers/auth-provider';
-import { FamilySwitcher } from './family-switcher';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,8 +14,7 @@ export function Header() {
   const { user, logout } = useAuth();
 
   return (
-    <header className="h-16 border-b bg-card flex items-center justify-between px-6 sticky top-0 z-10">
-      <FamilySwitcher />
+    <header className="h-16 border-b bg-card flex items-center justify-end px-6 sticky top-0 z-10">
       <DropdownMenu>
         <DropdownMenuTrigger>
           <Avatar className="h-8 w-8 cursor-pointer">
