@@ -25,6 +25,7 @@ export function FamilyFeedPanel({ familyId }: FamilyFeedPanelProps) {
   const [recording, setRecording] = useState(false);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const shouldCancelRef = useRef(false);
 
   const loadFeeds = useCallback(async () => {
     setLoading(true);
@@ -57,8 +58,15 @@ export function FamilyFeedPanel({ familyId }: FamilyFeedPanelProps) {
   };
 
   const startRecording = async () => {
+    shouldCancelRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      if (shouldCancelRef.current) {
+        stream.getTracks().forEach((track) => track.stop());
+        return;
+      }
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -79,10 +87,12 @@ export function FamilyFeedPanel({ familyId }: FamilyFeedPanelProps) {
       setRecording(true);
     } catch {
       setError('无法访问麦克风');
+      setRecording(false);
     }
   };
 
   const stopRecording = () => {
+    shouldCancelRef.current = true;
     mediaRecorderRef.current?.stop();
     setRecording(false);
   };
@@ -168,8 +178,10 @@ export function FamilyFeedPanel({ familyId }: FamilyFeedPanelProps) {
               <button
                 onMouseDown={startRecording}
                 onMouseUp={stopRecording}
+                onMouseLeave={stopRecording}
                 onTouchStart={startRecording}
                 onTouchEnd={stopRecording}
+                onTouchCancel={stopRecording}
                 className={`h-16 w-16 rounded-full flex items-center justify-center transition-colors ${
                   recording
                     ? 'bg-red-500 text-white animate-pulse'

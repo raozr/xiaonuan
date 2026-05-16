@@ -35,6 +35,7 @@ export function VoiceClonePanel({ familyId }: VoiceClonePanelProps) {
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const shouldCancelRef = useRef(false);
 
   const loadClones = useCallback(async () => {
     setLoading(true);
@@ -55,8 +56,15 @@ export function VoiceClonePanel({ familyId }: VoiceClonePanelProps) {
   }, [loadClones]);
 
   const startRecording = async () => {
+    shouldCancelRef.current = false;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      if (shouldCancelRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
       const mediaRecorder = new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -76,10 +84,12 @@ export function VoiceClonePanel({ familyId }: VoiceClonePanelProps) {
       setRecording(true);
     } catch {
       setError('无法访问麦克风');
+      setRecording(false);
     }
   };
 
   const stopRecording = () => {
+    shouldCancelRef.current = true;
     mediaRecorderRef.current?.stop();
     setRecording(false);
   };
@@ -178,8 +188,10 @@ export function VoiceClonePanel({ familyId }: VoiceClonePanelProps) {
             <button
               onMouseDown={startRecording}
               onMouseUp={stopRecording}
+              onMouseLeave={stopRecording}
               onTouchStart={startRecording}
               onTouchEnd={stopRecording}
+              onTouchCancel={stopRecording}
               className={`h-16 w-16 rounded-full flex items-center justify-center transition-colors ${
                 recording
                   ? 'bg-red-500 text-white animate-pulse'
