@@ -280,6 +280,17 @@ export async function familyRoutes(app: FastifyInstance) {
       return reply.status(410).send({ success: false, message: '邀请码已过期' });
     }
 
+    // If this device is already bound to another family, unbind it first
+    const existingProfile = await prisma.elderProfile.findUnique({
+      where: { deviceId: body.deviceId },
+    });
+    if (existingProfile && existingProfile.familyId !== family.id) {
+      await prisma.elderProfile.update({
+        where: { familyId: existingProfile.familyId },
+        data: { deviceId: null },
+      });
+    }
+
     await prisma.elderProfile.update({
       where: { familyId: family.id },
       data: {

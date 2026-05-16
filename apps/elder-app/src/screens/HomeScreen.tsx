@@ -12,7 +12,7 @@ import {
   Image,
   ActivityIndicator,
 } from 'react-native';
-import { Mic, Square } from 'lucide-react-native';
+import { Mic, Square, LogOut } from 'lucide-react-native';
 import { useWebSocket, type WebSocketMessage } from '../hooks/useWebSocket';
 import { useVoice } from '../hooks/useVoice';
 
@@ -169,6 +169,17 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     }
   }
 
+  function handleUnbind() {
+    Alert.alert(
+      '退出绑定',
+      '退出后可以重新输入绑定码，绑定到其他家庭。确定要退出吗？',
+      [
+        { text: '取消', style: 'cancel' },
+        { text: '确定退出', style: 'destructive', onPress: onUnbind },
+      ]
+    );
+  }
+
   const headerTitle = !isConnected
     ? '连接中...'
     : state === 'IDLE'
@@ -185,7 +196,13 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     <SafeAreaView style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
+        <View style={styles.headerLeft} />
         <Text style={styles.headerTitle}>{headerTitle}</Text>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={handleUnbind} activeOpacity={0.7}>
+            <LogOut size={24} color="#8f4e00" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Main Content */}
@@ -264,7 +281,7 @@ const styles = StyleSheet.create({
     height: 64,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 24,
     backgroundColor: '#fff8f5',
   },
