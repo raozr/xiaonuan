@@ -35,8 +35,9 @@ RUN pnpm build
 # 第二阶段：运行阶段
 FROM node:22-alpine AS runner
 
-# 安装系统 ffmpeg（替代 ffmpeg-static，避免 GitHub 下载）
-RUN apk add --no-cache ffmpeg
+# 安装系统 ffmpeg（使用国内镜像源加速）
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories \
+    && apk add --no-cache ffmpeg
 
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
