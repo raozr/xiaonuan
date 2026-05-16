@@ -1,6 +1,9 @@
 import { getToken } from './auth';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:3000';
+const isServer = typeof window === 'undefined';
+const API_BASE = isServer
+  ? (process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000')
+  : '/xiaonuan';
 
 export class ApiError extends Error {
   constructor(
