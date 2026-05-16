@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  assetPrefix: '/xiaonuan/child',
+  basePath: '/xiaonuan/child',
 };
 
 export default nextConfig;
