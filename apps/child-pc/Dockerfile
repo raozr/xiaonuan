@@ -37,6 +37,10 @@ WORKDIR /app
 # 从构建阶段复制必要文件
 COPY --from=build /app ./
 
+# standalone server 在 monorepo 中无法自动找到外层 .next/static，手动复制到 standalone 目录
+RUN mkdir -p /app/apps/child-pc/.next/standalone/apps/child-pc/.next && \
+    cp -r /app/apps/child-pc/.next/static /app/apps/child-pc/.next/standalone/apps/child-pc/.next/static
+
 # 切换到项目目录运行（standalone server.js 依赖项目根目录作为 cwd）
 WORKDIR /app/apps/child-pc
 
