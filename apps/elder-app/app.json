@@ -23,6 +23,7 @@
     },
     "android": {
       "package": "com.xiaonuan.elderapp",
+      "enableProguardInReleaseBuilds": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-smalll.jpg",
         "backgroundColor": "#FFF8F3"
