@@ -18,8 +18,8 @@ COPY apps/child-pc/package.json ./apps/child-pc/
 COPY packages/prisma/package.json ./packages/prisma/
 COPY packages/skills/package.json ./packages/skills/
 
-# 安装依赖
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# 安装依赖（跳过 postinstall 避免下载 ffmpeg-static 等不必要的二进制文件）
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts
 
 # 复制所有源代码
 COPY . .
