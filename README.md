@@ -4,7 +4,7 @@
 ![Version](https://img.shields.io/badge/version-0.1.0-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)
 
-**XiaoNuan** is an AI elderly companion mini-program designed specifically for senior citizens. It is not just a chatbot, but an intelligent partner with emotional depth, memory capabilities, and safety monitoring features.
+**XiaoNuan** is an AI elderly companion platform designed specifically for senior citizens and their families. It is not just a chatbot, but an intelligent partner with emotional depth, memory capabilities, and safety monitoring features.
 
 ## 🌟 Key Features
 
@@ -12,6 +12,8 @@
 - **Emotional Intelligence Strategy**: Built-in conversational skills supporting dialect styles, emotional resonance, and gentle guidance to provide a warm and natural companionship experience.
 - **Session State Machine**: Intelligently identifies conversational phases (Greeting, Active Chat, Closing) to dynamically adjust AI behavior and context retrieval strategies.
 - **Safety Guardrails**: Integrated emergency alerting tools that can recognize potential health risks or distress signals and respond promptly.
+- **Voice Interaction**: Full-duplex voice conversation powered by Alibaba Cloud speech synthesis and recognition, enabling natural hands-free interaction for elders.
+- **Multi-Client Support**: Family members connect via WeChat Mini-program while elders use a dedicated mobile app with large fonts and simplified UI.
 - **Localized Integration**: Deeply integrated with Alibaba's DashScope (Qwen-Plus) LLM for superior performance in Chinese linguistic contexts.
 
 ## 🏗️ Project Architecture
@@ -22,22 +24,31 @@ This project uses a PNPM Workspace-organized Monorepo structure:
 xiaonuan/
 ├── apps/
 │   ├── gateway/          # AI Agent Gateway (Fastify + WebSocket)
-│   └── mini-program/     # WeChat Mini-program Frontend
+│   ├── mini-program/     # WeChat Mini-program (Family Member Client)
+│   ├── elder-app/        # React Native Mobile App (Elder Client, Expo)
+│   └── voice-service/    # Python FastAPI Voice Processing Service
 ├── packages/
 │   ├── prisma/           # DB Schema & Persistence Layer (PostgreSQL)
 │   └── skills/           # Modular AI Skill Definitions (Prompt Engineering)
-└── infrastructure/       # Infrastructure configurations (Docker, Qdrant, etc.)
+├── deploy/
+│   └── nginx/            # Production Nginx Reverse Proxy Config
+├── docker-compose.yml    # Backend services orchestration
+├── Dockerfile            # Gateway service image
+└── manager.sh            # Production deployment management script
 ```
 
 ## 🛠️ Tech Stack
 
-- **Language**: TypeScript
-- **Backend**: Node.js, Fastify
+- **Language**: TypeScript, Python
+- **Backend**: Node.js, Fastify, FastAPI
 - **Database**: PostgreSQL, Prisma
 - **Vector DB**: Qdrant (for semantic memory retrieval)
 - **LLM**: DashScope (Qwen-Plus)
 - **Cache**: Redis
-- **Frontend**: WeChat Mini-program
+- **Speech**: Alibaba Cloud NLS (TTS / ASR)
+- **Frontend**:
+  - Family: WeChat Mini-program
+  - Elder: React Native (Expo)
 
 ## 🚀 Quick Start
 
@@ -45,7 +56,8 @@ xiaonuan/
 
 - Node.js >= 22
 - PNPM >= 9
-- Docker (to run PostgreSQL and Qdrant)
+- Docker (to run PostgreSQL, Qdrant, Redis)
+- Python 3.11+ (for voice-service local development)
 
 ### Installation & Execution
 
@@ -56,14 +68,14 @@ xiaonuan/
    ```
 
 2. **Configure Environment**
-   Copy `.env.example` in the root to `.env` and fill in necessary API Keys (e.g., `DASHSCOPE_API_KEY`).
+   Copy `.env.example` in the root to `.env` and fill in necessary API Keys (e.g., `DASHSCOPE_API_KEY`, `WECHAT_APPID`, `WECHAT_SECRET`, `NLS_*` credentials).
 
-3. **One-Command Start (Recommended)**
+3. **One-Command Start (Recommended for Server Deploy)**
    The project is fully Dockerized. Start everything with the management script:
    ```bash
    ./manager.sh start
    ```
-   This script wraps `docker-compose` and supports `start`, `stop`, `restart`, `status`, and `logs`.
+   This script wraps `docker compose` and supports `start`, `stop`, `restart`, `update`, `status`, `logs`, `backup`, and `health`.
 
 4. **Manual Development Mode**
    If you need to develop backend code, start the infrastructure first:
@@ -72,6 +84,82 @@ xiaonuan/
    pnpm install
    pnpm db:generate
    pnpm dev
+   ```
+
+## 📱 Client Deployment
+
+### WeChat Mini-program (Family Client)
+
+The mini-program is developed with native WeChat Mini-program framework.
+
+- **Development**: Open `apps/mini-program/` in WeChat DevTools.
+- **Build**: Use WeChat DevTools to upload and publish.
+- **Backend**: Ensure the gateway is deployed and the domain is whitelisted in WeChat MP Admin.
+
+### Elder App (Elder Client)
+
+The elder app is a React Native application built with **Expo**.
+
+- **Development**:
+  ```bash
+  cd apps/elder-app
+  pnpm install
+  pnpm start        # Expo dev server
+  pnpm android      # or pnpm ios
+  ```
+- **Build & Deploy via EAS**:
+  ```bash
+  cd apps/elder-app
+  eas build --profile preview    # Build APK for internal testing
+  eas build --profile production # Build AAB for Play Store
+  ```
+- **Environment Variables**: The `EXPO_PUBLIC_API_URL` is configured in `eas.json` for each build profile.
+- **Download Page**: A static landing page for APK download is served from `apps/gateway/public/` (e.g., `https://your-domain/downloads/xiaonuan-elder.apk`).
+
+## ☁️ Backend Deployment
+
+### Architecture
+
+The backend runs as a set of Docker containers orchestrated by `docker-compose.yml`:
+
+| Service | Image / Build | Description |
+|---------|--------------|-------------|
+| postgres | `postgres:17-alpine` | Main relational database |
+| qdrant | `qdrant/qdrant:v1.12.0` | Vector database for memory retrieval |
+| redis | `redis:7-alpine` | Cache & session store |
+| voice-service | `./apps/voice-service/Dockerfile` | Python FastAPI voice processing |
+| gateway | `./Dockerfile` | Node.js AI gateway & API server |
+
+### Production Deployment Steps
+
+1. **Prepare Server**
+   - Install Docker & Docker Compose
+   - Clone the repository
+   - Copy and edit `.env` with production secrets
+
+2. **Start Services**
+   ```bash
+   ./manager.sh start
+   ```
+   This builds images and starts all containers on the shared `app-network`.
+
+3. **Reverse Proxy (Nginx)**
+   A separate Nginx container configuration is provided in `deploy/nginx/`:
+   ```bash
+   cd deploy/nginx
+   docker compose up -d
+   ```
+   - Nginx listens on `80` and `443`
+   - SSL certificates should be mounted at `./certs/`
+   - API requests to `/xiaonuan/` are proxied to the gateway container
+   - Static files (landing page, APK) are served from `./www/`
+
+4. **Update & Maintenance**
+   ```bash
+   ./manager.sh update    # Pull code, rebuild, and restart
+   ./manager.sh backup    # Backup PostgreSQL and data directories
+   ./manager.sh logs gateway   # Tail gateway logs
+   ./manager.sh health    # Check container health status
    ```
 
 ## 📄 License

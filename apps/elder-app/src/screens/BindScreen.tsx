@@ -18,6 +18,11 @@ const LOGO = require('../../assets/logo-smalll.jpg');
 
 const CODE_LENGTH = 6;
 
+// 生产构建强制使用线上地址，避免环境变量未注入导致回退到本地地址
+const API_URL = __DEV__
+  ? (process.env.EXPO_PUBLIC_API_URL || 'http://192.168.4.70:3000')
+  : 'https://www.quirklabs.top/xiaonuan';
+
 export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,7 +48,6 @@ export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
 
     setLoading(true);
     try {
-      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.4.70:3000';
       const response = await fetch(`${API_URL}/api/family/bind`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,7 +61,8 @@ export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
         Alert.alert('绑定失败', data.message || '请检查绑定码是否正确');
       }
     } catch (e) {
-      Alert.alert('错误', '网络连接失败，请检查网络设置');
+      const message = e instanceof Error ? e.message : String(e);
+      Alert.alert('网络连接失败', `请检查网络设置\n\n请求地址: ${API_URL}\n错误详情: ${message}`);
     } finally {
       setLoading(false);
     }
