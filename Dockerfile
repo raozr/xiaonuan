@@ -20,8 +20,10 @@ COPY apps/mini-program/package.json ./apps/mini-program/
 COPY packages/prisma/package.json ./packages/prisma/
 COPY packages/skills/package.json ./packages/skills/
 
-# 安装依赖
-RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
+# 安装依赖（挂载 ffmpeg-static 下载缓存，避免重复从 GitHub 下载）
+RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
+    --mount=type=cache,id=ffmpeg-static,target=/root/.cache/ffmpeg-static \
+    pnpm install --frozen-lockfile
 
 # 复制所有源代码
 COPY . .
