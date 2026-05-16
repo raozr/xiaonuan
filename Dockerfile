@@ -23,6 +23,11 @@ COPY packages/skills/package.json ./packages/skills/
 # 安装依赖
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
+# 提取 ffmpeg 静态二进制供 runner 阶段使用（避免 runner 阶段重新下载或 apk add）
+RUN mkdir -p /tmp/ffmpeg-bin && \
+    find /app/node_modules -path "*/ffmpeg-static/ffmpeg" -type f -exec cp {} /tmp/ffmpeg-bin/ffmpeg \; && \
+    chmod +x /tmp/ffmpeg-bin/ffmpeg
+
 # 复制所有源代码
 COPY . .
 
@@ -44,6 +49,9 @@ WORKDIR /app
 # 从构建阶段复制必要文件
 # 注意：在 monorepo 中，运行 gateway 需要 workspace 中的其它 package
 COPY --from=build /app ./
+
+# 复制 ffmpeg 静态二进制（避免 runner 阶段 apk add 或重新下载）
+COPY --from=build /tmp/ffmpeg-bin/ffmpeg /usr/local/bin/ffmpeg
 
 # 设置环境变量
 ENV NODE_ENV=production
