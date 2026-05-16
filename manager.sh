@@ -190,7 +190,7 @@ cmd_update() {
     # 4. 构建并启动
     echo -e "${BLUE}重新构建并启动服务...${NC}"
     ${COMPOSE_CMD} down
-    ${COMPOSE_CMD} build --no-cache
+    ${COMPOSE_CMD} build
     ${COMPOSE_CMD} up -d
 
     # 5. 健康检查
@@ -204,7 +204,7 @@ cmd_update() {
 
 cmd_build() {
     echo -e "${BLUE}开始重新构建镜像...${NC}"
-    ${COMPOSE_CMD} build --no-cache
+    ${COMPOSE_CMD} build
     echo -e "${GREEN}构建完成${NC}"
 }
 
