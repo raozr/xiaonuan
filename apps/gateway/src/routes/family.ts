@@ -261,54 +261,59 @@ export async function familyRoutes(app: FastifyInstance) {
 
   // Bind elder device
   app.post('/bind', async (request, reply) => {
-    const body = request.body as { inviteCode?: string; deviceId?: string };
+    try {
+      const body = request.body as { inviteCode?: string; deviceId?: string };
 
-    if (!body.inviteCode || !body.deviceId) {
-      return reply.status(400).send({ success: false, message: '邀请码和设备标识必填' });
-    }
+      if (!body.inviteCode || !body.deviceId) {
+        return reply.status(400).send({ success: false, message: '邀请码和设备标识必填' });
+      }
 
-    const family = await prisma.family.findUnique({
-      where: { inviteCode: body.inviteCode },
-      include: { elder: true },
-    });
-
-    if (!family) {
-      return reply.status(404).send({ success: false, message: '邀请码无效' });
-    }
-
-    if (family.inviteCodeExpiresAt && family.inviteCodeExpiresAt < new Date()) {
-      return reply.status(410).send({ success: false, message: '邀请码已过期' });
-    }
-
-    // If this device is already bound to another family, unbind it first
-    const existingProfile = await prisma.elderProfile.findUnique({
-      where: { deviceId: body.deviceId },
-    });
-    if (existingProfile && existingProfile.familyId !== family.id) {
-      await prisma.elderProfile.update({
-        where: { familyId: existingProfile.familyId },
-        data: { deviceId: null },
+      const family = await prisma.family.findUnique({
+        where: { inviteCode: body.inviteCode },
+        include: { elder: true },
       });
+
+      if (!family) {
+        return reply.status(404).send({ success: false, message: '邀请码无效' });
+      }
+
+      if (family.inviteCodeExpiresAt && family.inviteCodeExpiresAt < new Date()) {
+        return reply.status(410).send({ success: false, message: '邀请码已过期' });
+      }
+
+      // If this device is already bound to another family, unbind it first
+      const existingProfile = await prisma.elderProfile.findUnique({
+        where: { deviceId: body.deviceId },
+      });
+      if (existingProfile && existingProfile.familyId !== family.id) {
+        await prisma.elderProfile.update({
+          where: { familyId: existingProfile.familyId },
+          data: { deviceId: null },
+        });
+      }
+
+      await prisma.elderProfile.update({
+        where: { familyId: family.id },
+        data: {
+          deviceId: body.deviceId,
+        },
+      });
+
+      const token = app.jwt.sign(
+        { familyId: family.id, role: 'ELDER', deviceId: body.deviceId },
+        { expiresIn: '365d' }
+      );
+
+      return reply.send({
+        success: true,
+        token,
+        role: 'ELDER',
+        familyId: family.id,
+      });
+    } catch (error) {
+      request.log.error(error);
+      return reply.status(500).send({ success: false, message: '服务器繁忙，请稍后再试' });
     }
-
-    await prisma.elderProfile.update({
-      where: { familyId: family.id },
-      data: {
-        deviceId: body.deviceId,
-      },
-    });
-
-    const token = app.jwt.sign(
-      { familyId: family.id, role: 'ELDER', deviceId: body.deviceId },
-      { expiresIn: '365d' }
-    );
-
-    return reply.send({
-      success: true,
-      token,
-      role: 'ELDER',
-      familyId: family.id,
-    });
   });
 
   // Unbind elder device

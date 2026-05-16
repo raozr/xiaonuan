@@ -1,8 +1,31 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { app } from '../server.js';
 import { prisma } from '@xiaonuan/prisma';
 
 describe('POST /api/family/bind', () => {
+  it('should return safe message on database error', async () => {
+    const originalFindUnique = prisma.family.findUnique;
+    prisma.family.findUnique = vi.fn().mockRejectedValue(new Error('database connection failed')) as any;
+
+    try {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/family/bind',
+        payload: {
+          inviteCode: '123456',
+          deviceId: 'device-123',
+        },
+      });
+
+      expect(response.statusCode).toBe(500);
+      const body = JSON.parse(response.body);
+      expect(body.success).toBe(false);
+      expect(body.message).toBe('服务器繁忙，请稍后再试');
+    } finally {
+      prisma.family.findUnique = originalFindUnique;
+    }
+  });
+
   it('should bind elder with valid invite code', async () => {
     const user = await prisma.user.create({
       data: { phone: `13800${Date.now()}`, role: 'CHILD' },
