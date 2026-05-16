@@ -54,15 +54,20 @@ export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
         body: JSON.stringify({ inviteCode: code, deviceId }),
       });
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch {
+        data = { success: false, message: '服务器开小差了，请稍后再试' };
+      }
+
       if (data.success) {
         onBindSuccess(data.token, data.familyId);
       } else {
         Alert.alert('绑定失败', data.message || '请检查绑定码是否正确');
       }
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      Alert.alert('网络连接失败', `请检查网络设置\n\n请求地址: ${API_URL}\n错误详情: ${message}`);
+    } catch {
+      Alert.alert('网络连接失败', '网络不太顺畅，请检查网络后重试');
     } finally {
       setLoading(false);
     }
