@@ -20,13 +20,9 @@ COPY apps/mini-program/package.json ./apps/mini-program/
 COPY packages/prisma/package.json ./packages/prisma/
 COPY packages/skills/package.json ./packages/skills/
 
-# 安装依赖
+# 安装依赖（跳过 ffmpeg-static postinstall，避免外网下载）
+ENV FFMPEG_STATIC_SKIP_DOWNLOAD=true
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
-
-# 提取 ffmpeg 静态二进制供 runner 阶段使用（避免 runner 阶段重新下载或 apk add）
-RUN mkdir -p /tmp/ffmpeg-bin && \
-    find /app/node_modules -path "*/ffmpeg-static/ffmpeg" -type f -exec cp {} /tmp/ffmpeg-bin/ffmpeg \; && \
-    chmod +x /tmp/ffmpeg-bin/ffmpeg
 
 # 复制所有源代码
 COPY . .
@@ -50,8 +46,15 @@ WORKDIR /app
 # 注意：在 monorepo 中，运行 gateway 需要 workspace 中的其它 package
 COPY --from=build /app ./
 
-# 复制 ffmpeg 静态二进制（避免 runner 阶段 apk add 或重新下载）
-COPY --from=build /tmp/ffmpeg-bin/ffmpeg /usr/local/bin/ffmpeg
+# 下载静态 ffmpeg 二进制（使用 cache，避免重复下载）
+ENV FFMPEG_PATH=/usr/local/bin/ffmpeg
+RUN --mount=type=cache,id=ffmpeg,target=/tmp/ffmpeg-cache \
+    if [ ! -f /usr/local/bin/ffmpeg ]; then \
+      wget -qO /tmp/ffmpeg-cache/ffmpeg-6.1-linux-x64.tar.xz \
+        https://github.com/ffbinaries/ffbinaries-prebuilt/releases/download/v6.1/ffmpeg-6.1-linux-x64.tar.xz \
+      && tar -xf /tmp/ffmpeg-cache/ffmpeg-6.1-linux-x64.tar.xz -C /usr/local/bin ffmpeg \
+      && chmod +x /usr/local/bin/ffmpeg; \
+    fi
 
 # 设置环境变量
 ENV NODE_ENV=production

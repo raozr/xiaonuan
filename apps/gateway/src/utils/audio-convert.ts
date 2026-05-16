@@ -1,7 +1,10 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'child_process';
 import ffmpegPathModule from 'ffmpeg-static';
 
-const ffmpegPath = (ffmpegPathModule as unknown as string | null) ?? 'ffmpeg';
+const ffmpegPath =
+  process.env.FFMPEG_PATH ??
+  (ffmpegPathModule as unknown as string | null) ??
+  'ffmpeg';
 
 export async function convertM4aToWav(inputBuffer: Buffer): Promise<Buffer> {
   return new Promise((resolve, reject) => {
