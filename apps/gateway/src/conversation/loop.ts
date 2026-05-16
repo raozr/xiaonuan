@@ -78,10 +78,11 @@ export async function handleVoiceText(
       console.error('[Loop] TTS failed:', ttsErr);
     }
 
-    // 6. Send text + audio response
+    // 6. Send text + audio response (defensive re-clean before sending)
+    const cleanText = cleanLLMResponse(aiText);
     const textMsg = JSON.stringify({
       type: 'message:ai_text',
-      payload: { text: aiText },
+      payload: { text: cleanText },
       timestamp: Date.now(),
     });
     socket.send(textMsg);

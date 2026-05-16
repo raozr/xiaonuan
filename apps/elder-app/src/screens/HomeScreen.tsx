@@ -48,7 +48,12 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
       sessionReadyRef.current = true;
       console.log('[HomeScreen] Session ready');
     } else if (msg.type === 'message:ai_text') {
-      setAiText(msg.payload.text);
+      const rawText = msg.payload.text as string;
+      // 防御性清理：移除 LLM 思考过程标签，避免暴露内部推理
+      const cleanText = rawText
+        .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
+        .trim();
+      setAiText(cleanText);
     } else if (msg.type === 'ai:audio') {
       const url = msg.payload.url as string;
       if (lastAudioUrlRef.current === url) {
