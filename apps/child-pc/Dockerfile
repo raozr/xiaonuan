@@ -12,11 +12,9 @@ WORKDIR /app
 # 第一阶段：安装依赖并构建
 FROM base AS build
 
-# 复制配置文件
+# 复制配置文件（child-pc 不依赖 workspace 中的其他包，但 lockfile 是 monorepo 级别的）
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/child-pc/package.json ./apps/child-pc/
-COPY packages/prisma/package.json ./packages/prisma/
-COPY packages/skills/package.json ./packages/skills/
 
 # 安装依赖（跳过 postinstall 避免下载 ffmpeg-static 等不必要的二进制文件）
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile --ignore-scripts

@@ -12,9 +12,6 @@ WORKDIR /app
 # 第一阶段：安装依赖并构建
 FROM base AS build
 
-# 安装系统 ffmpeg（避免 ffmpeg-static postinstall 从外网下载）
-RUN apk add --no-cache ffmpeg
-
 # 复制配置文件
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/gateway/package.json ./apps/gateway/
@@ -23,8 +20,7 @@ COPY apps/mini-program/package.json ./apps/mini-program/
 COPY packages/prisma/package.json ./packages/prisma/
 COPY packages/skills/package.json ./packages/skills/
 
-# 安装依赖（跳过 ffmpeg-static 的 postinstall 下载）
-ENV FFMPEG_STATIC_SKIP_DOWNLOAD=true
+# 安装依赖
 RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 # 复制所有源代码
