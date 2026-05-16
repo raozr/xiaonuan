@@ -23,6 +23,14 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://www.quirklabs.top/xiaonuan"
       }
+    },
+    "production-apk": {
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://www.quirklabs.top/xiaonuan"
+      }
     }
   }
 }
