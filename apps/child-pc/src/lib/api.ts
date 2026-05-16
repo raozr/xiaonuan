@@ -21,10 +21,13 @@ async function request<T>(
   const url = `${API_BASE}${path.startsWith('/api') ? path : `/api${path}`}`;
 
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string> || {}),
   };
+
+  if (options.body) {
+    headers['Content-Type'] = 'application/json';
+  }
 
   const response = await fetch(url, {
     ...options,
