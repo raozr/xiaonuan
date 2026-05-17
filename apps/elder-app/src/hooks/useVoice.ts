@@ -81,6 +81,11 @@ export function useVoice() {
   const playAudio = useCallback(async (uri: string): Promise<boolean> => {
     try {
       setPlayError(false);
+      // Reset audio mode to allow normal media playback on Android
+      await setAudioModeAsync({
+        allowsRecording: false,
+        playsInSilentMode: true,
+      });
       await player.replace({ uri });
       await player.play();
       return true;

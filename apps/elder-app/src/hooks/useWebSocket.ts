@@ -27,18 +27,24 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
   }, []);
 
   const connect = useCallback(() => {
-    if (ws.current?.readyState === WebSocket.OPEN) return;
+    if (
+      ws.current?.readyState === WebSocket.OPEN ||
+      ws.current?.readyState === WebSocket.CONNECTING
+    ) {
+      return;
+    }
 
     const fullUrl = `${url}?token=${token}`;
-    ws.current = new WebSocket(fullUrl);
+    const socket = new WebSocket(fullUrl);
+    ws.current = socket;
 
-    ws.current.onopen = () => {
+    socket.onopen = () => {
       console.log('[WS] Connected');
       setIsConnected(true);
       reconnectCount.current = 0;
     };
 
-    ws.current.onmessage = (event) => {
+    socket.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
         console.log('[WS] Received:', message.type, JSON.stringify(message.payload).slice(0, 120));
@@ -54,10 +60,13 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
       }
     };
 
-    ws.current.onclose = (e) => {
+    socket.onclose = (e) => {
       console.log('[WS] Disconnected code=', e.code, 'reason=', e.reason);
       setIsConnected(false);
-      ws.current = null;
+      // Only nullify if this socket is still the current one
+      if (ws.current === socket) {
+        ws.current = null;
+      }
 
       clearReconnectTimer();
 
@@ -72,7 +81,7 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
       }, timeout);
     };
 
-    ws.current.onerror = (e) => {
+    socket.onerror = (e) => {
       const target = e.target as WebSocket | undefined;
       if (target?.readyState === WebSocket.CLOSED) {
         return;

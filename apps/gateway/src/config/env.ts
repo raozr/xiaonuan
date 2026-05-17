@@ -17,6 +17,7 @@ const envSchema = z.object({
   NLS_ACCESS_KEY_ID: z.string().default(''),
   NLS_ACCESS_KEY_SECRET: z.string().default(''),
   VOICE_SERVICE_URL: z.string().default('http://localhost:8000'),
+  PUBLIC_BASE_URL: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { WebSocket } from '@fastify/websocket';
 import { prisma } from '@xiaonuan/prisma';
+import { env } from '../config/env.js';
 import { handleVoiceText, sendClosingMessage } from '../conversation/loop.js';
 import { definePhaseTransition } from '../state-machine/index.js';
 import {
@@ -30,8 +31,9 @@ export function createWebSocketHandler(app: FastifyInstance) {
       authReject = reject;
     });
 
-    const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol;
-    const baseUrl = `${protocol}://${req.hostname}${req.port ? ':' + req.port : ''}`;
+    const baseUrl =
+      env.PUBLIC_BASE_URL ||
+      `${(req.headers['x-forwarded-proto'] as string) || req.protocol}://${req.hostname}${req.port ? ':' + req.port : ''}`;
 
     startHeartbeat();
 

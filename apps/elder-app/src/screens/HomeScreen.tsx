@@ -40,6 +40,7 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
   const wasPlayingRef = useRef(false);
   const wasConnectedRef = useRef(false);
   const lastAudioUrlRef = useRef<string | null>(null);
+  const playbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { isRecording, isPlaying, playError, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
 
@@ -91,6 +92,28 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     }
     wasPlayingRef.current = isPlaying;
   }, [isPlaying, state]);
+
+  useEffect(() => {
+    if (state === 'SPEAKING') {
+      playbackTimeoutRef.current = setTimeout(() => {
+        if (!isPlaying) {
+          console.warn('[HomeScreen] Playback timeout, resetting state');
+          setState('IDLE');
+        }
+      }, 8000);
+    } else {
+      if (playbackTimeoutRef.current) {
+        clearTimeout(playbackTimeoutRef.current);
+        playbackTimeoutRef.current = null;
+      }
+    }
+    return () => {
+      if (playbackTimeoutRef.current) {
+        clearTimeout(playbackTimeoutRef.current);
+        playbackTimeoutRef.current = null;
+      }
+    };
+  }, [state, isPlaying]);
 
   useEffect(() => {
     if (state === 'SPEAKING' && playError) {

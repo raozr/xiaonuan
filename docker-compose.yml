@@ -83,6 +83,7 @@ services:
       - NLS_ACCESS_KEY_ID=${NLS_ACCESS_KEY_ID}
       - NLS_ACCESS_KEY_SECRET=${NLS_ACCESS_KEY_SECRET}
       - VOICE_SERVICE_URL=http://xiaonuan-voice-service:8000
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
     networks:
       - app-network
 
