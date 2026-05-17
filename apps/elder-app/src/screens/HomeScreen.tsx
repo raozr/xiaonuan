@@ -42,7 +42,7 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
   const lastAudioUrlRef = useRef<string | null>(null);
   const playbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const { isRecording, isPlaying, playError, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
+  const { isRecording, isPlaying, playError, hasPermission, requestPermission, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
 
   const handleMessage = useCallback((msg: WebSocketMessage) => {
     console.log('[HomeScreen] handleMessage:', msg.type, msg.payload);
@@ -148,6 +148,20 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
       Alert.alert('网络未连接', '正在尝试连接小暖...');
       return;
     }
+
+    // 预请求麦克风权限，避免在长按交互过程中弹窗打断触摸事件流
+    if (hasPermission === false) {
+      Alert.alert('需要麦克风权限', '请在设置中允许小暖使用麦克风');
+      return;
+    }
+    if (hasPermission === null) {
+      const granted = await requestPermission();
+      if (!granted) {
+        Alert.alert('需要麦克风权限', '请在设置中允许小暖使用麦克风');
+        return;
+      }
+    }
+
     pressStartTime.current = Date.now();
     setState('LISTENING');
     if (!sessionReadyRef.current) {

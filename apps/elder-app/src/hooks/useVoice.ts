@@ -14,7 +14,14 @@ export function useVoice() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playError, setPlayError] = useState(false);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const recordingUriRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    AudioModule.getRecordingPermissionsAsync().then(({ granted }) => {
+      setHasPermission(granted);
+    });
+  }, []);
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const recorderState = useAudioRecorderState(recorder);
@@ -30,9 +37,16 @@ export function useVoice() {
     setIsPlaying(playerStatus.playing);
   }, [playerStatus.playing]);
 
+  const requestPermission = useCallback(async () => {
+    const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+    setHasPermission(granted);
+    return granted;
+  }, []);
+
   const startRecording = useCallback(async () => {
     try {
       const { granted } = await AudioModule.requestRecordingPermissionsAsync();
+      setHasPermission(granted);
       if (!granted) {
         console.warn('[Voice] 录音权限被拒绝');
         return;
@@ -122,6 +136,8 @@ export function useVoice() {
     isRecording,
     isPlaying,
     playError,
+    hasPermission,
+    requestPermission,
     startRecording,
     stopRecording,
     playAudio,
