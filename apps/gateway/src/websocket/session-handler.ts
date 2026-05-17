@@ -30,7 +30,8 @@ export function createWebSocketHandler(app: FastifyInstance) {
       authReject = reject;
     });
 
-    const baseUrl = `${req.protocol}://${req.hostname}${req.port ? ':' + req.port : ''}`;
+    const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol;
+    const baseUrl = `${protocol}://${req.hostname}${req.port ? ':' + req.port : ''}`;
 
     startHeartbeat();
 

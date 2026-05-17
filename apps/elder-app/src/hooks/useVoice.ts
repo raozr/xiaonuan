@@ -13,6 +13,7 @@ import { File } from 'expo-file-system';
 export function useVoice() {
   const [isRecording, setIsRecording] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playError, setPlayError] = useState(false);
   const recordingUriRef = useRef<string | null>(null);
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
@@ -77,12 +78,16 @@ export function useVoice() {
     }
   }, [recorder, recorderState.isRecording]);
 
-  const playAudio = useCallback(async (uri: string) => {
+  const playAudio = useCallback(async (uri: string): Promise<boolean> => {
     try {
+      setPlayError(false);
       await player.replace({ uri });
       await player.play();
+      return true;
     } catch (e) {
       console.error('[Voice] 播放音频失败', e);
+      setPlayError(true);
+      return false;
     }
   }, [player]);
 
@@ -111,6 +116,7 @@ export function useVoice() {
   return {
     isRecording,
     isPlaying,
+    playError,
     startRecording,
     stopRecording,
     playAudio,

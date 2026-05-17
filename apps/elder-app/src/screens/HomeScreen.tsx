@@ -41,7 +41,7 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
   const wasConnectedRef = useRef(false);
   const lastAudioUrlRef = useRef<string | null>(null);
 
-  const { isRecording, isPlaying, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
+  const { isRecording, isPlaying, playError, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
 
   const handleMessage = useCallback((msg: WebSocketMessage) => {
     console.log('[HomeScreen] handleMessage:', msg.type, msg.payload);
@@ -91,6 +91,13 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     }
     wasPlayingRef.current = isPlaying;
   }, [isPlaying, state]);
+
+  useEffect(() => {
+    if (state === 'SPEAKING' && playError) {
+      console.warn('[HomeScreen] Audio playback failed, resetting state');
+      setState('IDLE');
+    }
+  }, [state, playError]);
 
   useEffect(() => {
     if (state === 'LISTENING' || state === 'SPEAKING') {
