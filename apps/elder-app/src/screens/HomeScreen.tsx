@@ -38,6 +38,7 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
   const pressStartTime = useRef<number>(0);
   const sessionReadyRef = useRef(false);
   const wasPlayingRef = useRef(false);
+  const wasConnectedRef = useRef(false);
   const lastAudioUrlRef = useRef<string | null>(null);
 
   const { isRecording, isPlaying, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
@@ -77,6 +78,14 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
   const { isConnected, sendMessage } = useWebSocket(WS_URL, token, handleMessage);
 
   useEffect(() => {
+    if (!isConnected && wasConnectedRef.current) {
+      sessionReadyRef.current = false;
+      console.log('[HomeScreen] Connection lost, resetting session ready');
+    }
+    wasConnectedRef.current = isConnected;
+  }, [isConnected]);
+
+  useEffect(() => {
     if (wasPlayingRef.current && !isPlaying && state === 'SPEAKING') {
       setState('IDLE');
     }
@@ -112,7 +121,12 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     pressStartTime.current = Date.now();
     setState('LISTENING');
     if (!sessionReadyRef.current) {
-      sendMessage('session:create', {});
+      const sent = sendMessage('session:create', {});
+      if (!sent) {
+        Alert.alert('提示', '网络不稳定，请松开后重试');
+        setState('IDLE');
+        return;
+      }
     }
     await startRecording();
   }
@@ -144,6 +158,16 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
       waited += 100;
     }
 
+    // If still not ready, try to create session again
+    if (!sessionReadyRef.current && isConnected) {
+      sendMessage('session:create', {});
+      waited = 0;
+      while (!sessionReadyRef.current && waited < 2000) {
+        await new Promise((r) => setTimeout(r, 100));
+        waited += 100;
+      }
+    }
+
     if (!sessionReadyRef.current) {
       Alert.alert('提示', '会话创建失败，请重试');
       setState('IDLE');
@@ -159,7 +183,12 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     }
 
     console.log('[HomeScreen] Sending voice audio, base64 length:', base64.length);
-    sendMessage('message:voice_audio', { audioBase64: base64 });
+    const sent = sendMessage('message:voice_audio', { audioBase64: base64 });
+    if (!sent) {
+      Alert.alert('提示', '网络断开，请重试');
+      setState('IDLE');
+      return;
+    }
     // Remain in PROCESSING until server responds with ai:audio or error
   }
 

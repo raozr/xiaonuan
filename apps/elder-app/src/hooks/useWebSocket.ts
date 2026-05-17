@@ -115,8 +115,10 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
       const msg = JSON.stringify({ type, payload, timestamp: Date.now() });
       console.log('[WS] Send:', type, JSON.stringify(payload).slice(0, 120));
       ws.current.send(msg);
+      return true;
     } else {
       console.warn('[WS] Cannot send message, socket not open. readyState=', ws.current?.readyState);
+      return false;
     }
   }, []);
 
