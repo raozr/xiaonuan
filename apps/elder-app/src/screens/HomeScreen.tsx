@@ -44,6 +44,11 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
 
   const { isRecording, isPlaying, playError, hasPermission, requestPermission, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
 
+  // 页面挂载时预请求麦克风权限，避免在长按交互过程中弹窗打断触摸事件流
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
+
   const handleMessage = useCallback((msg: WebSocketMessage) => {
     console.log('[HomeScreen] handleMessage:', msg.type, msg.payload);
     if (msg.type === 'session:created' || msg.type === 'session:resumed') {
@@ -149,12 +154,8 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
       return;
     }
 
-    // 预请求麦克风权限，避免在长按交互过程中弹窗打断触摸事件流
-    if (hasPermission === false) {
-      Alert.alert('需要麦克风权限', '请在设置中允许小暖使用麦克风');
-      return;
-    }
-    if (hasPermission === null) {
+    // 确保有麦克风权限；若之前被拒绝（未勾选"不再询问"），再次弹框给用户授权机会
+    if (!hasPermission) {
       const granted = await requestPermission();
       if (!granted) {
         Alert.alert('需要麦克风权限', '请在设置中允许小暖使用麦克风');
@@ -179,6 +180,13 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
     if (state !== 'LISTENING') return;
 
     const duration = Date.now() - pressStartTime.current;
+
+    // 若录音尚未实际开始（如权限弹窗导致 onPressOut 提前触发），直接清理状态
+    if (!isRecording) {
+      setState('IDLE');
+      return;
+    }
+
     const uri = await stopRecording();
 
     if (duration < MIN_RECORDING_MS) {
