@@ -14,9 +14,9 @@ vi.mock('@qdrant/js-client-rest', () => ({
   })),
 }));
 
-import { ensureFamilyMemoriesCollection } from './client.js';
+import { ensurePairingMemoriesCollection } from './client.js';
 
-describe('ensureFamilyMemoriesCollection', () => {
+describe('ensurePairingMemoriesCollection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -26,9 +26,9 @@ describe('ensureFamilyMemoriesCollection', () => {
     mockFns.createCollection.mockResolvedValueOnce(undefined);
     mockFns.createPayloadIndex.mockResolvedValueOnce(undefined);
 
-    await ensureFamilyMemoriesCollection();
+    await ensurePairingMemoriesCollection();
 
-    expect(mockFns.createCollection).toHaveBeenCalledWith('family_memories', {
+    expect(mockFns.createCollection).toHaveBeenCalledWith('pairing_memories', {
       vectors: {
         size: 1024,
         distance: 'Cosine',
@@ -36,15 +36,15 @@ describe('ensureFamilyMemoriesCollection', () => {
     });
   });
 
-  it('should create familyId payload index after collection creation', async () => {
+  it('should create pairingId payload index after collection creation', async () => {
     mockFns.collectionExists.mockResolvedValueOnce({ exists: false });
     mockFns.createCollection.mockResolvedValueOnce(undefined);
     mockFns.createPayloadIndex.mockResolvedValueOnce(undefined);
 
-    await ensureFamilyMemoriesCollection();
+    await ensurePairingMemoriesCollection();
 
-    expect(mockFns.createPayloadIndex).toHaveBeenCalledWith('family_memories', {
-      field_name: 'familyId',
+    expect(mockFns.createPayloadIndex).toHaveBeenCalledWith('pairing_memories', {
+      field_name: 'pairingId',
       field_schema: 'keyword',
     });
   });
@@ -52,7 +52,7 @@ describe('ensureFamilyMemoriesCollection', () => {
   it('should skip creation when collection already exists', async () => {
     mockFns.collectionExists.mockResolvedValueOnce({ exists: true });
 
-    await ensureFamilyMemoriesCollection();
+    await ensurePairingMemoriesCollection();
 
     expect(mockFns.createCollection).not.toHaveBeenCalled();
     expect(mockFns.createPayloadIndex).not.toHaveBeenCalled();
@@ -61,14 +61,14 @@ describe('ensureFamilyMemoriesCollection', () => {
   it('should not throw when qdrant is unreachable', async () => {
     mockFns.collectionExists.mockRejectedValueOnce(new Error('Connection refused'));
 
-    await expect(ensureFamilyMemoriesCollection()).resolves.toBeUndefined();
+    await expect(ensurePairingMemoriesCollection()).resolves.toBeUndefined();
   });
 
   it('should log warning when qdrant is unreachable', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     mockFns.collectionExists.mockRejectedValueOnce(new Error('Connection refused'));
 
-    await ensureFamilyMemoriesCollection();
+    await ensurePairingMemoriesCollection();
 
     expect(consoleSpy).toHaveBeenCalledWith(
       expect.stringContaining('[Qdrant]'),

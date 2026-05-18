@@ -4,7 +4,7 @@ import jwt from '@fastify/jwt';
 import websocket from '@fastify/websocket';
 import { join } from 'path';
 import { env } from './config/env.js';
-import { ensureFamilyMemoriesCollection } from './qdrant/client.js';
+import { ensurePairingMemoriesCollection } from './qdrant/client.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
 import { pcAuthRoutes } from './routes/pc-auth.js';
@@ -83,7 +83,7 @@ await app.register(staticPlugin, {
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
-    await ensureFamilyMemoriesCollection();
+    await ensurePairingMemoriesCollection();
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
     app.log.info(`Gateway listening on http://localhost:${env.PORT}`);
   } catch (err) {

@@ -18,23 +18,23 @@ export async function ensureCollection(
   });
 }
 
-export async function ensureFamilyMemoriesCollection(): Promise<void> {
+export async function ensurePairingMemoriesCollection(): Promise<void> {
   try {
-    const { exists } = await qdrant.collectionExists('family_memories');
+    const { exists } = await qdrant.collectionExists('pairing_memories');
     if (exists) return;
 
-    await qdrant.createCollection('family_memories', {
+    await qdrant.createCollection('pairing_memories', {
       vectors: {
         size: 1024,
         distance: 'Cosine',
       },
     });
 
-    await qdrant.createPayloadIndex('family_memories', {
-      field_name: 'familyId',
+    await qdrant.createPayloadIndex('pairing_memories', {
+      field_name: 'pairingId',
       field_schema: 'keyword',
     });
   } catch (err) {
-    console.error('[Qdrant] family_memories collection 初始化失败，中短期记忆将暂时不可用:', err);
+    console.error('[Qdrant] pairing_memories collection 初始化失败，中短期记忆将暂时不可用:', err);
   }
 }
