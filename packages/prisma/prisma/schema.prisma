@@ -7,66 +7,136 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Family {
+// ─── Core Models ──────────────────────────────────────────────────────────────
+
+model Pairing {
   id            String   @id @default(cuid())
+  name          String
   inviteCode    String   @unique @map("invite_code")
   inviteCodeExpiresAt DateTime? @map("invite_code_expires_at")
-  clonedVoiceId String?  @map("cloned_voice_id")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  elder         ElderProfile?
-  children      ChildProfile[]
+  participants  Participant[]
   sessions      Session[]
-  feeds         FamilyFeed[]
+  feeds         FeedMessage[]
   dailySummaries DailySummary[]
-  habitLogs     HabitLog[]
   voiceClones   VoiceClone[]
+  events        EventStream[]
+  personas      PersonaProfile[]
+  aiPersona     AIPersona?
 
-  @@map("families")
+  @@map("pairings")
 }
 
-model ElderProfile {
-  id                String   @id @default(cuid())
-  familyId          String   @unique @map("family_id")
-  name              String
-  gender            Gender?
-  age               Int?
-  dialect           String?
-  deviceId          String?  @unique @map("device_id")
-  openid            String?  @map("openid")
-  hobbies           String?  @map("hobbies")
-  healthNotes       String?  @map("health_notes")
-  topicsToAvoid     String?  @map("topics_to_avoid")
-  greetingPreference String? @map("greeting_preference")
-  timezone          String?  @default("Asia/Shanghai") @map("timezone")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+model Participant {
+  id          String        @id @default(cuid())
+  pairingId   String        @map("pairing_id")
+  userId      String?       @map("user_id")
+  name        String
+  role        ParticipantRole
+  isAI        Boolean       @default(false) @map("is_ai")
+  phone       String?
+  openid      String?       @map("openid")
+  deviceId    String?       @unique @map("device_id")
+  metadata    Json?         // dialect, deviceId, hobbies, healthNotes, topicsToAvoid, greetingPreference, timezone
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  family            Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  pairing     Pairing       @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+  user        User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  events      EventStream[]
+  persona     PersonaProfile[]
 
-  @@map("elder_profiles")
+  @@unique([userId, pairingId])
+  @@map("participants")
 }
 
-model ChildProfile {
-  id                  String   @id @default(cuid())
-  familyId            String   @map("family_id")
-  userId              String   @map("user_id")
-  name                String?
-  phone               String
-  openid              String?  @map("openid")
-  isPrimary           Boolean  @default(false) @map("is_primary")
-  relationshipToElder String?  @map("relationship_to_elder")
-  customNotes         String?  @map("custom_notes")
-  createdAt           DateTime @default(now()) @map("created_at")
-  updatedAt           DateTime @updatedAt @map("updated_at")
-
-  family              Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, familyId])
-  @@map("child_profiles")
+enum ParticipantRole {
+  ELDER
+  CHILD
 }
+
+model AIPersona {
+  id            String   @id @default(cuid())
+  pairingId     String   @unique @map("pairing_id")
+  name          String   // e.g. "贴心小暖"
+  template      String   @map("template") // e.g. "caring-companion"
+  traits        Json        // e.g. {"warm": true, "humorous": true}
+  tone          String?
+  constraints   Json?       // e.g. {"maxDailyMessages": 10, "noMedicalAdvice": true}
+  systemPrompt  String?  @map("system_prompt")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  pairing       Pairing  @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+
+  @@map("ai_personas")
+}
+
+model PersonaProfile {
+  id            String   @id @default(cuid())
+  pairingId     String   @map("pairing_id")
+  participantId String   @map("participant_id")
+  category      String   // e.g. "hobby", "health", "preference", "habit"
+  content       String
+  confidence    Float    @default(0.5)
+  source        String?  // e.g. "feed", "checkpoint", "conversation"
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  pairing       Pairing   @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@map("persona_profiles")
+}
+
+model FeedMessage {
+  id          String   @id @default(cuid())
+  pairingId   String   @map("pairing_id")
+  type        FeedType
+  content     String
+  audioUrl    String?  @map("audio_url")
+  photoUrl    String?  @map("photo_url")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  pairing     Pairing  @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+
+  @@map("feed_messages")
+}
+
+model EventStream {
+  id          String      @id @default(cuid())
+  pairingId   String      @map("pairing_id")
+  actorId     String?     @map("actor_id")
+  type        EventType
+  content     String      @map("content")
+  tags        String[]
+  payload     Json?
+  eventTime   DateTime    @default(now()) @map("event_time")
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  pairing     Pairing     @relation(fields: [pairingId], references: [id], onDelete: Cascade)
+  actor       Participant? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([pairingId, eventTime])
+  @@index([actorId])
+  @@map("event_stream")
+}
+
+enum EventType {
+  feed_message
+  conversation_turn
+  conversation_extracted
+  info_extracted
+  mood_change
+  relationship_shift
+  proactive_outreach
+  persona_updated
+}
+
+// ─── Preserved Models (with familyId → pairingId) ────────────────────────────
 
 model User {
   id        String   @id @default(cuid())
@@ -78,7 +148,7 @@ model User {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  childProfiles ChildProfile[]
+  participants Participant[]
 
   @@map("users")
 }
@@ -90,7 +160,7 @@ enum UserRole {
 
 model Session {
   id        String   @id @default(cuid())
-  familyId  String   @map("family_id")
+  pairingId String   @map("pairing_id")
   phase     SessionPhase @default(GREETING)
   startedAt DateTime @default(now()) @map("started_at")
   endedAt   DateTime? @map("ended_at")
@@ -98,7 +168,7 @@ model Session {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  family    Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  pairing   Pairing  @relation(fields: [pairingId], references: [id], onDelete: Cascade)
   checkpoints Checkpoint[]
   messages  SessionMessage[]
 
@@ -139,40 +209,9 @@ model Checkpoint {
   @@map("checkpoints")
 }
 
-model FamilyFeed {
-  id          String   @id @default(cuid())
-  familyId    String   @map("family_id")
-  type        FeedType
-  content     String
-  category    FeedCategory
-  isRecent    Boolean  @default(false) @map("is_recent")
-  audioUrl    String?  @map("audio_url")
-  photoUrl    String?  @map("photo_url")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
-
-  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
-
-  @@map("family_feeds")
-}
-
-enum FeedType {
-  TEXT
-  VOICE
-  PHOTO
-}
-
-enum FeedCategory {
-  PERSON
-  PLACE
-  EVENT
-  PREFERENCE
-  HEALTH
-}
-
 model DailySummary {
   id          String   @id @default(cuid())
-  familyId    String   @map("family_id")
+  pairingId   String   @map("pairing_id")
   date        DateTime @db.Date
   moodLabel   String   @map("mood_label")
   duration    Int      @default(0)
@@ -181,24 +220,10 @@ model DailySummary {
   concerns    String?
   createdAt   DateTime @default(now()) @map("created_at")
 
-  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  pairing     Pairing  @relation(fields: [pairingId], references: [id], onDelete: Cascade)
 
-  @@unique([familyId, date])
+  @@unique([pairingId, date])
   @@map("daily_summaries")
-}
-
-model HabitLog {
-  id          String   @id @default(cuid())
-  familyId    String   @map("family_id")
-  openedAt    DateTime @map("opened_at")
-  closedAt    DateTime? @map("closed_at")
-  duration    Int      @default(0)
-  topicCount  Int      @default(0) @map("topic_count")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
-
-  @@map("habit_logs")
 }
 
 enum Gender {
@@ -208,7 +233,7 @@ enum Gender {
 
 model VoiceClone {
   id          String   @id @default(cuid())
-  familyId    String   @map("family_id")
+  pairingId   String   @map("pairing_id")
   createdBy   String   @map("created_by")
   voiceId     String   @map("voice_id")
   status      VoiceCloneStatus
@@ -216,7 +241,7 @@ model VoiceClone {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  family      Family   @relation(fields: [familyId], references: [id], onDelete: Cascade)
+  pairing     Pairing  @relation(fields: [pairingId], references: [id], onDelete: Cascade)
 
   @@map("voice_clones")
 }
@@ -226,4 +251,10 @@ enum VoiceCloneStatus {
   TRAINING
   READY
   FAILED
+}
+
+enum FeedType {
+  TEXT
+  VOICE
+  PHOTO
 }
