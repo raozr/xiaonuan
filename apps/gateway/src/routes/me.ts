@@ -5,7 +5,7 @@ type UserPayload = {
   userId?: string;
   role: string;
   phone?: string;
-  familyId?: string;
+  pairingId?: string;
   deviceId?: string;
 };
 
@@ -20,7 +20,7 @@ export async function meRoutes(app: FastifyInstance) {
     if (user.role === 'CHILD' && user.userId) {
       const dbUser = await prisma.user.findUnique({
         where: { id: user.userId },
-        include: { childProfiles: true },
+        include: { participants: true },
       });
 
       if (!dbUser) {
@@ -31,23 +31,23 @@ export async function meRoutes(app: FastifyInstance) {
         role: 'CHILD',
         name: dbUser.name,
         phone: dbUser.phone,
-        familyCount: dbUser.childProfiles.length,
+        pairingCount: dbUser.participants.length,
       });
     }
 
-    if (user.role === 'ELDER' && user.familyId) {
-      const elderProfile = await prisma.elderProfile.findUnique({
-        where: { familyId: user.familyId },
+    if (user.role === 'ELDER' && user.pairingId) {
+      const elder = await prisma.participant.findFirst({
+        where: { pairingId: user.pairingId, role: 'ELDER', isAI: false },
       });
 
-      if (!elderProfile) {
-        return reply.status(404).send({ success: false, message: '老人信息不存在' });
+      if (!elder) {
+        return reply.status(404).send({ success: false, message: '被陪伴者信息不存在' });
       }
 
       return reply.send({
         role: 'ELDER',
-        name: elderProfile.name,
-        familyId: user.familyId,
+        name: elder.name,
+        pairingId: user.pairingId,
       });
     }
 

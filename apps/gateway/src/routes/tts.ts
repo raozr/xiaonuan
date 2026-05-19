@@ -10,7 +10,7 @@ import { prisma } from '@xiaonuan/prisma';
 
 const ttsSchema = z.object({
   text: z.string().min(1).max(1000),
-  familyId: z.string().optional(),
+  pairingId: z.string().optional(),
 });
 
 const TTS_DIR = path.resolve(process.cwd(), 'public', 'tts');
@@ -40,14 +40,14 @@ export async function ttsRoutes(app: FastifyInstance) {
       let voiceId: string | undefined;
       const user = request.user;
 
-      if (user?.role === 'ELDER' && user.familyId) {
-        voiceId = await resolveVoiceId(user.familyId);
-      } else if (user?.role === 'CHILD' && parsed.data.familyId && user.userId) {
-        const member = await prisma.childProfile.findUnique({
-          where: { userId_familyId: { userId: user.userId, familyId: parsed.data.familyId } },
+      if (user?.role === 'ELDER' && user.pairingId) {
+        voiceId = await resolveVoiceId(user.pairingId);
+      } else if (user?.role === 'CHILD' && parsed.data.pairingId && user.userId) {
+        const member = await prisma.participant.findFirst({
+          where: { pairingId: parsed.data.pairingId, role: 'CHILD', userId: user.userId },
         });
         if (member) {
-          voiceId = await resolveVoiceId(parsed.data.familyId);
+          voiceId = await resolveVoiceId(parsed.data.pairingId);
         }
       }
 
