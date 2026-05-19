@@ -227,7 +227,7 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
 
     await prisma.voiceClone.update({
       where: { id: clone.id },
-      data: { status: 'READY' },
+      data: { status: 'PENDING' },
     });
 
     return reply.send({ success: true, message: '已取消激活' });

@@ -2,20 +2,6 @@ import { prisma } from '@xiaonuan/prisma';
 import { chatCompletion } from '../services/dashscope.js';
 import { embedText } from '../services/embedding.js';
 import { qdrant } from '../qdrant/client.js';
-import type { FeedCategory } from '@xiaonuan/prisma';
-
-const VALID_CATEGORIES: Set<FeedCategory> = new Set([
-  'PERSON',
-  'PLACE',
-  'EVENT',
-  'PREFERENCE',
-  'HEALTH',
-]);
-
-function normalizeCategory(raw: string): FeedCategory {
-  const upper = raw.toUpperCase() as FeedCategory;
-  return VALID_CATEGORIES.has(upper) ? upper : 'EVENT';
-}
 
 export async function generateCheckpoint(sessionId: string): Promise<void> {
   const messages = await prisma.sessionMessage.findMany({
@@ -66,11 +52,11 @@ ${conversation}
 
   const session = await prisma.session.findUnique({
     where: { id: sessionId },
-    select: { familyId: true },
+    select: { pairingId: true },
   });
 
   if (!session) return;
-  const { familyId } = session;
+  const { pairingId } = session;
 
   const flatKeyFacts = checkpointData.keyFacts.map((k) => k.fact);
 
@@ -98,13 +84,13 @@ ${conversation}
     try {
       const text = `${checkpointData.topicSummary}; ${flatKeyFacts.join('; ')}`;
       const vector = await embedText(text);
-      await qdrant.upsert('family_memories', {
+      await qdrant.upsert('pairing_memories', {
         points: [
           {
             id: sessionId,
             vector,
             payload: {
-              familyId,
+              pairingId,
               sessionId,
               checkpointId: sessionId,
               content: text,
@@ -119,22 +105,20 @@ ${conversation}
     }
   })();
 
-  // FamilyFeed write
+  // FeedMessage write
   const feedPromise = (async () => {
     try {
       for (const item of checkpointData.keyFacts) {
-        await prisma.familyFeed.create({
+        await prisma.feedMessage.create({
           data: {
-            familyId,
+            pairingId,
             type: 'TEXT',
             content: item.fact,
-            category: normalizeCategory(item.category),
-            isRecent: true,
           },
         });
       }
     } catch (err) {
-      console.error('[Checkpoint] FamilyFeed 写入失败:', err);
+      console.error('[Checkpoint] FeedMessage 写入失败:', err);
     }
   })();
 
