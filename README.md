@@ -1,19 +1,23 @@
 # XiaoNuan (小暖) - AI Home-Based Elderly Companion
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.1.0-green.svg)
+![Version](https://img.shields.io/badge/version-0.4.0-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)
 
-**XiaoNuan** is an AI elderly companion platform designed specifically for senior citizens and their families. It is not just a chatbot, but an intelligent partner with emotional depth, memory capabilities, and safety monitoring features.
+**XiaoNuan** is an AI elderly companion platform designed specifically for senior citizens and their families. It is not just a chatbot, but an intelligent partner with emotional depth, layered memory, proactive care, and safety monitoring features.
 
 ## 🌟 Key Features
 
-- **Layered Memory System**: Simulates human memory logic, including session memory, daily recaps, short-term updates, and vector-based mid-to-long-term memory retrieval. This allows the AI to "remember" the elder's preferences, health status, and family anecdotes.
-- **Emotional Intelligence Strategy**: Built-in conversational skills supporting dialect styles, emotional resonance, and gentle guidance to provide a warm and natural companionship experience.
-- **Session State Machine**: Intelligently identifies conversational phases (Greeting, Active Chat, Closing) to dynamically adjust AI behavior and context retrieval strategies.
-- **Safety Guardrails**: Integrated emergency alerting tools that can recognize potential health risks or distress signals and respond promptly.
+- **Layered Memory System**: Simulates human memory logic with four layers — session (current context), daily (recap summaries), short-term (recent conversations), and mid-term (vector-based semantic search via Qdrant). The AI "remembers" the elder's preferences, health status, and family anecdotes.
+- **Relationship Profiles**: Maintains structured persona profiles across categories (hobbies, health, preferences, relationships, habits) with confidence scoring and automatic extraction from conversations.
+- **Emotional Intelligence**: Tracks mood signals from conversations, surfaces current mood context, and adapts conversation tone accordingly. Supports dialect styles, emotional resonance, and gentle guidance.
+- **Proactive Outreach**: Automatically identifies inactive pairings (72h no conversation) and generates proactive care messages at 10:00 AM daily with 24h cooldown.
+- **Event Stream Architecture**: All interactions flow through a unified event bus (Feed, Conversation, Extraction, Mood Change, Relationship Shift, Outreach, Persona Update), replacing the previous family-based feed model.
+- **Token Budget Control**: Memory context injection capped at ~2700 tokens (4096 chars) with priority-based truncation to prevent context overflow.
+- **Session State Machine**: Intelligently identifies conversational phases (Greeting → Active Chat → Closing → Ended) to dynamically adjust AI behavior and context retrieval strategies.
+- **Safety Guardrails**: Integrated emergency alerting tools that recognize potential health risks or distress signals and respond promptly.
 - **Voice Interaction**: Full-duplex voice conversation powered by Alibaba Cloud speech synthesis and recognition, enabling natural hands-free interaction for elders.
-- **Multi-Client Support**: Family members connect via WeChat Mini-program while elders use a dedicated mobile app with large fonts and simplified UI.
+- **Multi-Client Support**: Family members connect via WeChat Mini-program or Child PC Web; elders use a dedicated React Native app with large fonts and simplified UI.
 - **Localized Integration**: Deeply integrated with Alibaba's DashScope (Qwen-Plus) LLM for superior performance in Chinese linguistic contexts.
 
 ## 🏗️ Project Architecture
@@ -24,7 +28,8 @@ This project uses a PNPM Workspace-organized Monorepo structure:
 xiaonuan/
 ├── apps/
 │   ├── gateway/          # AI Agent Gateway (Fastify + WebSocket)
-│   ├── mini-program/     # WeChat Mini-program (Family Member Client)
+│   ├── child-pc/         # Next.js 16+ Web App (Family Member PC Client)
+│   ├── mini-program/     # WeChat Mini-program (Family Member Mobile Client)
 │   ├── elder-app/        # React Native Mobile App (Elder Client, Expo)
 │   └── voice-service/    # Python FastAPI Voice Processing Service
 ├── packages/
@@ -47,7 +52,7 @@ xiaonuan/
 - **Cache**: Redis
 - **Speech**: Alibaba Cloud NLS (TTS / ASR)
 - **Frontend**:
-  - Family: WeChat Mini-program
+  - Family: WeChat Mini-program (mobile), Child PC Web (desktop, Next.js 16)
   - Elder: React Native (Expo)
 
 ## 🚀 Quick Start
@@ -88,13 +93,26 @@ xiaonuan/
 
 ## 📱 Client Deployment
 
-### WeChat Mini-program (Family Client)
+### WeChat Mini-program (Family Mobile Client)
 
 The mini-program is developed with native WeChat Mini-program framework.
 
 - **Development**: Open `apps/mini-program/` in WeChat DevTools.
 - **Build**: Use WeChat DevTools to upload and publish.
 - **Backend**: Ensure the gateway is deployed and the domain is whitelisted in WeChat MP Admin.
+
+### Child PC Web (Family Desktop Client)
+
+A Next.js 16+ web application for family members managing elders from PC.
+
+- **Development**:
+  ```bash
+  cd apps/child-pc
+  pnpm install
+  pnpm dev
+  ```
+- **Build**: `pnpm build` (Next.js App Router, static export)
+- **Features**: Pairing management, event timeline, feed posting, voice cloning, elder settings.
 
 ### Elder App (Elder Client)
 

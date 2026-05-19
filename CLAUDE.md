@@ -65,6 +65,26 @@ Layered memory architecture simulating human memory:
 - Daily memory: Daily recap summaries
 - Short-term memory: Recent conversation summary
 - Mid-term memory: Vector-based semantic search (Qdrant)
+- Relationship layer: Top 5 PersonaProfile facts across categories
+- Emotion tracker: Mood signals extracted from conversation events
+- Context builder: Three-layer injection with 4096-char token budget control
+
+**Event System** (`src/events/`)
+Unified event-driven architecture:
+- `event-bus.ts`: Central event dispatcher (write buffer, 10 events or 30s flush)
+- `event-types.ts`: Type-safe event definitions
+- `event-archiver.ts`: Periodic event archival to long-term storage
+- `checkpoint-persistence.ts`: Redis-backed checkpoint pending key management
+
+**Extraction Services** (`src/services/`)
+- `extraction-queue.ts`: BullMQ-based async LLM extraction queue
+- `extraction-service.ts`: Enqueue wrapper for extraction jobs
+
+**Persona Service** (`src/memory/`)
+Centralized PersonaProfile operations:
+- `getTopProfiles()`: Top N profiles by confidence
+- `getProfilesByCategories()`: Category-filtered profiles
+- `addProfiles()`: Batch profile creation
 
 **Agent System** (`src/agent/`)
 - `pi-agent.ts`: Primary AI agent with tool calling capabilities
@@ -79,12 +99,15 @@ Session states: `greeting` → `active-chat` → `closing` → `ended`
 - WebSocket handler for real-time voice streaming
 
 ### Database Schema (`packages/prisma`)
-Key entities:
-- `Elder`: Elderly user profile with voice cloning settings
-- `FamilyMember`: Family user linked via WeChat OAuth
+Key entities (V0.4 uses Pairing model, replacing the old Family model):
+- `Pairing`: Core entity linking elder, child, and AI persona
+- `Participant`: Members of a pairing (ELDER role, CHILD role, AI companion)
+- `Elder`: Elderly user profile (embedded as Participant with role=ELDER)
+- `PersonaProfile`: Structured persona facts with categories and confidence
 - `Session`: Conversation session with state tracking
-- `Message`: Chat messages with metadata
-- `Memory`: Long-term memory entries (vectorized)
+- `EventStream`: Unified event log (feed_message, conversation_turn, conversation_extracted, info_extracted, mood_change, relationship_shift, proactive_outreach, persona_updated)
+- `Checkpoint`: Conversation checkpoint with pending status
+- `VoiceClone`: Voice cloning records linked to pairing
 
 ### Voice Processing (`apps/voice-service`)
 Python FastAPI service handling:
@@ -153,7 +176,8 @@ Strict mode enabled in root `tsconfig.json`:
 
 ## Important Notes
 
-- **child-pc** app uses Next.js 16 with breaking API changes from training data; see its CLAUDE.md
+- **child-pc** app uses Next.js 16 with breaking API changes from training data; see its own CLAUDE.md
+- V0.4 migrated from Family-based to Pairing-based data model; all routes use `/api/pairings/*`
 - Gateway requires external Docker network `app-network` for production
 - Voice service uses Python 3.11+ with `requirements.txt`
 - Mini-program is native WeChat framework (not Taro/uni-app)
