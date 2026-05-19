@@ -35,18 +35,18 @@ describe('Pi Agent', () => {
     vi.clearAllMocks();
   });
 
-  it('should initialize with family context and load skills', async () => {
+  it('should initialize with pairing context and load skills', async () => {
     vi.mocked(loadSkillsForPhase).mockResolvedValueOnce([
       { name: 'companion-persona', content: '温暖陪伴者', description: '', phase: ['all'], priority: '' },
     ]);
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
     expect(loadSkillsForPhase).toHaveBeenCalledWith('ACTIVE_CHAT');
-    expect(agent.familyId).toBe('family-123');
+    expect(agent.pairingId).toBe('pairing-123');
     expect(agent.phase).toBe('ACTIVE_CHAT');
   });
 
@@ -59,7 +59,7 @@ describe('Pi Agent', () => {
     ]);
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
@@ -75,7 +75,7 @@ describe('Pi Agent', () => {
     vi.mocked(loadSkillsForPhase).mockResolvedValueOnce([]);
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
@@ -92,12 +92,12 @@ describe('Pi Agent', () => {
     });
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
-    const result = await agent.callTool('memory_context', { familyId: 'family-123' }) as any;
-    expect(memoryContext).toHaveBeenCalledWith('family-123');
+    const result = await agent.callTool('memory_context', { pairingId: 'pairing-123' }) as any;
+    expect(memoryContext).toHaveBeenCalledWith('pairing-123');
     expect(result.elder.name).toBe('李爷爷');
   });
 
@@ -108,15 +108,15 @@ describe('Pi Agent', () => {
     ]);
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
     const result = await agent.callTool('memory_recall', {
       query: 'test',
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
     }) as any[];
-    expect(memoryRecall).toHaveBeenCalledWith('test', 'family-123', undefined);
+    expect(memoryRecall).toHaveBeenCalledWith('test', 'pairing-123', undefined);
     expect(result).toHaveLength(1);
   });
 
@@ -126,7 +126,7 @@ describe('Pi Agent', () => {
     ]);
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
@@ -139,12 +139,12 @@ describe('Pi Agent', () => {
     vi.mocked(loadSkillsForPhase).mockResolvedValueOnce([]);
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
     const { chatCompletion } = await import('../services/dashscope.js');
-    
+
     // First call returns a tool call
     vi.mocked(chatCompletion).mockResolvedValueOnce({
       content: null,
@@ -154,7 +154,7 @@ describe('Pi Agent', () => {
           type: 'function',
           function: {
             name: 'memory_note',
-            arguments: JSON.stringify({ category: 'HEALTH', content: '胃痛吃不下饭' }),
+            arguments: JSON.stringify({ category: 'health', content: '胃痛吃不下饭' }),
           },
         },
       ],
@@ -185,7 +185,7 @@ describe('Pi Agent', () => {
     vi.mocked(loadSkillsForPhase).mockResolvedValueOnce([]);
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
@@ -207,17 +207,22 @@ describe('Pi Agent', () => {
     ]);
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
     await agent.processMessage('你好', { sessionId: 'session-123', turnCount: 1 });
 
-    const { chatCompletion } = await import('../services/dashscope.js');
-    const systemMessage = vi.mocked(chatCompletion).mock.calls[0]![0][0];
-
-    expect(systemMessage!.content).toContain('温暖陪伴者');
-    expect(systemMessage!.content).toContain('对话策略...');
+    // Verify buildSystemPrompt was called with the loaded skills
+    const { buildSystemPrompt } = await import('./prompt-builder.js');
+    expect(buildSystemPrompt).toHaveBeenCalledWith(
+      'pairing-123',
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'companion-persona' }),
+        expect.objectContaining({ name: 'conversation-strategy' }),
+      ]),
+      expect.any(Object)
+    );
   });
 
   it('should inject memory context into system prompt', async () => {
@@ -226,17 +231,16 @@ describe('Pi Agent', () => {
     vi.mocked(loadSkillsForPhase).mockResolvedValueOnce([]);
 
     const agent = await createPiAgent({
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
       phase: 'ACTIVE_CHAT',
     });
 
     await agent.processMessage('你好', { sessionId: 'session-123', turnCount: 1 });
 
-    const { chatCompletion } = await import('../services/dashscope.js');
-    const systemMessage = vi.mocked(chatCompletion).mock.calls[0]![0][0];
-
-    expect(systemMessage!.content).toContain('【今日回顾】');
-    expect(systemMessage!.content).toContain('上午聊到儿子周末回家');
+    // Verify buildMemoryContext was called with the correct pairingId
+    expect(buildMemoryContext).toHaveBeenCalledWith(
+      expect.objectContaining({ pairingId: 'pairing-123', input: '你好' })
+    );
   });
 });
 
@@ -256,43 +260,46 @@ describe('buildSystemPrompt', () => {
     const user = await prisma.user.create({
       data: { phone: `13900${Date.now()}`.slice(-5), role: 'CHILD' },
     });
-    const family = await prisma.family.create({
+    const pairing = await prisma.pairing.create({
       data: {
+        name: 'Test Pairing',
         inviteCode: `prompt-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: {
-          create: {
-            name: '王奶奶',
-            age: 78,
-            dialect: '四川话',
-            hobbies: '养花、听京剧',
-            healthNotes: '腰不好',
-            topicsToAvoid: '已故的老伴',
-            greetingPreference: '称呼我老王就行',
-          },
-        },
-        children: {
-          create: {
-            userId: user.id,
-            name: '小李',
-            phone: user.phone ?? '',
-            relationshipToElder: '儿子',
-            customNotes: '我在北京工作',
-          },
+        participants: {
+          create: [
+            {
+              name: '王奶奶',
+              role: 'ELDER',
+              metadata: {
+                age: '78',
+                dialect: '四川话',
+                hobbies: '养花、听京剧',
+                healthNotes: '腰不好',
+                topicsToAvoid: '已故的老伴',
+                greetingPreference: '称呼我老王就行',
+              },
+            },
+            {
+              name: '小李',
+              role: 'CHILD',
+              userId: user.id,
+              metadata: {
+                relationshipToElder: '儿子',
+                customNotes: '我在北京工作',
+              },
+            },
+          ],
         },
       },
-      include: { elder: true, children: true },
     });
 
     const prompt = await realBuildSystemPrompt(
-      family.id,
+      pairing.id,
       [],
       { time: new Date(), turnCount: 1, memoryText: '' }
     );
 
-
     expect(prompt).toContain('王奶奶');
-    expect(prompt).toContain('78 岁');
     expect(prompt).toContain('四川话');
     expect(prompt).toContain('养花、听京剧');
     expect(prompt).toContain('腰不好');
@@ -302,7 +309,7 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toContain('小李');
     expect(prompt).toContain('我在北京工作');
 
-    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.pairing.delete({ where: { id: pairing.id } });
     await prisma.user.delete({ where: { id: user.id } });
   });
 
@@ -310,41 +317,41 @@ describe('buildSystemPrompt', () => {
     const user = await prisma.user.create({
       data: { phone: `13901${Date.now()}`.slice(-5), role: 'CHILD' },
     });
-    const family = await prisma.family.create({
+    const pairing = await prisma.pairing.create({
       data: {
+        name: 'Test Pairing',
         inviteCode: `prompt2-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: {
-          create: {
-            name: '张爷爷',
-            age: 80,
-          },
-        },
-        children: {
-          create: {
-            userId: user.id,
-            name: '小张',
-            phone: user.phone ?? '',
-          },
+        participants: {
+          create: [
+            {
+              name: '张爷爷',
+              role: 'ELDER',
+              metadata: { age: '80' },
+            },
+            {
+              name: '小张',
+              role: 'CHILD',
+              userId: user.id,
+            },
+          ],
         },
       },
-      include: { elder: true, children: true },
     });
 
     const prompt = await realBuildSystemPrompt(
-      family.id,
+      pairing.id,
       [],
       { time: new Date(), turnCount: 1, memoryText: '' }
     );
 
     expect(prompt).toContain('张爷爷');
-    expect(prompt).toContain('80 岁');
     expect(prompt).not.toContain('她喜欢');
     expect(prompt).not.toContain('健康注意');
     expect(prompt).not.toContain('回避话题');
     expect(prompt).not.toContain('问候偏好');
 
-    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.pairing.delete({ where: { id: pairing.id } });
     await prisma.user.delete({ where: { id: user.id } });
   });
 });

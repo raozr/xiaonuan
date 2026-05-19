@@ -7,20 +7,23 @@ import {
 } from './turn-manager.js';
 
 describe('Turn Manager', () => {
-  let testFamily: any;
+  let testPairing: any;
   let testSession: any;
 
   beforeEach(async () => {
-    testFamily = await prisma.family.create({
+    testPairing = await prisma.pairing.create({
       data: {
+        name: 'Test Pairing',
         inviteCode: `tm-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '测试老人' } },
+        participants: {
+          create: { name: '测试老人', role: 'ELDER' },
+        },
       },
     });
     testSession = await prisma.session.create({
       data: {
-        familyId: testFamily.id,
+        pairingId: testPairing.id,
         phase: 'ACTIVE_CHAT',
         turnCount: 0,
       },
@@ -30,7 +33,7 @@ describe('Turn Manager', () => {
   afterEach(async () => {
     await prisma.sessionMessage.deleteMany({ where: { sessionId: testSession.id } });
     await prisma.session.delete({ where: { id: testSession.id } });
-    await prisma.family.delete({ where: { id: testFamily.id } });
+    await prisma.pairing.delete({ where: { id: testPairing.id } });
   });
 
   it('should return the most recent messages, not the oldest', async () => {

@@ -8,7 +8,7 @@ import {
 import { buildSystemPrompt } from '../agent/prompt-builder.js';
 import { chatCompletion } from '../services/dashscope.js';
 import { generateCheckpoint } from '../memory/checkpoint-service.js';
-import { synthesizeForFamily } from '../services/voice.js';
+import { synthesizeForPairing } from '../services/voice.js';
 import { cleanLLMResponse } from '../agent/response-cleaner.js';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
@@ -17,13 +17,13 @@ import type { WebSocket } from '@fastify/websocket';
 
 export async function handleVoiceText(
   sessionId: string,
-  familyId: string,
+  pairingId: string,
   text: string,
   socket: WebSocket,
   baseUrl: string = 'http://192.168.4.70:3000'
 ) {
   try {
-    console.log('[Loop] handleVoiceText start', { sessionId, familyId, text });
+    console.log('[Loop] handleVoiceText start', { sessionId, pairingId, text });
 
     // 1. Save elder message
     await saveMessage(sessionId, 'ELDER', text);
@@ -46,7 +46,7 @@ export async function handleVoiceText(
     const currentPhase = await getSessionPhase(sessionId);
     console.log('[Loop] creating PiAgent phase=', currentPhase);
     const agent = await createPiAgent({
-      familyId,
+      pairingId,
       phase: currentPhase,
     });
     console.log('[Loop] PiAgent created');
@@ -65,7 +65,7 @@ export async function handleVoiceText(
     let audioUrl: string | null = null;
     try {
       console.log('[Loop] starting TTS...');
-      const { audioBuffer } = await synthesizeForFamily(familyId, aiText);
+      const { audioBuffer } = await synthesizeForPairing(pairingId, aiText);
       const fileName = `${randomUUID()}.mp3`;
       const ttsDir = join(process.cwd(), 'public', 'tts');
       await mkdir(ttsDir, { recursive: true });
@@ -116,13 +116,13 @@ export async function handleVoiceText(
 
 export async function sendClosingMessage(
   sessionId: string,
-  familyId: string,
+  pairingId: string,
   socket: WebSocket,
   baseUrl: string = 'http://192.168.4.70:3000'
 ) {
   try {
     const recentMessages = await getRecentMessages(sessionId, 6);
-    const systemPrompt = await buildSystemPrompt(familyId, [], {
+    const systemPrompt = await buildSystemPrompt(pairingId, [], {
       time: new Date(),
       turnCount: 0,
       memoryText: '',
@@ -151,7 +151,7 @@ export async function sendClosingMessage(
 
     // TTS for closing message
     try {
-      const { audioBuffer } = await synthesizeForFamily(familyId, aiText);
+      const { audioBuffer } = await synthesizeForPairing(pairingId, aiText);
       const fileName = `${randomUUID()}.mp3`;
       const ttsDir = join(process.cwd(), 'public', 'tts');
       await mkdir(ttsDir, { recursive: true });

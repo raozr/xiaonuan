@@ -10,13 +10,16 @@ export interface AgentState {
 }
 
 export async function buildSystemPrompt(
-  familyId: string,
+  pairingId: string,
   skills: Skill[],
   state: AgentState
 ): Promise<string> {
-  const family = await prisma.family.findUnique({
-    where: { id: familyId },
-    include: { elder: true, children: true },
+  const elder = await prisma.participant.findFirst({
+    where: { pairingId, role: 'ELDER', isAI: false },
+  });
+
+  const children = await prisma.participant.findMany({
+    where: { pairingId, role: 'CHILD', isAI: false },
   });
 
   const lines: string[] = [];
@@ -58,45 +61,42 @@ export async function buildSystemPrompt(
   }
 
   // 5. [Tone & Personalization]
-  if (family && family.elder) {
-    const elder = family.elder;
-    const children = family.children.filter((c) => c.name);
+  if (elder) {
+    const elderMeta = elder.metadata as Record<string, string> | null;
 
     lines.push('<TONE_AND_PERSONALIZATION>');
-    if (elder.name && elder.age != null) {
-      lines.push(`你要陪伴的是：${elder.name}，今年 ${elder.age} 岁。`);
-    } else if (elder.name) {
+    if (elder.name) {
       lines.push(`你要陪伴的是：${elder.name}。`);
     }
 
     for (const child of children) {
-      const rel = child.relationshipToElder ? `${child.relationshipToElder} ` : '';
+      const childMeta = child.metadata as Record<string, string> | null;
+      const rel = childMeta?.relationshipToElder ? `${childMeta.relationshipToElder} ` : '';
       lines.push(`${rel}${child.name} 会经常来看${elder.name}。`);
-      if (child.customNotes) {
-        lines.push(`关于 ${child.name}：${child.customNotes}`);
+      if (childMeta?.customNotes) {
+        lines.push(`关于 ${child.name}：${childMeta.customNotes}`);
       }
     }
 
-    if (elder.dialect) {
-      const toneLines = getToneAdapter(elder.dialect);
+    if (elderMeta?.dialect) {
+      const toneLines = getToneAdapter(elderMeta.dialect);
       if (toneLines.length > 0) {
         lines.push(...toneLines);
       } else {
-        lines.push(`【方言偏好】：尽量使用 ${elder.dialect} 风格的表达，但保持易懂。`);
+        lines.push(`【方言偏好】：尽量使用 ${elderMeta.dialect} 风格的表达，但保持易懂。`);
       }
     }
-    if (elder.greetingPreference) {
-      lines.push(`【问候偏好】：${elder.greetingPreference}`);
+    if (elderMeta?.greetingPreference) {
+      lines.push(`【问候偏好】：${elderMeta.greetingPreference}`);
     }
-    
-    if (elder.hobbies) {
-      lines.push(`【爱好】：${elder.hobbies}`);
+    if (elderMeta?.hobbies) {
+      lines.push(`【爱好】：${elderMeta.hobbies}`);
     }
-    if (elder.healthNotes) {
-      lines.push(`【健康注意】：${elder.healthNotes}`);
+    if (elderMeta?.healthNotes) {
+      lines.push(`【健康注意】：${elderMeta.healthNotes}`);
     }
-    if (elder.topicsToAvoid) {
-      lines.push(`【回避话题】：${elder.topicsToAvoid}`);
+    if (elderMeta?.topicsToAvoid) {
+      lines.push(`【回避话题】：${elderMeta.topicsToAvoid}`);
     }
     lines.push('</TONE_AND_PERSONALIZATION>');
     lines.push('');
@@ -104,9 +104,9 @@ export async function buildSystemPrompt(
 
   // 6. [Anti-Patterns]
   lines.push('<ANTI_PATTERNS>');
-  lines.push('- 触发幻觉时：【禁止】说“抱歉我记错了”，【必须】说类似“哎呀看我这脑子...”的自然纠正。');
+  lines.push('- 触发幻觉时：【禁止】说"抱歉我记错了"，【必须】说类似"哎呀看我这脑子..."的自然纠正。');
   lines.push('- 医疗求助时：【禁止】给出用药建议，【必须】引导联系亲属或医生。');
-  lines.push('- 机械感：【禁止】每句话都以“请问”、“您好”开头。');
+  lines.push('- 机械感：【禁止】每句话都以"请问"、"您好"开头。');
   lines.push('</ANTI_PATTERNS>');
   lines.push('');
 

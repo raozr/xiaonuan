@@ -8,7 +8,7 @@ import { buildMemoryContext } from '../memory/context-builder.js';
 import { cleanLLMResponse } from './response-cleaner.js';
 
 export interface PiAgentConfig {
-  familyId: string;
+  pairingId: string;
   phase: string;
 }
 
@@ -18,7 +18,7 @@ export interface ProcessMessageOptions {
 }
 
 export interface PiAgent {
-  familyId: string;
+  pairingId: string;
   phase: string;
   getSkills(): Skill[];
   getTools(): Record<string, Function>;
@@ -30,29 +30,29 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
   const skills = await loadSkillsForPhase(config.phase);
 
   const tools: Record<string, Function> = {
-    memory_context: async (args: { familyId: string }) => {
-      return memoryContext(args.familyId);
+    memory_context: async (args: { pairingId: string }) => {
+      return memoryContext(args.pairingId);
     },
     memory_recall: async (args: {
       query: string;
-      familyId: string;
+      pairingId: string;
       checkpointId?: string;
     }) => {
-      return memoryRecall(args.query, args.familyId, args.checkpointId);
+      return memoryRecall(args.query, args.pairingId, args.checkpointId);
     },
     memory_note: async (args: {
-      category: 'PREFERENCE' | 'HEALTH' | 'EVENT' | 'PERSON' | 'PLACE';
+      category: string;
       content: string;
-      familyId: string;
+      pairingId: string;
     }) => {
-      return memoryNote(args.category, args.content, args.familyId);
+      return memoryNote(args.category, args.content, args.pairingId);
     },
     emergency_alert: async (args: {
       severity: 'HIGH' | 'CRITICAL';
       reason: string;
-      familyId: string;
+      pairingId: string;
     }) => {
-      return emergencyAlert(args.severity, args.reason, args.familyId);
+      return emergencyAlert(args.severity, args.reason, args.pairingId);
     },
   };
 
@@ -86,8 +86,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
           properties: {
             category: {
               type: 'string',
-              enum: ['PREFERENCE', 'HEALTH', 'EVENT', 'PERSON', 'PLACE'],
-              description: '记忆的分类',
+              description: '记忆的分类，例如 hobby, health, preference',
             },
             content: {
               type: 'string',
@@ -138,7 +137,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
     let memoryText = '';
     try {
       memoryText = await buildMemoryContext({
-        familyId: config.familyId,
+        pairingId: config.pairingId,
         turnCount: options.turnCount,
         input,
         phase: config.phase,
@@ -148,7 +147,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
     }
 
     const fullSystemPrompt = await buildSystemPrompt(
-      config.familyId,
+      config.pairingId,
       skills,
       {
         time: new Date(),
@@ -191,7 +190,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
             if (!toolFn) {
               toolResult = JSON.stringify({ error: `Tool ${fnName} not found` });
             } else {
-              const res = await toolFn({ ...fnArgs, familyId: config.familyId });
+              const res = await toolFn({ ...fnArgs, pairingId: config.pairingId });
               toolResult = JSON.stringify(res);
             }
           } catch (err: any) {
@@ -228,7 +227,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
   }
 
   return {
-    familyId: config.familyId,
+    pairingId: config.pairingId,
     phase: config.phase,
     getSkills: () => skills,
     getTools: () => tools,
