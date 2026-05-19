@@ -58,13 +58,13 @@ export async function transcribeVoice(audioBuffer: Buffer, format: string, sampl
   return res.json() as Promise<ASRResponse>;
 }
 
-export async function createClone(audioBuffers: { buffer: Buffer; filename: string }[], familyId: string): Promise<CloneResponse> {
+export async function createClone(audioBuffers: { buffer: Buffer; filename: string }[], pairingId: string): Promise<CloneResponse> {
   const form = new FormData();
   for (const item of audioBuffers) {
     const blob = new Blob([item.buffer]);
     form.append('samples', blob, item.filename);
   }
-  form.append('family_id', familyId);
+  form.append('pairing_id', pairingId);
 
   const res = await fetch(`${VOICE_SERVICE_URL}/voice/clone`, {
     method: 'POST',
