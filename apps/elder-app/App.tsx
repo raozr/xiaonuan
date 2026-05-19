@@ -8,13 +8,13 @@ import { HomeScreen } from './src/screens/HomeScreen';
 const STORAGE_KEYS = {
   DEVICE_ID: 'xn:deviceId',
   TOKEN: 'xn:token',
-  FAMILY_ID: 'xn:familyId',
+  PAIRING_ID: 'xn:pairingId',
 } as const;
 
 export default function App() {
   const [loading, setLoading] = useState(true);
   const [token, setToken] = useState<string | null>(null);
-  const [familyId, setFamilyId] = useState<string | null>(null);
+  const [pairingId, setPairingId] = useState<string | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -29,10 +29,10 @@ export default function App() {
         await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_ID, savedDeviceId);
       }
       const savedToken = await AsyncStorage.getItem(STORAGE_KEYS.TOKEN);
-      const savedFamilyId = await AsyncStorage.getItem(STORAGE_KEYS.FAMILY_ID);
+      const savedPairingId = await AsyncStorage.getItem(STORAGE_KEYS.PAIRING_ID);
       setDeviceId(savedDeviceId);
       setToken(savedToken);
-      setFamilyId(savedFamilyId);
+      setPairingId(savedPairingId);
     } catch (e) {
       console.error('Failed to load auth state', e);
     } finally {
@@ -40,17 +40,17 @@ export default function App() {
     }
   }
 
-  async function onBindSuccess(newToken: string, newFamilyId: string) {
+  async function onBindSuccess(newToken: string, newPairingId: string) {
     await AsyncStorage.setItem(STORAGE_KEYS.TOKEN, newToken);
-    await AsyncStorage.setItem(STORAGE_KEYS.FAMILY_ID, newFamilyId);
+    await AsyncStorage.setItem(STORAGE_KEYS.PAIRING_ID, newPairingId);
     setToken(newToken);
-    setFamilyId(newFamilyId);
+    setPairingId(newPairingId);
   }
 
   function onUnbind() {
-    AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.FAMILY_ID]);
+    AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.PAIRING_ID]);
     setToken(null);
-    setFamilyId(null);
+    setPairingId(null);
   }
 
   if (loading) {
@@ -63,8 +63,8 @@ export default function App() {
 
   return (
     <View style={styles.container}>
-      {token && familyId ? (
-        <HomeScreen token={token} familyId={familyId} onUnbind={onUnbind} />
+      {token && pairingId ? (
+        <HomeScreen token={token} pairingId={pairingId} onUnbind={onUnbind} />
       ) : (
         <BindScreen onBindSuccess={onBindSuccess} deviceId={deviceId} />
       )}
