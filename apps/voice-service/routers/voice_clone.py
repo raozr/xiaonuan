@@ -27,7 +27,7 @@ class CloneStatusResponse(BaseModel):
 @router.post("/clone")
 async def create_clone(
     samples: List[UploadFile] = File(..., description="Audio sample files for cloning"),
-    family_id: str = Form(..., description="Family ID"),
+    pairing_id: str = Form(..., description="Pairing ID"),
 ):
     """Create a cloned voice from audio samples."""
     if len(samples) < 1:
