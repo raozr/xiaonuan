@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Settings, Plus } from 'lucide-react';
+import { Home, Settings, Plus, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: '我的老人', icon: Home },
+  { href: '/events', label: '事件时间线', icon: Clock },
   { href: '/settings', label: '设置', icon: Settings },
 ];
 

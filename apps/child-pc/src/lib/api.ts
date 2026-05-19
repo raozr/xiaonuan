@@ -78,7 +78,7 @@ export interface MeResponse {
   role: string;
   name: string;
   phone: string;
-  familyCount: number;
+  pairingCount: number;
 }
 
 export function fetchMe() {
@@ -92,20 +92,19 @@ export function updateMe(data: { name: string }) {
   });
 }
 
-// Family APIs
-export interface Family {
+// Pairing APIs
+export interface Pairing {
   id: string;
   inviteCode: string;
   inviteCodeExpiresAt: string | null;
-  clonedVoiceId: string | null;
-  elder: ElderProfile;
+  elder: Elder;
   isOnline?: boolean;
   lastActive?: string | null;
 }
 
-export interface ElderProfile {
+export interface Elder {
   id: string;
-  familyId: string;
+  pairingId: string;
   name: string;
   gender?: 'MALE' | 'FEMALE';
   age?: number;
@@ -116,30 +115,30 @@ export interface ElderProfile {
   greetingPreference?: string;
 }
 
-export function fetchFamilies() {
-  return request<Family[]>('/family');
+export function fetchPairings() {
+  return request<Pairing[]>('/pairings');
 }
 
-export function createFamily(data: { elderName: string; elderAge?: number; elderDialect?: string }) {
-  return request<Family>('/family', {
+export function createPairing(data: { elderName: string; elderAge?: number; elderDialect?: string }) {
+  return request<Pairing>('/pairings', {
     method: 'POST',
     body: JSON.stringify(data),
   });
 }
 
-export function fetchFamily(id: string) {
-  return request<Family>(`/family/${id}`);
+export function fetchPairing(id: string) {
+  return request<Pairing>(`/pairings/${id}`);
 }
 
-export function updateElder(familyId: string, data: Partial<ElderProfile>) {
-  return request<{ success: boolean }>(`/family/${familyId}/elder`, {
+export function updateElder(pairingId: string, data: Partial<Elder>) {
+  return request<{ success: boolean }>(`/pairings/${pairingId}/elder`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
 }
 
-export function refreshInviteCode(familyId: string) {
-  return request<{ inviteCode: string }>(`/family/${familyId}/refresh-code`, {
+export function refreshInviteCode(pairingId: string) {
+  return request<{ inviteCode: string }>(`/pairings/${pairingId}/refresh-code`, {
     method: 'POST',
   });
 }
@@ -152,14 +151,14 @@ export interface DailySummary {
   concerns: string | null;
 }
 
-export function fetchDailySummary(familyId: string) {
-  return request<{ success: boolean; data: DailySummary | null }>(`/family/${familyId}/daily-summary`);
+export function fetchDailySummary(pairingId: string) {
+  return request<{ success: boolean; data: DailySummary | null }>(`/pairings/${pairingId}/daily-summary`);
 }
 
 // Feed APIs
-export interface FamilyFeed {
+export interface Feed {
   id: string;
-  familyId: string;
+  pairingId: string;
   type: 'TEXT' | 'VOICE' | 'PHOTO';
   content: string;
   category: string;
@@ -167,12 +166,12 @@ export interface FamilyFeed {
   createdAt: string;
 }
 
-export function fetchFeeds(familyId: string) {
-  return request<{ success: boolean; data: FamilyFeed[] }>(`/family/${familyId}/feeds`);
+export function fetchFeeds(pairingId: string) {
+  return request<{ success: boolean; data: Feed[] }>(`/pairings/${pairingId}/feeds`);
 }
 
-export function createFeed(familyId: string, data: { type: 'TEXT' | 'VOICE'; content: string; audioBase64?: string }) {
-  return request<{ success: boolean; data: FamilyFeed }>(`/family/${familyId}/feeds`, {
+export function createFeed(pairingId: string, data: { type: 'TEXT' | 'VOICE'; content: string; audioBase64?: string }) {
+  return request<{ success: boolean; data: Feed }>(`/pairings/${pairingId}/feeds`, {
     method: 'POST',
     body: JSON.stringify(data),
   });
@@ -181,18 +180,18 @@ export function createFeed(familyId: string, data: { type: 'TEXT' | 'VOICE'; con
 // Voice Clone APIs
 export interface VoiceClone {
   id: string;
-  familyId: string;
+  pairingId: string;
   voiceId: string;
   status: 'PENDING' | 'TRAINING' | 'READY' | 'FAILED';
   sampleUrls: string[];
   createdAt: string;
 }
 
-export function fetchVoiceClones(familyId: string) {
-  return request<{ success: boolean; data: VoiceClone[]; activeVoiceId: string }>(`/voice-clone/family/${familyId}`);
+export function fetchVoiceClones(pairingId: string) {
+  return request<{ success: boolean; data: VoiceClone[]; activeVoiceId: string }>(`/voice-clone/pairing/${pairingId}`);
 }
 
-export function createVoiceClone(data: { familyId: string; samples: { filename: string; base64: string }[] }) {
+export function createVoiceClone(data: { pairingId: string; samples: { filename: string; base64: string }[] }) {
   return request<{ success: boolean; voiceId: string; status: string }>('/voice-clone', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -209,4 +208,45 @@ export function deleteVoiceClone(voiceId: string) {
   return request<{ success: boolean }>(`/voice-clone/${voiceId}`, {
     method: 'DELETE',
   });
+}
+
+// Event APIs
+export type EventType =
+  | 'feed_message'
+  | 'conversation_turn'
+  | 'conversation_extracted'
+  | 'info_extracted'
+  | 'mood_change'
+  | 'relationship_shift'
+  | 'proactive_outreach'
+  | 'persona_updated';
+
+export interface Event {
+  id: string;
+  pairingId: string;
+  type: EventType;
+  content: string;
+  tags: string[];
+  payload?: Record<string, unknown>;
+  eventTime: string;
+  createdAt: string;
+}
+
+export interface EventsResponse {
+  success: boolean;
+  data: Event[];
+  pagination?: { page: number; limit: number; total: number };
+}
+
+export function fetchEvents(pairingId: string, options?: { type?: EventType; page?: number; limit?: number }) {
+  const params = new URLSearchParams();
+  if (options?.type) params.set('type', options.type);
+  if (options?.page) params.set('page', String(options.page));
+  if (options?.limit) params.set('limit', String(options.limit));
+  const qs = params.toString();
+  return request<EventsResponse>(`/pairings/${pairingId}/events${qs ? `?${qs}` : ''}`);
+}
+
+export function fetchTodayEvents(pairingId: string) {
+  return request<EventsResponse>(`/pairings/${pairingId}/events/today`);
 }
