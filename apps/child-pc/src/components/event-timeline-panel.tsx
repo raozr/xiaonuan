@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { fetchEvents, type Event, type EventType } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,10 +33,11 @@ export function EventTimelinePanel({ pairingId }: EventTimelinePanelProps) {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState('');
+  const filterTypeRef = useRef(filterType);
+  filterTypeRef.current = filterType;
 
   const loadEvents = useCallback(
-    async (reset = false) => {
-      const targetPage = reset ? 1 : page;
+    async (pageNum: number, reset: boolean) => {
       if (reset) {
         setLoading(true);
         setEvents([]);
@@ -45,13 +46,13 @@ export function EventTimelinePanel({ pairingId }: EventTimelinePanelProps) {
       }
       try {
         const res = await fetchEvents(pairingId, {
-          type: filterType === 'all' ? undefined : filterType,
-          page: targetPage,
+          type: filterTypeRef.current === 'all' ? undefined : filterTypeRef.current,
+          page: pageNum,
           limit: PAGE_LIMIT,
         });
         setEvents((prev) => (reset ? res.data : [...prev, ...res.data]));
         setTotal(res.pagination?.total ?? 0);
-        setPage(targetPage);
+        setPage(pageNum);
       } catch {
         setError('加载失败');
       } finally {
@@ -59,21 +60,21 @@ export function EventTimelinePanel({ pairingId }: EventTimelinePanelProps) {
         setLoadingMore(false);
       }
     },
-    [pairingId, filterType, page]
+    [pairingId]
   );
 
+  // Load on mount and when filterType changes
   useEffect(() => {
-    loadEvents(true);
-  }, [loadEvents]);
+    loadEvents(1, true);
+  }, [loadEvents, filterType]);
 
   const handleTypeChange = (value: string | null) => {
     setFilterType((value as EventType | 'all') ?? 'all');
-    setPage(1);
   };
 
   const handleLoadMore = () => {
-    setPage((p) => p + 1);
-    loadEvents(false);
+    const nextPage = page + 1;
+    loadEvents(nextPage, false);
   };
 
   const formatTime = (dateStr: string) => {
