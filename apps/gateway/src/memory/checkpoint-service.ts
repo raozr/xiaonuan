@@ -2,6 +2,7 @@ import { prisma } from '@xiaonuan/prisma';
 import { chatCompletion } from '../services/dashscope.js';
 import { embedText } from '../services/embedding.js';
 import { qdrant } from '../qdrant/client.js';
+import { emitEvent } from '../events/event-bus.js';
 
 export async function generateCheckpoint(sessionId: string): Promise<void> {
   const messages = await prisma.sessionMessage.findMany({
@@ -105,22 +106,24 @@ ${conversation}
     }
   })();
 
-  // FeedMessage write
-  const feedPromise = (async () => {
+  // EventStream write (immediate to avoid race with buffer flush)
+  const eventPromise = (async () => {
     try {
-      for (const item of checkpointData.keyFacts) {
-        await prisma.feedMessage.create({
-          data: {
-            pairingId,
-            type: 'TEXT',
-            content: item.fact,
-          },
-        });
-      }
+      await emitEvent({
+        pairingId,
+        type: 'conversation_extracted',
+        content: checkpointData.topicSummary,
+        tags: flatKeyFacts,
+        payload: {
+          keyFacts: checkpointData.keyFacts,
+          moodSnapshot: checkpointData.moodSnapshot,
+          nextTopicHint: checkpointData.nextTopicHint,
+        },
+      }, { immediate: true });
     } catch (err) {
-      console.error('[Checkpoint] FeedMessage 写入失败:', err);
+      console.error('[Checkpoint] EventStream 写入失败:', err);
     }
   })();
 
-  await Promise.allSettled([prismaPromise, qdrantPromise, feedPromise]);
+  await Promise.allSettled([prismaPromise, qdrantPromise, eventPromise]);
 }

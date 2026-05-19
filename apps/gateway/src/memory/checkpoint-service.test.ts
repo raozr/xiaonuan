@@ -15,6 +15,10 @@ vi.mock('../qdrant/client.js', () => ({
   },
 }));
 
+vi.mock('../events/event-bus.js', () => ({
+  emitEvent: vi.fn().mockResolvedValue(undefined),
+}));
+
 vi.mock('@xiaonuan/prisma', () => ({
   prisma: {
     sessionMessage: {
@@ -26,7 +30,7 @@ vi.mock('@xiaonuan/prisma', () => ({
     checkpoint: {
       upsert: vi.fn().mockResolvedValue(undefined),
     },
-    familyFeed: {
+    eventStream: {
       create: vi.fn().mockResolvedValue(undefined),
     },
   },
@@ -36,6 +40,7 @@ import { prisma } from '@xiaonuan/prisma';
 import { chatCompletion } from '../services/dashscope.js';
 import { embedText } from '../services/embedding.js';
 import { qdrant } from '../qdrant/client.js';
+import { emitEvent } from '../events/event-bus.js';
 
 describe('checkpoint-service', () => {
   beforeEach(() => {
@@ -53,7 +58,7 @@ describe('checkpoint-service', () => {
     expect(prisma.checkpoint.upsert).not.toHaveBeenCalled();
   });
 
-  it('should generate checkpoint and write to prisma, qdrant, familyfeed', async () => {
+  it('should generate checkpoint and write to prisma, qdrant, eventstream', async () => {
     vi.mocked(prisma.sessionMessage.findMany).mockResolvedValueOnce([
       { id: '1', role: 'ELDER', content: '你好', createdAt: new Date() },
       { id: '2', role: 'AI', content: '您好呀', createdAt: new Date() },
@@ -62,7 +67,7 @@ describe('checkpoint-service', () => {
 
     vi.mocked(prisma.session.findUnique).mockResolvedValueOnce({
       id: 'session-123',
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
     } as any);
 
     vi.mocked(chatCompletion).mockResolvedValueOnce({
@@ -97,13 +102,13 @@ describe('checkpoint-service', () => {
     // Verify Qdrant upsert
     expect(embedText).toHaveBeenCalled();
     expect(qdrant.upsert).toHaveBeenCalledWith(
-      'family_memories',
+      'pairing_memories',
       expect.objectContaining({
         points: expect.arrayContaining([
           expect.objectContaining({
             id: 'session-123',
             payload: expect.objectContaining({
-              familyId: 'family-123',
+              pairingId: 'pairing-123',
               type: 'checkpoint',
             }),
           }),
@@ -111,11 +116,22 @@ describe('checkpoint-service', () => {
       })
     );
 
-    // Verify FamilyFeed creation
-    expect(prisma.familyFeed.create).toHaveBeenCalledTimes(2);
+    // Verify EventStream create
+    expect(emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pairingId: 'pairing-123',
+        type: 'conversation_extracted',
+        content: '聊到家人来访',
+        tags: ['儿子周末回来', '老人心情很好'],
+        payload: expect.objectContaining({
+          moodSnapshot: '开心',
+        }),
+      }),
+      { immediate: true }
+    );
   });
 
-  it('should use LLM-provided categories for keyFacts', async () => {
+  it('should include keyFacts in EventStream tags', async () => {
     vi.mocked(prisma.sessionMessage.findMany).mockResolvedValueOnce([
       { id: '1', role: 'ELDER', content: '我腰有点疼', createdAt: new Date() },
       { id: '2', role: 'AI', content: '要多休息', createdAt: new Date() },
@@ -123,7 +139,7 @@ describe('checkpoint-service', () => {
 
     vi.mocked(prisma.session.findUnique).mockResolvedValueOnce({
       id: 'session-123',
-      familyId: 'family-123',
+      pairingId: 'pairing-123',
     } as any);
 
     vi.mocked(chatCompletion).mockResolvedValueOnce({
@@ -139,42 +155,18 @@ describe('checkpoint-service', () => {
 
     await generateCheckpoint('session-123');
 
-    const feedCalls = vi.mocked(prisma.familyFeed.create).mock.calls;
-    expect(feedCalls.some((call) =>
-      call[0].data.content === '腰有点疼' && call[0].data.category === 'HEALTH'
-    )).toBe(true);
-    expect(feedCalls.some((call) =>
-      call[0].data.content === '喜欢打太极' && call[0].data.category === 'PREFERENCE'
-    )).toBe(true);
-  });
-
-  it('should fallback to EVENT for invalid category', async () => {
-    vi.mocked(prisma.sessionMessage.findMany).mockResolvedValueOnce([
-      { id: '1', role: 'ELDER', content: '你好', createdAt: new Date() },
-      { id: '2', role: 'AI', content: '您好', createdAt: new Date() },
-    ] as any);
-
-    vi.mocked(prisma.session.findUnique).mockResolvedValueOnce({
-      id: 'session-123',
-      familyId: 'family-123',
-    } as any);
-
-    vi.mocked(chatCompletion).mockResolvedValueOnce({
-      content: JSON.stringify({
-        topicSummary: '日常问候',
-        keyFacts: [
-          { fact: '天气不错', category: 'HOBBY' },
-        ],
-        moodSnapshot: '开心',
-      })
-    });
-
-    await generateCheckpoint('session-123');
-
-    const feedCalls = vi.mocked(prisma.familyFeed.create).mock.calls;
-    expect(feedCalls.some((call) =>
-      call[0].data.content === '天气不错' && call[0].data.category === 'EVENT'
-    )).toBe(true);
+    expect(emitEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tags: ['腰有点疼', '喜欢打太极'],
+        payload: expect.objectContaining({
+          keyFacts: [
+            { fact: '腰有点疼', category: 'HEALTH' },
+            { fact: '喜欢打太极', category: 'PREFERENCE' },
+          ],
+        }),
+      }),
+      { immediate: true }
+    );
   });
 
   it('should handle LLM JSON parse failure gracefully', async () => {
