@@ -7,6 +7,8 @@ import { transcribeVoice } from '../services/voice-service-client.js';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { emitEvent } from '../events/event-bus.js';
+import { enqueueExtraction } from '../services/extraction-service.js';
 
 const createPairingSchema = z.object({
   elderName: z.string().min(1),
@@ -14,7 +16,7 @@ const createPairingSchema = z.object({
   elderDialect: z.string().optional(),
 });
 
-async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
+export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
   const authHeader = request.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return reply.status(401).send({ success: false, message: '未提供认证令牌' });
@@ -28,7 +30,7 @@ async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
   }
 }
 
-async function assertPairingMember(userId: string, pairingId: string, reply: FastifyReply) {
+export async function assertPairingMember(userId: string, pairingId: string, reply: FastifyReply) {
   const participant = await prisma.participant.findFirst({
     where: { pairingId, role: 'CHILD', userId },
   });
@@ -501,6 +503,15 @@ export async function pairingRoutes(app: FastifyInstance) {
         },
       });
 
+      // Emit event to EventStream and enqueue for persona extraction
+      await emitEvent({
+        pairingId,
+        type: 'feed_message',
+        content: content.trim(),
+        tags: ['TEXT'],
+      }, { immediate: true });
+      await enqueueExtraction('feed', pairingId, content.trim());
+
       return reply.status(201).send({ success: true, data: feed });
     }
 
@@ -534,6 +545,15 @@ export async function pairingRoutes(app: FastifyInstance) {
         audioUrl,
       },
     });
+
+    // Emit event to EventStream and enqueue for persona extraction
+    await emitEvent({
+      pairingId,
+      type: 'feed_message',
+      content: asrText || '(未能识别语音内容)',
+      tags: ['VOICE'],
+    }, { immediate: true });
+    await enqueueExtraction('feed', pairingId, asrText || '(未能识别语音内容)');
 
     return reply.status(201).send({ success: true, data: feed });
   });

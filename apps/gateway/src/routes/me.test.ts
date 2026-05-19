@@ -9,22 +9,6 @@ describe('GET /api/me', () => {
       data: { phone: uniquePhone, name: '小明', role: 'CHILD' },
     });
 
-    const family = await prisma.family.create({
-      data: {
-        inviteCode: `child-${Date.now()}`,
-        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '测试老人' } },
-        children: {
-          create: {
-            userId: user.id,
-            name: '小明',
-            phone: uniquePhone,
-          },
-        },
-      },
-      include: { children: true },
-    });
-
     const childToken = app.jwt.sign(
       { userId: user.id, role: 'CHILD' },
       { expiresIn: '7d' }
@@ -41,27 +25,29 @@ describe('GET /api/me', () => {
     expect(body.role).toBe('CHILD');
     expect(body.name).toBe('小明');
 
-    await prisma.family.delete({ where: { id: family.id } });
     await prisma.user.delete({ where: { id: user.id } });
   });
 
   it('should return elder profile with valid elder token', async () => {
-    const family = await prisma.family.create({
+    const pairing = await prisma.pairing.create({
       data: {
         inviteCode: `elder-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: {
-          create: {
-            name: '张奶奶',
-            deviceId: 'device-abc',
-          },
+        name: 'Test Pairing',
+        participants: {
+          create: [
+            { name: '张奶奶', role: 'ELDER', isAI: false, deviceId: 'device-abc' },
+            { name: '小暖', role: 'ELDER', isAI: true },
+          ],
         },
       },
-      include: { elder: true },
+      include: { participants: true },
     });
 
+    const elderParticipant = pairing.participants.find(p => p.role === 'ELDER' && !p.isAI);
+
     const elderToken = app.jwt.sign(
-      { familyId: family.id, role: 'ELDER', deviceId: 'device-abc' },
+      { pairingId: pairing.id, role: 'ELDER', deviceId: 'device-abc' },
       { expiresIn: '365d' }
     );
 
@@ -76,7 +62,7 @@ describe('GET /api/me', () => {
     expect(body.role).toBe('ELDER');
     expect(body.name).toBe('张奶奶');
 
-    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.pairing.delete({ where: { id: pairing.id } });
   });
 
   it('should return 401 without token', async () => {
@@ -106,22 +92,6 @@ describe('PUT /api/me', () => {
       data: { phone: uniquePhone, name: '小明', role: 'CHILD' },
     });
 
-    const family = await prisma.family.create({
-      data: {
-        inviteCode: `put-me-${Date.now()}`,
-        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '测试老人' } },
-        children: {
-          create: {
-            userId: user.id,
-            name: '小明',
-            phone: uniquePhone,
-          },
-        },
-      },
-      include: { children: true },
-    });
-
     const childToken = app.jwt.sign(
       { userId: user.id, role: 'CHILD' },
       { expiresIn: '7d' }
@@ -141,7 +111,6 @@ describe('PUT /api/me', () => {
     expect(body.success).toBe(true);
     expect(body.name).toBe('大明');
 
-    await prisma.family.delete({ where: { id: family.id } });
     await prisma.user.delete({ where: { id: user.id } });
   });
 

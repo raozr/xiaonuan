@@ -57,7 +57,7 @@ describe('POST /api/auth/wechat-code', () => {
 });
 
 describe('POST /api/auth/register', () => {
-  it('should create family and child profile for new child user', async () => {
+  it('should create user for new child user', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
     const uniqueOpenid = `reg_child_${Date.now()}`;
     vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
@@ -84,26 +84,31 @@ describe('POST /api/auth/register', () => {
 
     const dbUser = await prisma.user.findUnique({
       where: { openid: uniqueOpenid },
-      include: { childProfiles: true },
     });
     expect(dbUser).toBeDefined();
     expect(dbUser!.phone).toBe(uniquePhone);
     expect(dbUser!.name).toBe('小明家长');
-    expect(dbUser!.childProfiles.length).toBe(0);
 
     await prisma.user.delete({ where: { id: dbUser!.id } });
   });
 
-  it('should bind elder to existing family', async () => {
+  it('should bind elder to existing pairing', async () => {
     const uniqueOpenid = `reg_elder_${Date.now()}`;
     const inviteCode = generateInviteCode();
 
-    const family = await prisma.family.create({
+    const pairing = await prisma.pairing.create({
       data: {
         inviteCode,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '占位老人' } },
+        name: 'Test Pairing',
+        participants: {
+          create: [
+            { name: '占位老人', role: 'ELDER', isAI: false },
+            { name: '小暖', role: 'ELDER', isAI: true },
+          ],
+        },
       },
+      include: { participants: true },
     });
 
     vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
@@ -128,44 +133,27 @@ describe('POST /api/auth/register', () => {
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
     expect(body.role).toBe('ELDER');
+    expect(body.pairingId).toBe(pairing.id);
 
-    const elder = await prisma.elderProfile.findUnique({
-      where: { familyId: family.id },
+    const elder = await prisma.participant.findFirst({
+      where: { pairingId: pairing.id, role: 'ELDER', isAI: false },
     });
     expect(elder).toBeDefined();
     expect(elder!.name).toBe('张爷爷');
     expect(elder!.openid).toBe(uniqueOpenid);
 
-    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.pairing.delete({ where: { id: pairing.id } });
   });
 
   it('should return 409 for duplicate openid', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
     const uniqueOpenid = `dup_openid_${Date.now()}`;
 
-    const family = await prisma.family.create({
-      data: {
-        inviteCode: generateInviteCode(),
-        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '老人' } },
-      },
-    });
-
     const existingUser = await prisma.user.create({
       data: {
         phone: uniquePhone,
         openid: uniqueOpenid,
         role: 'CHILD',
-      },
-    });
-
-    await prisma.childProfile.create({
-      data: {
-        userId: existingUser.id,
-        name: '家长',
-        phone: uniquePhone,
-        openid: uniqueOpenid,
-        familyId: family.id,
       },
     });
 
@@ -189,7 +177,6 @@ describe('POST /api/auth/register', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(false);
 
-    await prisma.family.delete({ where: { id: family.id } });
     await prisma.user.delete({ where: { id: existingUser.id } });
   });
 
@@ -198,29 +185,11 @@ describe('POST /api/auth/register', () => {
     const uniqueOpenid1 = `phone_dup_1_${Date.now()}`;
     const uniqueOpenid2 = `phone_dup_2_${Date.now()}`;
 
-    const family = await prisma.family.create({
-      data: {
-        inviteCode: generateInviteCode(),
-        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '老人' } },
-      },
-    });
-
-    const existingUser = await prisma.user.create({
+    await prisma.user.create({
       data: {
         phone: uniquePhone,
         openid: uniqueOpenid1,
         role: 'CHILD',
-      },
-    });
-
-    await prisma.childProfile.create({
-      data: {
-        userId: existingUser.id,
-        name: '家长A',
-        phone: uniquePhone,
-        openid: uniqueOpenid1,
-        familyId: family.id,
       },
     });
 
@@ -244,8 +213,7 @@ describe('POST /api/auth/register', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(false);
 
-    await prisma.family.delete({ where: { id: family.id } });
-    await prisma.user.delete({ where: { id: existingUser.id } });
+    await prisma.user.delete({ where: { openid: uniqueOpenid1 } });
   });
 
   it('should return 404 for invalid invite code', async () => {
@@ -286,33 +254,15 @@ describe('POST /api/auth/register', () => {
 });
 
 describe('POST /api/auth/silent-login', () => {
-  it('should return token for existing child profile', async () => {
+  it('should return token for existing child user', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
     const uniqueOpenid = `silent_child_${Date.now()}`;
-
-    const family = await prisma.family.create({
-      data: {
-        inviteCode: Math.floor(10000000 + Math.random() * 90000000).toString(),
-        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '李爷爷' } },
-      },
-    });
 
     const user = await prisma.user.create({
       data: {
         phone: uniquePhone,
         openid: uniqueOpenid,
         role: 'CHILD',
-      },
-    });
-
-    await prisma.childProfile.create({
-      data: {
-        userId: user.id,
-        name: '小李',
-        phone: uniquePhone,
-        openid: uniqueOpenid,
-        familyId: family.id,
       },
     });
 
@@ -333,18 +283,23 @@ describe('POST /api/auth/silent-login', () => {
     expect(body.token).toBeDefined();
     expect(body.role).toBe('CHILD');
 
-    await prisma.family.delete({ where: { id: family.id } });
     await prisma.user.delete({ where: { id: user.id } });
   });
 
-  it('should return token for existing elder profile', async () => {
+  it('should return token for existing elder participant', async () => {
     const uniqueOpenid = `silent_elder_${Date.now()}`;
 
-    const family = await prisma.family.create({
+    const pairing = await prisma.pairing.create({
       data: {
         inviteCode: Math.floor(10000000 + Math.random() * 90000000).toString(),
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '王奶奶', openid: uniqueOpenid } },
+        name: 'Test Pairing',
+        participants: {
+          create: [
+            { name: '王奶奶', role: 'ELDER', isAI: false, openid: uniqueOpenid },
+            { name: '小暖', role: 'ELDER', isAI: true },
+          ],
+        },
       },
     });
 
@@ -365,7 +320,7 @@ describe('POST /api/auth/silent-login', () => {
     expect(body.token).toBeDefined();
     expect(body.role).toBe('ELDER');
 
-    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.pairing.delete({ where: { id: pairing.id } });
   });
 
   it('should return needRegister and openid for unknown openid', async () => {

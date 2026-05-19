@@ -11,6 +11,7 @@ import {
 import { generateCheckpoint } from '../memory/checkpoint-service.js';
 import { transcribeVoice } from '../services/voice-service-client.js';
 import { convertM4aToWav } from '../utils/audio-convert.js';
+import { markCheckpointPending } from '../events/checkpoint-persistence.js';
 
 type AuthUser = { pairingId?: string; role?: string; deviceId?: string; userId?: string };
 
@@ -101,6 +102,8 @@ export function createWebSocketHandler(app: FastifyInstance) {
           await sendClosingMessage(sessionId, user.pairingId, socket, baseUrl);
           closingMessageSent = true;
           clearSilenceTimer();
+          // Mark checkpoint as pending for later generation
+          await markCheckpointPending(sessionId, user.pairingId);
         }
       } catch (err) {
         console.error('[WebSocket] 静默检测处理失败:', err);
@@ -290,6 +293,11 @@ export function createWebSocketHandler(app: FastifyInstance) {
       clearSilenceTimer();
       authReject('Socket closed');
       if (sessionId) {
+        // Mark checkpoint as pending before the delayed generation
+        const user = authenticatedUser;
+        if (user?.pairingId) {
+          markCheckpointPending(sessionId, user.pairingId).catch(console.error);
+        }
         checkpointTimeout = setTimeout(async () => {
           try {
             const newPhase = definePhaseTransition(

@@ -5,10 +5,14 @@ import websocket from '@fastify/websocket';
 import { join } from 'path';
 import { env } from './config/env.js';
 import { ensurePairingMemoriesCollection } from './qdrant/client.js';
+import { startWorker } from './services/extraction-queue.js';
+import { pruneEvents } from './events/event-archiver.js';
+import { runProactiveOutreach } from './memory/proactive-outreach.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
 import { pcAuthRoutes } from './routes/pc-auth.js';
 import { pairingRoutes } from './routes/pairing.js';
+import { eventsRoutes } from './routes/events.js';
 import { meRoutes } from './routes/me.js';
 import { sessionRoutes } from './routes/session.js';
 import { asrRoutes } from './routes/asr.js';
@@ -52,6 +56,7 @@ await app.register(healthRoutes, { prefix: '/health' });
 await app.register(authRoutes, { prefix: '/api/auth' });
 await app.register(pcAuthRoutes, { prefix: '/api/pc-auth' });
 await app.register(pairingRoutes, { prefix: '/api/pairings' });
+await app.register(eventsRoutes, { prefix: '/api/pairings' });
 await app.register(sessionRoutes);
 
 await app.register(async (protectedRoutes) => {
@@ -84,6 +89,43 @@ await app.register(staticPlugin, {
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     await ensurePairingMemoriesCollection();
+    await startWorker();
+    app.log.info('Extraction worker started');
+
+    // Daily event pruning at 2:00 AM
+    function schedulePruning() {
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(2, 0, 0, 0);
+      if (next <= now) next.setDate(next.getDate() + 1);
+      const ms = next.getTime() - now.getTime();
+      const timer = setTimeout(async () => {
+        const result = await pruneEvents();
+        app.log.info(`Event pruning: ${result.deletedCount} events deleted, ${result.archivedCount} archived`);
+        schedulePruning();
+      }, ms);
+      timer.unref();
+    }
+    schedulePruning();
+    app.log.info('Event pruning scheduled at 2:00 AM daily');
+
+    // Daily proactive outreach check at 10:00 AM
+    function scheduleOutreach() {
+      const now = new Date();
+      const next = new Date(now);
+      next.setHours(10, 0, 0, 0);
+      if (next <= now) next.setDate(next.getDate() + 1);
+      const ms = next.getTime() - now.getTime();
+      const timer = setTimeout(async () => {
+        const result = await runProactiveOutreach();
+        app.log.info(`Proactive outreach: ${result.sentCount} sent, ${result.skippedCount} skipped`);
+        scheduleOutreach();
+      }, ms);
+      timer.unref();
+    }
+    scheduleOutreach();
+    app.log.info('Proactive outreach check scheduled at 10:00 AM daily');
+
     await app.listen({ port: env.PORT, host: '0.0.0.0' });
     app.log.info(`Gateway listening on http://localhost:${env.PORT}`);
   } catch (err) {
