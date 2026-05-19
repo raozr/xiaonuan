@@ -1,15 +1,15 @@
 'use client';
 
-import { useCurrentFamily } from '@/components/providers/current-family-provider';
+import { useCurrentPairing } from '@/components/providers/current-pairing-provider';
 import { VoiceClonePanel } from '@/components/voice-clone-panel';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 import Link from 'next/link';
 
 export default function VoiceClonePage() {
-  const { currentFamilyId, currentFamily, isLoading: familyLoading } = useCurrentFamily();
+  const { currentPairingId, currentPairing, isLoading: pairingLoading } = useCurrentPairing();
 
-  if (familyLoading) {
+  if (pairingLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -17,7 +17,7 @@ export default function VoiceClonePage() {
     );
   }
 
-  if (!currentFamily) {
+  if (!currentPairing) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
         <Users className="h-12 w-12 text-muted-foreground" />
@@ -34,10 +34,10 @@ export default function VoiceClonePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">声音复刻</h1>
         <span className="text-sm text-muted-foreground">
-          当前老人：{currentFamily.elder.name}
+          当前老人：{currentPairing.elder.name}
         </span>
       </div>
-      <VoiceClonePanel familyId={currentFamilyId} />
+      <VoiceClonePanel pairingId={currentPairingId} />
     </div>
   );
 }

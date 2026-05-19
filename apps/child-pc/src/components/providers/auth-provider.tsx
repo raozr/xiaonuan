@@ -9,7 +9,7 @@ interface User {
   name: string;
   phone: string;
   role: string;
-  familyCount: number;
+  pairingCount: number;
 }
 
 interface AuthContextValue {

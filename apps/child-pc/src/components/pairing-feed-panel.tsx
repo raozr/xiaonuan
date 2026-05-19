@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { fetchFeeds, createFeed, type FamilyFeed } from '@/lib/api';
+import { fetchFeeds, createFeed, type Feed } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -10,12 +10,12 @@ import { Mic, Square, Send, Loader2 } from 'lucide-react';
 
 type InputMode = 'text' | 'voice';
 
-interface FamilyFeedPanelProps {
-  familyId: string;
+interface PairingFeedPanelProps {
+  pairingId: string;
 }
 
-export function FamilyFeedPanel({ familyId }: FamilyFeedPanelProps) {
-  const [feeds, setFeeds] = useState<FamilyFeed[]>([]);
+export function PairingFeedPanel({ pairingId }: PairingFeedPanelProps) {
+  const [feeds, setFeeds] = useState<Feed[]>([]);
   const [inputMode, setInputMode] = useState<InputMode>('text');
   const [textContent, setTextContent] = useState('');
   const [loading, setLoading] = useState(true);
@@ -30,14 +30,14 @@ export function FamilyFeedPanel({ familyId }: FamilyFeedPanelProps) {
   const loadFeeds = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchFeeds(familyId);
+      const res = await fetchFeeds(pairingId);
       setFeeds(res.data);
     } catch {
       setFeeds([]);
     } finally {
       setLoading(false);
     }
-  }, [familyId]);
+  }, [pairingId]);
 
   useEffect(() => {
     loadFeeds();
@@ -47,7 +47,7 @@ export function FamilyFeedPanel({ familyId }: FamilyFeedPanelProps) {
     if (!textContent.trim()) return;
     setSending(true);
     try {
-      await createFeed(familyId, { type: 'TEXT', content: textContent.trim() });
+      await createFeed(pairingId, { type: 'TEXT', content: textContent.trim() });
       setTextContent('');
       await loadFeeds();
     } catch (err) {
@@ -104,7 +104,7 @@ export function FamilyFeedPanel({ familyId }: FamilyFeedPanelProps) {
       reader.readAsDataURL(blob);
       reader.onloadend = async () => {
         const base64 = (reader.result as string).split(',')[1];
-        await createFeed(familyId, {
+        await createFeed(pairingId, {
           type: 'VOICE',
           content: '(语音消息)',
           audioBase64: base64,

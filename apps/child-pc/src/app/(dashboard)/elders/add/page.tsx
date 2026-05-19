@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createFamily } from '@/lib/api';
+import { createPairing } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +25,7 @@ export default function AddElderPage() {
     }
     setLoading(true);
     try {
-      await createFamily({ elderName: name.trim() });
+      await createPairing({ elderName: name.trim() });
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : '添加失败');

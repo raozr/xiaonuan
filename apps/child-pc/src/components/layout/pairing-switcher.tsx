@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCurrentFamily } from '@/components/providers/current-family-provider';
+import { useCurrentPairing } from '@/components/providers/current-pairing-provider';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,23 +13,23 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, Users } from 'lucide-react';
 
-export function FamilySwitcher() {
-  const { currentFamily, families, setCurrentFamilyId } = useCurrentFamily();
+export function PairingSwitcher() {
+  const { currentPairing, pairings, setCurrentPairingId } = useCurrentPairing();
   const router = useRouter();
 
-  if (families.length === 0) {
+  if (pairings.length === 0) {
     return (
       <Link
         href="/"
         className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
       >
         <Users className="h-4 w-4" />
-        未添加老人
+        未添加配对
       </Link>
     );
   }
 
-  const elder = currentFamily?.elder;
+  const elder = currentPairing?.elder;
 
   return (
     <DropdownMenu>
@@ -38,10 +38,10 @@ export function FamilySwitcher() {
           <>
             <span>{elder.name}</span>
             <Badge
-              variant={currentFamily?.isOnline ? 'default' : 'secondary'}
+              variant={currentPairing?.isOnline ? 'default' : 'secondary'}
               className="text-[10px] px-1.5 py-0 h-4"
             >
-              {currentFamily?.isOnline ? '在线' : '离线'}
+              {currentPairing?.isOnline ? '在线' : '离线'}
             </Badge>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </>
@@ -57,14 +57,14 @@ export function FamilySwitcher() {
         <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">
           切换当前老人
         </div>
-        {families.map((family) => (
+        {pairings.map((pairing) => (
           <DropdownMenuItem
-            key={family.id}
-            onClick={() => setCurrentFamilyId(family.id)}
+            key={pairing.id}
+            onClick={() => setCurrentPairingId(pairing.id)}
             className="flex items-center justify-between"
           >
-            <span>{family.elder.name}</span>
-            {currentFamily?.id === family.id && (
+            <span>{pairing.elder.name}</span>
+            {currentPairing?.id === pairing.id && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
                 当前
               </Badge>
@@ -77,7 +77,7 @@ export function FamilySwitcher() {
           className="flex items-center gap-2"
         >
           <Users className="h-4 w-4" />
-          管理老人
+          管理配对
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

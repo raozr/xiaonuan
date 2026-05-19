@@ -1,7 +1,7 @@
 import { AuthGuard } from "@/components/auth-guard";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-import { CurrentFamilyProvider } from "@/components/providers/current-family-provider";
+import { CurrentPairingProvider } from "@/components/providers/current-pairing-provider";
 
 export default function DashboardLayout({
   children,
@@ -10,7 +10,7 @@ export default function DashboardLayout({
 }) {
   return (
     <AuthGuard>
-      <CurrentFamilyProvider>
+      <CurrentPairingProvider>
         <div className="flex min-h-full">
           <Sidebar />
           <div className="flex-1 flex flex-col min-h-full">
@@ -20,7 +20,7 @@ export default function DashboardLayout({
             </main>
           </div>
         </div>
-      </CurrentFamilyProvider>
+      </CurrentPairingProvider>
     </AuthGuard>
   );
 }

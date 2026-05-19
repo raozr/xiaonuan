@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { type ElderProfile } from '@/lib/api';
+import { type Elder } from '@/lib/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -9,8 +9,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Save } from 'lucide-react';
 
 interface ElderFormProps {
-  elder: ElderProfile;
-  onSave: (data: Partial<ElderProfile>) => void;
+  elder: Elder;
+  onSave: (data: Partial<Elder>) => void;
   saving: boolean;
 }
 
