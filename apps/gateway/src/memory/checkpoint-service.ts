@@ -3,6 +3,8 @@ import { chatCompletion } from '../services/dashscope.js';
 import { embedText } from '../services/embedding.js';
 import { qdrant } from '../qdrant/client.js';
 import { emitEvent } from '../events/event-bus.js';
+import { enqueueExtraction } from '../services/extraction-service.js';
+import { clearCheckpointPending } from '../events/checkpoint-persistence.js';
 
 export async function generateCheckpoint(sessionId: string): Promise<void> {
   const messages = await prisma.sessionMessage.findMany({
@@ -10,7 +12,10 @@ export async function generateCheckpoint(sessionId: string): Promise<void> {
     orderBy: { createdAt: 'asc' },
   });
 
-  if (messages.length < 2) return;
+  if (messages.length < 2) {
+    await clearCheckpointPending(sessionId);
+    return;
+  }
 
   const conversation = messages
     .map((m) => `${m.role}: ${m.content}`)
@@ -56,7 +61,10 @@ ${conversation}
     select: { pairingId: true },
   });
 
-  if (!session) return;
+  if (!session) {
+    await clearCheckpointPending(sessionId);
+    return;
+  }
   const { pairingId } = session;
 
   const flatKeyFacts = checkpointData.keyFacts.map((k) => k.fact);
@@ -125,5 +133,15 @@ ${conversation}
     }
   })();
 
-  await Promise.allSettled([prismaPromise, qdrantPromise, eventPromise]);
+  // Bull Queue: async persona profile extraction
+  const extractionPromise = (async () => {
+    try {
+      await enqueueExtraction('checkpoint', pairingId, conversation, checkpointData.topicSummary);
+    } catch (err) {
+      console.error('[Checkpoint] Bull Queue 入队失败:', err);
+    }
+  })();
+
+  await Promise.allSettled([prismaPromise, qdrantPromise, eventPromise, extractionPromise]);
+  await clearCheckpointPending(sessionId);
 }

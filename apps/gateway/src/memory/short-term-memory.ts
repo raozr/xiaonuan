@@ -1,8 +1,8 @@
 import { prisma } from '@xiaonuan/prisma';
 import { getElderTimezone, getStartOfDay } from '../utils/timezone.js';
 
-export async function getShortTermMemory(familyId: string): Promise<string> {
-  const timezone = await getElderTimezone(familyId);
+export async function getShortTermMemory(pairingId: string): Promise<string> {
+  const timezone = await getElderTimezone(pairingId);
   const now = new Date();
   const today = getStartOfDay(now, timezone);
   const threeDaysAgo = new Date(today);
@@ -11,7 +11,7 @@ export async function getShortTermMemory(familyId: string): Promise<string> {
   const checkpoints = await prisma.checkpoint.findMany({
     where: {
       session: {
-        familyId,
+        pairingId,
         endedAt: { not: null },
       },
       createdAt: {

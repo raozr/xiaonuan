@@ -2,9 +2,9 @@ import { prisma } from '@xiaonuan/prisma';
 
 const THREE_DAYS_MS = 3 * 24 * 60 * 60 * 1000;
 
-export async function getGreetingHint(familyId: string): Promise<string> {
+export async function getGreetingHint(pairingId: string): Promise<string> {
   const lastSession = await prisma.session.findFirst({
-    where: { familyId, endedAt: { not: null } },
+    where: { pairingId, endedAt: { not: null } },
     orderBy: { endedAt: 'desc' },
     select: { endedAt: true },
   });
@@ -18,7 +18,7 @@ export async function getGreetingHint(familyId: string): Promise<string> {
 
   const checkpoint = await prisma.checkpoint.findFirst({
     where: {
-      session: { familyId },
+      session: { pairingId },
       nextTopicHint: { not: null },
     },
     orderBy: { createdAt: 'desc' },
