@@ -190,20 +190,47 @@ export async function pairingRoutes(app: FastifyInstance) {
               userId: user.userId,
               metadata: { relationshipToElder: '子女' },
             },
+            {
+              name: '小暖',
+              role: 'ELDER',
+              isAI: true,
+              metadata: { template: 'caring-companion' },
+            },
           ],
+        },
+        aiPersona: {
+          create: {
+            name: '贴心小暖',
+            template: 'caring-companion',
+            traits: { warm: true, humorous: true, patient: true },
+            tone: '口语化，多用语气助词',
+            constraints: { maxDailyMessages: 50, noMedicalAdvice: true },
+          },
         },
       },
     });
 
-    const elderParticipant = await prisma.participant.findFirst({
-      where: { pairingId: pairing.id, role: 'ELDER' },
+    const participants = await prisma.participant.findMany({
+      where: { pairingId: pairing.id },
     });
+    const elderParticipant = participants.find(p => p.role === 'ELDER' && !p.isAI);
+    const childParticipant = participants.find(p => p.role === 'CHILD' && !p.isAI);
+    const aiParticipant = participants.find(p => p.isAI);
+
+    const token = app.jwt.sign(
+      { pairingId: pairing.id, role: 'CHILD', userId: user.userId },
+      { expiresIn: '7d' }
+    );
 
     return reply.status(201).send({
       id: pairing.id,
       inviteCode: pairing.inviteCode,
       inviteCodeExpiresAt: pairing.inviteCodeExpiresAt,
       elder: elderParticipant,
+      child: childParticipant,
+      ai: aiParticipant,
+      token,
+      expiresIn: 604800,
     });
   });
 
