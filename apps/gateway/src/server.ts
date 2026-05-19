@@ -8,7 +8,7 @@ import { ensurePairingMemoriesCollection } from './qdrant/client.js';
 import { healthRoutes } from './routes/health.js';
 import { authRoutes } from './routes/auth.js';
 import { pcAuthRoutes } from './routes/pc-auth.js';
-import { familyRoutes } from './routes/family.js';
+import { pairingRoutes } from './routes/pairing.js';
 import { meRoutes } from './routes/me.js';
 import { sessionRoutes } from './routes/session.js';
 import { asrRoutes } from './routes/asr.js';
@@ -51,7 +51,7 @@ await app.register(websocket, {
 await app.register(healthRoutes, { prefix: '/health' });
 await app.register(authRoutes, { prefix: '/api/auth' });
 await app.register(pcAuthRoutes, { prefix: '/api/pc-auth' });
-await app.register(familyRoutes, { prefix: '/api/family' });
+await app.register(pairingRoutes, { prefix: '/api/pairings' });
 await app.register(sessionRoutes);
 
 await app.register(async (protectedRoutes) => {
