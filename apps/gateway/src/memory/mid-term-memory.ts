@@ -1,23 +1,16 @@
 import { memoryRecall } from '../tools/memory.js';
-import { prisma } from '@xiaonuan/prisma';
-import { getFamilyEntities } from './entity-vocabulary.js';
+import { getProfilesByCategories } from './persona-service.js';
+import { getPairingEntities } from './entity-vocabulary.js';
 
 export async function getMidTermMemory(
   input: string,
-  familyId: string
+  pairingId: string
 ): Promise<string> {
-  if (!await shouldTrigger(input, familyId)) return '';
+  if (!await shouldTrigger(input, pairingId)) return '';
 
-  const [vectorResults, feeds] = await Promise.all([
-    memoryRecall(input, familyId, undefined, 3),
-    prisma.familyFeed.findMany({
-      where: {
-        familyId,
-        category: { in: ['PREFERENCE', 'HEALTH'] },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 5,
-    }),
+  const [vectorResults, profiles] = await Promise.all([
+    memoryRecall(input, pairingId, undefined, 3),
+    getProfilesByCategories(pairingId, ['health', 'preference'], 5),
   ]);
 
   const lines: string[] = [];
@@ -30,9 +23,9 @@ export async function getMidTermMemory(
     }
   }
 
-  for (const f of feeds) {
-    if (f.content) {
-      lines.push(`- ${f.content}`);
+  for (const p of profiles) {
+    if (p.content) {
+      lines.push(`- ${p.content}`);
     }
   }
 
@@ -40,10 +33,10 @@ export async function getMidTermMemory(
   return `【相关回忆】\n${lines.join('\n')}`;
 }
 
-async function shouldTrigger(input: string, familyId: string): Promise<boolean> {
+async function shouldTrigger(input: string, pairingId: string): Promise<boolean> {
   if (input.length >= 10) return true;
 
-  const entities = await getFamilyEntities(familyId);
+  const entities = await getPairingEntities(pairingId);
   for (const entity of entities) {
     if (input.includes(entity)) return true;
   }

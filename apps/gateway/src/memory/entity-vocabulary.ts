@@ -7,23 +7,27 @@ export function clearEntityCache(): void {
   cache.clear();
 }
 
-export async function getFamilyEntities(familyId: string): Promise<Set<string>> {
+export async function getPairingEntities(pairingId: string): Promise<Set<string>> {
   const now = Date.now();
-  const cached = cache.get(familyId);
+  const cached = cache.get(pairingId);
   if (cached && cached.expiresAt > now) {
     return cached.entities;
   }
 
-  const feeds = await prisma.familyFeed.findMany({
-    where: {
-      familyId,
-      category: { in: ['PERSON', 'PLACE'] },
-    },
-    select: { content: true },
-    take: 100,
+  const recentEvents = await prisma.eventStream.findMany({
+    where: { pairingId },
+    orderBy: { eventTime: 'desc' },
+    select: { tags: true, content: true },
+    take: 50,
   });
 
-  const entities = new Set(feeds.map((f) => f.content));
-  cache.set(familyId, { entities, expiresAt: now + CACHE_TTL_MS });
+  const entities = new Set<string>();
+  for (const event of recentEvents) {
+    for (const tag of event.tags) {
+      entities.add(tag);
+    }
+  }
+
+  cache.set(pairingId, { entities, expiresAt: now + CACHE_TTL_MS });
   return entities;
 }
