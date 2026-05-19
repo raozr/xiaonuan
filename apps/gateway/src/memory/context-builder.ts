@@ -12,16 +12,16 @@ function parseSection(text: string): Section {
 }
 
 export async function buildMemoryContext(params: {
-  familyId: string;
+  pairingId: string;
   turnCount: number;
   input: string;
   phase?: string;
 }): Promise<string> {
   const results = await Promise.allSettled([
-    params.turnCount <= 3 ? getDailyMemory(params.familyId) : Promise.resolve(''),
-    params.turnCount <= 3 ? getShortTermMemory(params.familyId) : Promise.resolve(''),
-    getMidTermMemory(params.input, params.familyId),
-    params.phase === 'GREETING' ? getGreetingHint(params.familyId) : Promise.resolve(''),
+    params.turnCount <= 3 ? getDailyMemory(params.pairingId) : Promise.resolve(''),
+    params.turnCount <= 3 ? getShortTermMemory(params.pairingId) : Promise.resolve(''),
+    getMidTermMemory(params.input, params.pairingId),
+    params.phase === 'GREETING' ? getGreetingHint(params.pairingId) : Promise.resolve(''),
   ]);
 
   const rawSections: string[] = [];
