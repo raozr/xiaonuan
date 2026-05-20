@@ -107,7 +107,8 @@ describe('POST /api/pairings/:pairingId/feeds', () => {
     expect(enqueueExtraction).toHaveBeenCalledWith(
       'feed',
       pairing.id,
-      '妈妈明天要去医院复查'
+      '妈妈明天要去医院复查',
+      'CHILD'
     );
   });
 

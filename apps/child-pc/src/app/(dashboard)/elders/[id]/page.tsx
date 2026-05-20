@@ -3,17 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { fetchPairing, fetchDailySummary, updateElder, refreshInviteCode, type Pairing, type DailySummary } from '@/lib/api';
+import { fetchPairing, fetchDailySummary, refreshInviteCode, type Pairing, type DailySummary } from '@/lib/api';
 import { useCurrentPairing } from '@/components/providers/current-pairing-provider';
 import { PairingFeedPanel } from '@/components/pairing-feed-panel';
 import { VoiceClonePanel } from '@/components/voice-clone-panel';
-import { ElderForm } from '@/components/elder-form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Copy, RefreshCw, Sun, Clock } from 'lucide-react';
 
-type DetailTab = 'summary' | 'feed' | 'voice' | 'settings';
+type DetailTab = 'summary' | 'feed' | 'voice';
 
 export default function ElderDetailPage() {
   const params = useParams();
@@ -27,7 +26,6 @@ export default function ElderDetailPage() {
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   const loadData = async () => {
     try {
@@ -47,20 +45,6 @@ export default function ElderDetailPage() {
   useEffect(() => {
     loadData();
   }, [pairingId]);
-
-  const handleSaveElder = async (data: Partial<Pairing['elder']>) => {
-    if (!pairingId) return;
-    setSaving(true);
-    try {
-      await updateElder(pairingId, data);
-      await refreshPairings();
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '保存失败');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleCopyInviteCode = async () => {
     if (!pairing?.inviteCode) return;
@@ -97,7 +81,7 @@ export default function ElderDetailPage() {
     );
   }
 
-  if (error || !pairing) {
+  if (error || !pairing || !pairing.elder) {
     return <p className="text-destructive">{error || '老人信息不存在'}</p>;
   }
 
@@ -175,13 +159,6 @@ export default function ElderDetailPage() {
         >
           声音复刻
         </Button>
-        <Button
-          variant={activeTab === 'settings' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setActiveTab('settings')}
-        >
-          老人设置
-        </Button>
       </div>
 
       {error && <p className="text-destructive text-sm">{error}</p>}
@@ -238,17 +215,6 @@ export default function ElderDetailPage() {
       {activeTab === 'feed' && <PairingFeedPanel pairingId={pairingId} />}
 
       {activeTab === 'voice' && <VoiceClonePanel pairingId={pairingId} />}
-
-      {activeTab === 'settings' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">老人信息</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ElderForm elder={pairing.elder} onSave={handleSaveElder} saving={saving} />
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

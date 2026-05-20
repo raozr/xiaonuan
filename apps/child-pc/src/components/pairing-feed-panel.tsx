@@ -139,6 +139,20 @@ export function PairingFeedPanel({ pairingId }: PairingFeedPanelProps) {
     <div className="space-y-4">
       {error && <p className="text-destructive text-sm">{error}</p>}
 
+      <Card className="bg-muted/30 border-dashed">
+        <CardContent className="p-4">
+          <p className="text-sm font-medium mb-2">你可以告诉小暖这些事：</p>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
+            <span>• 身体：奶奶最近睡眠不好，夜里容易醒</span>
+            <span>• 爱好：爷爷喜欢听京剧，尤其是包公铡美案</span>
+            <span>• 习惯：奶奶每天早上六点起床锻炼</span>
+            <span>• 回避：别跟奶奶聊她老伴的事</span>
+            <span>• 称呼：叫她王奶奶就好</span>
+            <span>• 语言：爷爷会说四川话</span>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardContent className="p-4 space-y-4">
           <div className="flex gap-2">
@@ -161,7 +175,9 @@ export function PairingFeedPanel({ pairingId }: PairingFeedPanelProps) {
           {inputMode === 'text' ? (
             <div className="space-y-2">
               <Textarea
-                placeholder="告诉小暖一件关于老人的事，比如明天要去医院复查..."
+                placeholder={
+                  '告诉小暖一件关于老人的事...\n\n可以告诉我：老人的身体状况、兴趣爱好、生活习惯、近期发生的事、需要回避的话题、称呼偏好等。小暖会自动从这些信息中了解老人，让对话更贴心。'
+                }
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
                 rows={4}

@@ -101,8 +101,8 @@ describe('Integration: Feed-to-EventStream E2E', () => {
     });
 
     expect(events.length).toBeGreaterThanOrEqual(1);
-    expect(events[0].type).toBe('feed_message');
-    expect(events[0].tags).toContain('TEXT');
+    expect(events[0]!.type).toBe('feed_message');
+    expect(events[0]!.tags).toContain('TEXT');
   });
 });
 

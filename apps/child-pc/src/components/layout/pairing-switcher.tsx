@@ -63,7 +63,7 @@ export function PairingSwitcher() {
             onClick={() => setCurrentPairingId(pairing.id)}
             className="flex items-center justify-between"
           >
-            <span>{pairing.elder.name}</span>
+            <span>{pairing.elder?.name ?? '未知'}</span>
             {currentPairing?.id === pairing.id && (
               <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
                 当前

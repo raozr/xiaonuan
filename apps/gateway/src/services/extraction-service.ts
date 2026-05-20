@@ -4,6 +4,7 @@ export async function enqueueExtraction(
   source: ExtractionJob['source'],
   pairingId: string,
   content: string,
+  senderRole?: string,
   context?: string
 ) {
   const queue = await getQueue();
@@ -11,6 +12,7 @@ export async function enqueueExtraction(
     source,
     pairingId,
     content,
+    senderRole,
     context,
   }, {
     attempts: 3,

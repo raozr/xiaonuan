@@ -34,7 +34,7 @@ export default function VoiceClonePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">声音复刻</h1>
         <span className="text-sm text-muted-foreground">
-          当前老人：{currentPairing.elder.name}
+          当前老人：{currentPairing.elder?.name ?? '未知'}
         </span>
       </div>
       <VoiceClonePanel pairingId={currentPairingId} />

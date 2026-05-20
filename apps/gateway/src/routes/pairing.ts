@@ -40,6 +40,10 @@ export async function assertPairingMember(userId: string, pairingId: string, rep
   return participant;
 }
 
+function mapElder(participants: any[]) {
+  return participants.find(p => p.role === 'ELDER' && !p.isAI) ?? null;
+}
+
 function enrichPairingsWithStatus(
   pairings: any[],
   activeSessions: { pairingId: string; updatedAt: Date }[],
@@ -48,11 +52,29 @@ function enrichPairingsWithStatus(
   const activeMap = new Map(activeSessions.map(s => [s.pairingId, true]));
   const lastMap = new Map(lastSessions.map(s => [s.pairingId, s.updatedAt]));
 
-  return pairings.map(p => ({
-    ...p,
-    isOnline: activeMap.has(p.id) ?? false,
-    lastActive: lastMap.get(p.id)?.toISOString() ?? null,
-  }));
+  return pairings.map(p => {
+    const participants = p.participants ?? [];
+    const elder = mapElder(participants);
+    return {
+      id: p.id,
+      inviteCode: p.inviteCode,
+      inviteCodeExpiresAt: p.inviteCodeExpiresAt,
+      elder: elder ? {
+        id: elder.id,
+        pairingId: elder.pairingId,
+        name: elder.name,
+        gender: elder.metadata?.gender,
+        age: elder.metadata?.age ? Number(elder.metadata.age) : undefined,
+        dialect: elder.metadata?.dialect,
+        hobbies: elder.metadata?.hobbies,
+        healthNotes: elder.metadata?.healthNotes,
+        topicsToAvoid: elder.metadata?.topicsToAvoid,
+        greetingPreference: elder.metadata?.greetingPreference,
+      } : undefined,
+      isOnline: activeMap.has(p.id) ?? false,
+      lastActive: lastMap.get(p.id)?.toISOString() ?? null,
+    };
+  });
 }
 
 export async function pairingRoutes(app: FastifyInstance) {
@@ -68,9 +90,12 @@ export async function pairingRoutes(app: FastifyInstance) {
         where: { role: 'CHILD', userId: user.userId },
         include: { pairing: true },
       });
-      const pairings = childParticipants.map(cp => cp.pairing);
-      const pairingIds = pairings.map(p => p.id);
+      const pairingIds = childParticipants.map(cp => cp.pairing.id);
 
+      const pairings = await prisma.pairing.findMany({
+        where: { id: { in: pairingIds } },
+        include: { participants: true },
+      });
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
       const [activeSessions, lastSessions] = await Promise.all([
         prisma.session.findMany({
@@ -95,6 +120,7 @@ export async function pairingRoutes(app: FastifyInstance) {
     if (user.role === 'ELDER' && user.pairingId) {
       const pairing = await prisma.pairing.findUnique({
         where: { id: user.pairingId },
+        include: { participants: true },
       });
       if (!pairing) {
         return reply.status(404).send({ success: false, message: '配对不存在' });
@@ -145,7 +171,27 @@ export async function pairingRoutes(app: FastifyInstance) {
       return reply.status(404).send({ success: false, message: '配对不存在' });
     }
 
-    return reply.send(pairing);
+    const elder = mapElder(pairing.participants);
+
+    return reply.send({
+      id: pairing.id,
+      inviteCode: pairing.inviteCode,
+      inviteCodeExpiresAt: pairing.inviteCodeExpiresAt,
+      elder: elder ? {
+        id: elder.id,
+        pairingId: elder.pairingId,
+        name: elder.name,
+        gender: elder.metadata?.gender,
+        age: elder.metadata?.age ? Number(elder.metadata.age) : undefined,
+        dialect: elder.metadata?.dialect,
+        hobbies: elder.metadata?.hobbies,
+        healthNotes: elder.metadata?.healthNotes,
+        topicsToAvoid: elder.metadata?.topicsToAvoid,
+        greetingPreference: elder.metadata?.greetingPreference,
+      } : undefined,
+      isOnline: undefined,
+      lastActive: null,
+    });
   });
 
   // Create a new pairing (Child only)
@@ -510,7 +556,7 @@ export async function pairingRoutes(app: FastifyInstance) {
         content: content.trim(),
         tags: ['TEXT'],
       }, { immediate: true });
-      await enqueueExtraction('feed', pairingId, content.trim());
+      await enqueueExtraction('feed', pairingId, content.trim(), member.role);
 
       return reply.status(201).send({ success: true, data: feed });
     }
@@ -553,7 +599,7 @@ export async function pairingRoutes(app: FastifyInstance) {
       content: asrText || '(未能识别语音内容)',
       tags: ['VOICE'],
     }, { immediate: true });
-    await enqueueExtraction('feed', pairingId, asrText || '(未能识别语音内容)');
+    await enqueueExtraction('feed', pairingId, asrText || '(未能识别语音内容)', member.role);
 
     return reply.status(201).send({ success: true, data: feed });
   });

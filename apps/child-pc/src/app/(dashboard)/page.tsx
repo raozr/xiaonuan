@@ -49,7 +49,9 @@ export default function HomePage() {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {pairings.map((pairing) => (
+          {pairings.map((pairing) => {
+            const elderName = pairing.elder?.name ?? '未知';
+            return (
             <Card
               key={pairing.id}
               className="hover:bg-muted/50 transition-colors cursor-pointer"
@@ -57,11 +59,11 @@ export default function HomePage() {
             >
               <CardContent className="flex items-center gap-4 p-4">
                 <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-medium text-primary">
-                  {pairing.elder.name[0]}
+                  {elderName[0]}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold truncate">{pairing.elder.name}</h3>
+                    <h3 className="font-semibold truncate">{elderName}</h3>
                     <Badge variant={pairing.isOnline ? 'default' : 'secondary'}>
                       {pairing.isOnline ? '陪伴中' : '休息中'}
                     </Badge>
@@ -73,7 +75,8 @@ export default function HomePage() {
                 <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

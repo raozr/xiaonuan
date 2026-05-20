@@ -97,7 +97,7 @@ export interface Pairing {
   id: string;
   inviteCode: string;
   inviteCodeExpiresAt: string | null;
-  elder: Elder;
+  elder?: Elder;
   isOnline?: boolean;
   lastActive?: string | null;
 }
