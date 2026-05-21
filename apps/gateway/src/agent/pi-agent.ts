@@ -62,7 +62,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
       function: {
         name: 'memory_recall',
         description:
-          "检索老人的历史记忆、偏好或往事。当老人提及特定的人物、事件，或使用模糊的代词（如'那次'）时必须调用。",
+          "检索对方的历史记忆、偏好或往事。当对方提及特定的人物、事件，或使用模糊的代词（如'那次'）时必须调用。",
         parameters: {
           type: 'object',
           properties: {
@@ -80,7 +80,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
       function: {
         name: 'memory_note',
         description:
-          '记录新的老人偏好、健康状况或生活事件。只有当老人明确表达了新的事实时才调用。',
+          '记录新的对方偏好、健康状况或生活事件。只有当对方明确表达了新的事实时才调用。',
         parameters: {
           type: 'object',
           properties: {
@@ -103,7 +103,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
       function: {
         name: 'emergency_alert',
         description:
-          '当老人表现出生命威胁、严重的身体不适或极度负面的情绪（自残倾向）时，必须立刻调用此工具。',
+          '当对方表现出生命威胁、严重的身体不适或极度负面的情绪（自残倾向）时，必须立刻调用此工具。',
         parameters: {
           type: 'object',
           properties: {
@@ -114,7 +114,7 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
             },
             reason: {
               type: 'string',
-              description: '触发告警的具体原因或老人的原话',
+              description: '触发告警的具体原因或对方的原话',
             },
           },
           required: ['severity', 'reason'],

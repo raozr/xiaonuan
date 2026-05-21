@@ -97,12 +97,12 @@ export interface Pairing {
   id: string;
   inviteCode: string;
   inviteCodeExpiresAt: string | null;
-  elder?: Elder;
+  companionee?: Companionee;
   isOnline?: boolean;
   lastActive?: string | null;
 }
 
-export interface Elder {
+export interface Companionee {
   id: string;
   pairingId: string;
   name: string;
@@ -119,7 +119,7 @@ export function fetchPairings() {
   return request<Pairing[]>('/pairings');
 }
 
-export function createPairing(data: { elderName: string; elderAge?: number; elderDialect?: string }) {
+export function createPairing(data: { companioneeName: string; companioneeAge?: number; companioneeDialect?: string }) {
   return request<Pairing>('/pairings', {
     method: 'POST',
     body: JSON.stringify(data),
@@ -130,8 +130,8 @@ export function fetchPairing(id: string) {
   return request<Pairing>(`/pairings/${id}`);
 }
 
-export function updateElder(pairingId: string, data: Partial<Elder>) {
-  return request<{ success: boolean }>(`/pairings/${pairingId}/elder`, {
+export function updateCompanionee(pairingId: string, data: Partial<Companionee>) {
+  return request<{ success: boolean }>(`/pairings/${pairingId}/companionee`, {
     method: 'PUT',
     body: JSON.stringify(data),
   });
@@ -174,6 +174,12 @@ export function createFeed(pairingId: string, data: { type: 'TEXT' | 'VOICE'; co
   return request<{ success: boolean; data: Feed }>(`/pairings/${pairingId}/feeds`, {
     method: 'POST',
     body: JSON.stringify(data),
+  });
+}
+
+export function deleteFeed(pairingId: string, feedId: string) {
+  return request<{ success: boolean }>(`/pairings/${pairingId}/feeds/${feedId}`, {
+    method: 'DELETE',
   });
 }
 

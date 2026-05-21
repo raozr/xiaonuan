@@ -37,6 +37,10 @@ COPY --from=build /app/packages ./packages
 # 复制 child-pc 应用
 COPY --from=build /app/apps/child-pc ./apps/child-pc
 
+# 复制 standalone 所需的静态文件和公共资源
+COPY --from=build /app/apps/child-pc/.next/static ./apps/child-pc/.next/standalone/apps/child-pc/.next/static
+COPY --from=build /app/apps/child-pc/public ./apps/child-pc/.next/standalone/apps/child-pc/public
+
 # 设置环境变量
 ENV NODE_ENV=production
 ENV PORT=3000
@@ -47,4 +51,4 @@ EXPOSE 3000
 
 # 直接用 node 运行 next
 WORKDIR /app/apps/child-pc
-CMD ["node", "node_modules/next/dist/bin/next", "start", "-p", "3000"]
+CMD ["node", ".next/standalone/apps/child-pc/server.js"]

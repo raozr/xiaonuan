@@ -13,8 +13,8 @@ describe('event-archiver', () => {
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
-            { name: 'Test', role: 'ELDER', isAI: false },
-            { name: '小暖', role: 'ELDER', isAI: true },
+            { name: 'Test', role: 'COMPANIONEE', isAI: false },
+            { name: '小暖', role: 'COMPANIONEE', isAI: true },
           ],
         },
       },

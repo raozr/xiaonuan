@@ -57,9 +57,9 @@ describe('POST /api/auth/wechat-code', () => {
 });
 
 describe('POST /api/auth/register', () => {
-  it('should create user for new child user', async () => {
+  it('should create user for new steward user', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
-    const uniqueOpenid = `reg_child_${Date.now()}`;
+    const uniqueOpenid = `reg_steward_${Date.now()}`;
     vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
       openid: uniqueOpenid,
       session_key: 'test_session_key',
@@ -70,7 +70,7 @@ describe('POST /api/auth/register', () => {
       url: '/api/auth/register',
       payload: {
         code: 'valid_code',
-        role: 'CHILD',
+        role: 'STEWARD',
         name: '小明家长',
         phone: uniquePhone,
       },
@@ -80,7 +80,7 @@ describe('POST /api/auth/register', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
-    expect(body.role).toBe('CHILD');
+    expect(body.role).toBe('STEWARD');
 
     const dbUser = await prisma.user.findUnique({
       where: { openid: uniqueOpenid },
@@ -92,8 +92,8 @@ describe('POST /api/auth/register', () => {
     await prisma.user.delete({ where: { id: dbUser!.id } });
   });
 
-  it('should bind elder to existing pairing', async () => {
-    const uniqueOpenid = `reg_elder_${Date.now()}`;
+  it('should bind companionee to existing pairing', async () => {
+    const uniqueOpenid = `reg_companionee_${Date.now()}`;
     const inviteCode = generateInviteCode();
 
     const pairing = await prisma.pairing.create({
@@ -103,8 +103,8 @@ describe('POST /api/auth/register', () => {
         name: 'Test Pairing',
         participants: {
           create: [
-            { name: '占位老人', role: 'ELDER', isAI: false },
-            { name: '小暖', role: 'ELDER', isAI: true },
+            { name: '占位被陪伴者', role: 'COMPANIONEE', isAI: false },
+            { name: '小暖', role: 'COMPANIONEE', isAI: true },
           ],
         },
       },
@@ -121,7 +121,7 @@ describe('POST /api/auth/register', () => {
       url: '/api/auth/register',
       payload: {
         code: 'valid_code',
-        role: 'ELDER',
+        role: 'COMPANIONEE',
         name: '张爷爷',
         phone: '13800138000',
         inviteCode,
@@ -132,15 +132,15 @@ describe('POST /api/auth/register', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
-    expect(body.role).toBe('ELDER');
+    expect(body.role).toBe('COMPANIONEE');
     expect(body.pairingId).toBe(pairing.id);
 
-    const elder = await prisma.participant.findFirst({
-      where: { pairingId: pairing.id, role: 'ELDER', isAI: false },
+    const companionee = await prisma.participant.findFirst({
+      where: { pairingId: pairing.id, role: 'COMPANIONEE', isAI: false },
     });
-    expect(elder).toBeDefined();
-    expect(elder!.name).toBe('张爷爷');
-    expect(elder!.openid).toBe(uniqueOpenid);
+    expect(companionee).toBeDefined();
+    expect(companionee!.name).toBe('张爷爷');
+    expect(companionee!.openid).toBe(uniqueOpenid);
 
     await prisma.pairing.delete({ where: { id: pairing.id } });
   });
@@ -153,7 +153,7 @@ describe('POST /api/auth/register', () => {
       data: {
         phone: uniquePhone,
         openid: uniqueOpenid,
-        role: 'CHILD',
+        role: 'STEWARD',
       },
     });
 
@@ -167,7 +167,7 @@ describe('POST /api/auth/register', () => {
       url: '/api/auth/register',
       payload: {
         code: 'valid_code',
-        role: 'CHILD',
+        role: 'STEWARD',
         name: '另一名家长',
         phone: `139${Date.now().toString().slice(-8)}`,
       },
@@ -189,7 +189,7 @@ describe('POST /api/auth/register', () => {
       data: {
         phone: uniquePhone,
         openid: uniqueOpenid1,
-        role: 'CHILD',
+        role: 'STEWARD',
       },
     });
 
@@ -203,7 +203,7 @@ describe('POST /api/auth/register', () => {
       url: '/api/auth/register',
       payload: {
         code: 'valid_code',
-        role: 'CHILD',
+        role: 'STEWARD',
         name: '家长B',
         phone: uniquePhone,
       },
@@ -218,7 +218,7 @@ describe('POST /api/auth/register', () => {
 
   it('should return 404 for invalid invite code', async () => {
     vi.spyOn(wechat, 'getSessionByCode').mockResolvedValueOnce({
-      openid: `elder_${Date.now()}`,
+      openid: `companionee_${Date.now()}`,
       session_key: 'test_session_key',
     });
 
@@ -227,7 +227,7 @@ describe('POST /api/auth/register', () => {
       url: '/api/auth/register',
       payload: {
         code: 'valid_code',
-        role: 'ELDER',
+        role: 'COMPANIONEE',
         name: '张爷爷',
         phone: '13800138000',
         inviteCode: '00000000',
@@ -254,15 +254,15 @@ describe('POST /api/auth/register', () => {
 });
 
 describe('POST /api/auth/silent-login', () => {
-  it('should return token for existing child user', async () => {
+  it('should return token for existing steward user', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
-    const uniqueOpenid = `silent_child_${Date.now()}`;
+    const uniqueOpenid = `silent_steward_${Date.now()}`;
 
     const user = await prisma.user.create({
       data: {
         phone: uniquePhone,
         openid: uniqueOpenid,
-        role: 'CHILD',
+        role: 'STEWARD',
       },
     });
 
@@ -281,13 +281,13 @@ describe('POST /api/auth/silent-login', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
-    expect(body.role).toBe('CHILD');
+    expect(body.role).toBe('STEWARD');
 
     await prisma.user.delete({ where: { id: user.id } });
   });
 
-  it('should return token for existing elder participant', async () => {
-    const uniqueOpenid = `silent_elder_${Date.now()}`;
+  it('should return token for existing companionee participant', async () => {
+    const uniqueOpenid = `silent_companionee_${Date.now()}`;
 
     const pairing = await prisma.pairing.create({
       data: {
@@ -296,8 +296,8 @@ describe('POST /api/auth/silent-login', () => {
         name: 'Test Pairing',
         participants: {
           create: [
-            { name: '王奶奶', role: 'ELDER', isAI: false, openid: uniqueOpenid },
-            { name: '小暖', role: 'ELDER', isAI: true },
+            { name: '王奶奶', role: 'COMPANIONEE', isAI: false, openid: uniqueOpenid },
+            { name: '小暖', role: 'COMPANIONEE', isAI: true },
           ],
         },
       },
@@ -318,7 +318,7 @@ describe('POST /api/auth/silent-login', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
-    expect(body.role).toBe('ELDER');
+    expect(body.role).toBe('COMPANIONEE');
 
     await prisma.pairing.delete({ where: { id: pairing.id } });
   });

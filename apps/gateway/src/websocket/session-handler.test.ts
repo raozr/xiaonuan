@@ -31,7 +31,7 @@ describe('WebSocket Session Handler', () => {
         inviteCode: Math.floor(100000 + Math.random() * 900000).toString(),
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
-          create: { name: '测试老人', role: 'ELDER' },
+          create: { name: '测试被陪伴者', role: 'COMPANIONEE' },
         },
       },
     });
@@ -40,7 +40,7 @@ describe('WebSocket Session Handler', () => {
       jwt: {
         verify: vi.fn(() => ({
           pairingId: testPairing.id,
-          role: 'ELDER',
+          role: 'COMPANIONEE',
         })),
       },
       log: {

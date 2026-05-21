@@ -122,8 +122,8 @@ describe('proactive-outreach', () => {
 
     it('should call chatCompletion with correct prompt', async () => {
       vi.mocked(prisma.participant.findFirst).mockResolvedValue({
-        id: 'elder-1',
-        name: '测试老人',
+        id: 'companionee-1',
+        name: '测试被陪伴者',
       } as any);
       vi.mocked(prisma.session.findFirst).mockResolvedValue({ id: 'session-1' } as any);
 
@@ -146,8 +146,8 @@ describe('proactive-outreach', () => {
     it('should send and record outreach when cooldown met', async () => {
       vi.mocked(prisma.eventStream.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.participant.findFirst).mockResolvedValue({
-        id: 'elder-1',
-        name: '测试老人',
+        id: 'companionee-1',
+        name: '测试被陪伴者',
       } as any);
       vi.mocked(prisma.session.findFirst).mockResolvedValue(null);
 

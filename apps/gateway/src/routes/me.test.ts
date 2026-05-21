@@ -6,11 +6,11 @@ describe('GET /api/me', () => {
   it('should return child profile with valid child token', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
     const user = await prisma.user.create({
-      data: { phone: uniquePhone, name: '小明', role: 'CHILD' },
+      data: { phone: uniquePhone, name: '小明', role: 'STEWARD' },
     });
 
     const childToken = app.jwt.sign(
-      { userId: user.id, role: 'CHILD' },
+      { userId: user.id, role: 'STEWARD' },
       { expiresIn: '7d' }
     );
 
@@ -22,7 +22,7 @@ describe('GET /api/me', () => {
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
-    expect(body.role).toBe('CHILD');
+    expect(body.role).toBe('STEWARD');
     expect(body.name).toBe('小明');
 
     await prisma.user.delete({ where: { id: user.id } });
@@ -36,18 +36,18 @@ describe('GET /api/me', () => {
         name: 'Test Pairing',
         participants: {
           create: [
-            { name: '张奶奶', role: 'ELDER', isAI: false, deviceId: 'device-abc' },
-            { name: '小暖', role: 'ELDER', isAI: true },
+            { name: '张奶奶', role: 'COMPANIONEE', isAI: false, deviceId: 'device-abc' },
+            { name: '小暖', role: 'COMPANIONEE', isAI: true },
           ],
         },
       },
       include: { participants: true },
     });
 
-    const elderParticipant = pairing.participants.find(p => p.role === 'ELDER' && !p.isAI);
+    const companioneeParticipant = pairing.participants.find(p => p.role === 'COMPANIONEE' && !p.isAI);
 
     const elderToken = app.jwt.sign(
-      { pairingId: pairing.id, role: 'ELDER', deviceId: 'device-abc' },
+      { pairingId: pairing.id, role: 'COMPANIONEE', deviceId: 'device-abc' },
       { expiresIn: '365d' }
     );
 
@@ -59,7 +59,7 @@ describe('GET /api/me', () => {
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
-    expect(body.role).toBe('ELDER');
+    expect(body.role).toBe('COMPANIONEE');
     expect(body.name).toBe('张奶奶');
 
     await prisma.pairing.delete({ where: { id: pairing.id } });
@@ -89,11 +89,11 @@ describe('PUT /api/me', () => {
   it('should update child profile fields', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
     const user = await prisma.user.create({
-      data: { phone: uniquePhone, name: '小明', role: 'CHILD' },
+      data: { phone: uniquePhone, name: '小明', role: 'STEWARD' },
     });
 
     const childToken = app.jwt.sign(
-      { userId: user.id, role: 'CHILD' },
+      { userId: user.id, role: 'STEWARD' },
       { expiresIn: '7d' }
     );
 

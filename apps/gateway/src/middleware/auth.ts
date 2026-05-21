@@ -1,19 +1,19 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '@xiaonuan/prisma';
 
-export async function verifyElderAuth(request: FastifyRequest, reply: FastifyReply) {
+export async function verifyCompanioneeAuth(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user;
-  if (!user || user.role !== 'ELDER' || !user.pairingId) {
+  if (!user || user.role !== 'COMPANIONEE' || !user.pairingId) {
     return;
   }
 
   const participant = await prisma.participant.findFirst({
-    where: { pairingId: user.pairingId, role: 'ELDER', isAI: false },
+    where: { pairingId: user.pairingId, role: 'COMPANIONEE', isAI: false },
     select: { deviceId: true, openid: true },
   });
 
   if (!participant) {
-    return reply.status(401).send({ success: false, message: '老人信息不存在' });
+    return reply.status(401).send({ success: false, message: '被陪伴者信息不存在' });
   }
 
   if (user.deviceId && participant.deviceId !== user.deviceId) {
@@ -38,8 +38,8 @@ export async function authenticate(app: FastifyInstance) {
     try {
       const decoded = await request.jwtDecode<{ role: string; phone?: string; pairingId?: string; deviceId?: string; openid?: string }>();
       request.user = decoded;
-      if (decoded.role === 'ELDER') {
-        await verifyElderAuth(request, reply);
+      if (decoded.role === 'COMPANIONEE') {
+        await verifyCompanioneeAuth(request, reply);
       }
     } catch (err) {
       if (reply.sent) return;

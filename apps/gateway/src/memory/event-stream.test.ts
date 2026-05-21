@@ -12,7 +12,7 @@ describe('EventStream Query Service', () => {
         inviteCode: `es-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
-          create: { name: '测试老人', role: 'ELDER' },
+          create: { name: '测试被陪伴者', role: 'COMPANIONEE' },
         },
       },
     });

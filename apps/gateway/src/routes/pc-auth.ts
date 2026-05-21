@@ -40,16 +40,16 @@ export async function pcAuthRoutes(app: FastifyInstance) {
           name,
           phone,
           password: hashedPassword,
-          role: 'CHILD',
+          role: 'STEWARD',
         },
       });
 
       const token = app.jwt.sign(
-        { userId: user.id, role: 'CHILD' },
+        { userId: user.id, role: 'STEWARD' },
         { expiresIn: '7d' }
       );
 
-      return reply.send({ success: true, token, role: 'CHILD', expiresIn: 604800 });
+      return reply.send({ success: true, token, role: 'STEWARD', expiresIn: 604800 });
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ success: false, message: '注册失败，请稍后再试' });
@@ -81,11 +81,11 @@ export async function pcAuthRoutes(app: FastifyInstance) {
       }
 
       const token = app.jwt.sign(
-        { userId: user.id, role: 'CHILD' },
+        { userId: user.id, role: 'STEWARD' },
         { expiresIn: '7d' }
       );
 
-      return reply.send({ success: true, token, role: 'CHILD', expiresIn: 604800 });
+      return reply.send({ success: true, token, role: 'STEWARD', expiresIn: 604800 });
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ success: false, message: '登录失败，请稍后再试' });

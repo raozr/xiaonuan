@@ -6,33 +6,33 @@ async function createPairingAndUser() {
   const user = await prisma.user.create({
     data: {
       phone: `13900${Date.now()}${Math.floor(Math.random() * 1000)}`,
-      role: 'CHILD',
+      role: 'STEWARD',
     },
   });
 
   const pairing = await prisma.pairing.create({
     data: {
-      name: 'Test Elder',
+      name: 'Test Companionee',
       inviteCode: `test-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       participants: {
         create: [
           {
-            name: 'Test Elder',
-            role: 'ELDER',
+            name: 'Test Companionee',
+            role: 'COMPANIONEE',
             isAI: false,
             metadata: { age: '75' },
           },
           {
             name: user.phone ?? 'Child',
-            role: 'CHILD',
+            role: 'STEWARD',
             isAI: false,
             userId: user.id,
-            metadata: { relationshipToElder: '子女', isPrimary: true },
+            metadata: { relationshipToCompanionee: '家人', isPrimary: true },
           },
           {
             name: '小暖',
-            role: 'ELDER',
+            role: 'COMPANIONEE',
             isAI: true,
             metadata: { template: 'caring-companion' },
           },
@@ -55,10 +55,10 @@ async function createPairingAndUser() {
 }
 
 describe('GET /api/pairings', () => {
-  it('should return array of pairings for authenticated child', async () => {
+  it('should return array of pairings for authenticated steward', async () => {
     const { user, pairing } = await createPairingAndUser();
 
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'GET',
@@ -88,7 +88,7 @@ describe('GET /api/pairings', () => {
 describe('GET /api/pairings/:pairingId', () => {
   it('should return pairing detail for member', async () => {
     const { user, pairing } = await createPairingAndUser();
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'GET',
@@ -107,9 +107,9 @@ describe('GET /api/pairings/:pairingId', () => {
   it('should return 403 for non-member', async () => {
     const { pairing } = await createPairingAndUser();
     const outsider = await prisma.user.create({
-      data: { phone: `13999${Date.now()}`, role: 'CHILD' },
+      data: { phone: `13999${Date.now()}`, role: 'STEWARD' },
     });
-    const token = app.jwt.sign({ userId: outsider.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: outsider.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'GET',
@@ -125,19 +125,19 @@ describe('GET /api/pairings/:pairingId', () => {
 });
 
 describe('POST /api/pairings', () => {
-  it('should create a pairing with elder info and 6-digit invite code', async () => {
+  it('should create a pairing with companionee info and 6-digit invite code', async () => {
     const user = await prisma.user.create({
-      data: { phone: `13800${Date.now()}`, role: 'CHILD' },
+      data: { phone: `13800${Date.now()}`, role: 'STEWARD' },
     });
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/pairings',
       payload: {
-        elderName: '王爷爷',
-        elderAge: 78,
-        elderDialect: '上海话',
+        companioneeName: '王爷爷',
+        companioneeAge: 78,
+        companioneeDialect: '上海话',
       },
       headers: { authorization: `Bearer ${token}` },
     });
@@ -155,22 +155,22 @@ describe('POST /api/pairings', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/pairings',
-      payload: { elderName: '王爷爷' },
+      payload: { companioneeName: '王爷爷' },
     });
 
     expect(response.statusCode).toBe(401);
   });
 
-  it('should require elder name', async () => {
+  it('should require companionee name', async () => {
     const user = await prisma.user.create({
-      data: { phone: `13800${Date.now()}`, role: 'CHILD' },
+      data: { phone: `13800${Date.now()}`, role: 'STEWARD' },
     });
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'POST',
       url: '/api/pairings',
-      payload: { elderAge: 78 },
+      payload: { companioneeAge: 78 },
       headers: { authorization: `Bearer ${token}` },
     });
 
@@ -186,7 +186,7 @@ describe('POST /api/pairings/:pairingId/refresh-code', () => {
   it('should regenerate 6-digit invite code for existing pairing', async () => {
     const { user, pairing } = await createPairingAndUser();
     const oldCode = pairing.inviteCode;
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'POST',
@@ -213,14 +213,14 @@ describe('POST /api/pairings/:pairingId/refresh-code', () => {
   });
 });
 
-describe('PUT /api/pairings/:pairingId/elder', () => {
-  it('should update elder profile metadata', async () => {
+describe('PUT /api/pairings/:pairingId/companionee', () => {
+  it('should update companionee profile metadata', async () => {
     const { user, pairing } = await createPairingAndUser();
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'PUT',
-      url: `/api/pairings/${pairing.id}/elder`,
+      url: `/api/pairings/${pairing.id}/companionee`,
       headers: { authorization: `Bearer ${token}` },
       payload: {
         name: '王奶奶',
@@ -236,33 +236,33 @@ describe('PUT /api/pairings/:pairingId/elder', () => {
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
-    expect(body.elder.name).toBe('王奶奶');
+    expect(body.companionee.name).toBe('王奶奶');
 
     await prisma.pairing.delete({ where: { id: pairing.id } });
     await prisma.user.delete({ where: { id: user.id } });
   });
 
-  it('should only update elder in the same pairing', async () => {
+  it('should only update companionee in the same pairing', async () => {
     const { user, pairing: pairingA } = await createPairingAndUser();
     const { pairing: pairingB } = await createPairingAndUser();
 
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'PUT',
-      url: `/api/pairings/${pairingA.id}/elder`,
+      url: `/api/pairings/${pairingA.id}/companionee`,
       headers: { authorization: `Bearer ${token}` },
       payload: { name: '改名A' },
     });
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
-    expect(body.elder.name).toBe('改名A');
+    expect(body.companionee.name).toBe('改名A');
 
-    const elderB = await prisma.participant.findFirst({
-      where: { pairingId: pairingB.id, role: 'ELDER', isAI: false },
+    const companioneeB = await prisma.participant.findFirst({
+      where: { pairingId: pairingB.id, role: 'COMPANIONEE', isAI: false },
     });
-    expect(elderB!.name).toBe('Test Elder');
+    expect(companioneeB!.name).toBe('Test Companionee');
 
     await prisma.pairing.delete({ where: { id: pairingA.id } });
     await prisma.pairing.delete({ where: { id: pairingB.id } });
@@ -284,7 +284,7 @@ describe('POST /api/pairings/bind', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
-    expect(body.role).toBe('ELDER');
+    expect(body.role).toBe('COMPANIONEE');
 
     await prisma.pairing.delete({ where: { id: pairing.id } });
   });
@@ -341,9 +341,9 @@ describe('POST /api/pairings/bind', () => {
 });
 
 describe('DELETE /api/pairings/:pairingId/bind', () => {
-  it('should unbind elder device for primary child', async () => {
+  it('should unbind companionee device for primary steward', async () => {
     const { user, pairing } = await createPairingAndUser();
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     // First bind
     await app.inject({
@@ -362,10 +362,10 @@ describe('DELETE /api/pairings/:pairingId/bind', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
 
-    const elder = await prisma.participant.findFirst({
-      where: { pairingId: pairing.id, role: 'ELDER', isAI: false },
+    const companionee = await prisma.participant.findFirst({
+      where: { pairingId: pairing.id, role: 'COMPANIONEE', isAI: false },
     });
-    const meta = elder?.metadata as Record<string, string> | null;
+    const meta = companionee?.metadata as Record<string, string> | null;
     expect(meta?.deviceId).toBeUndefined();
 
     await prisma.pairing.delete({ where: { id: pairing.id } });
@@ -374,9 +374,9 @@ describe('DELETE /api/pairings/:pairingId/bind', () => {
 });
 
 describe('DELETE /api/pairings/:pairingId', () => {
-  it('should delete pairing for primary child', async () => {
+  it('should delete pairing for primary steward', async () => {
     const { user, pairing } = await createPairingAndUser();
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'DELETE',
@@ -394,24 +394,24 @@ describe('DELETE /api/pairings/:pairingId', () => {
     await prisma.user.delete({ where: { id: user.id } });
   });
 
-  it('should reject delete by non-primary child', async () => {
+  it('should reject delete by non-primary steward', async () => {
     const { user: primaryUser, pairing } = await createPairingAndUser();
     const secondaryUser = await prisma.user.create({
-      data: { phone: `13988${Date.now()}`, role: 'CHILD' },
+      data: { phone: `13988${Date.now()}`, role: 'STEWARD' },
     });
-    // Add secondary child participant to same pairing
+    // Add secondary steward participant to same pairing
     await prisma.participant.create({
       data: {
         pairingId: pairing.id,
-        role: 'CHILD',
+        role: 'STEWARD',
         isAI: false,
         userId: secondaryUser.id,
         name: secondaryUser.phone ?? 'Secondary',
-        metadata: { relationshipToElder: '子女', isPrimary: false },
+        metadata: { relationshipToCompanionee: '家人', isPrimary: false },
       },
     });
 
-    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'DELETE',
@@ -430,7 +430,7 @@ describe('DELETE /api/pairings/:pairingId', () => {
 describe('GET /api/pairings/:pairingId/daily-summary', () => {
   it('should return daily summary for today', async () => {
     const { user, pairing } = await createPairingAndUser();
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -467,7 +467,7 @@ describe('GET /api/pairings/:pairingId/daily-summary', () => {
 
   it('should return null when no summary exists', async () => {
     const { user, pairing } = await createPairingAndUser();
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'GET',
@@ -488,7 +488,7 @@ describe('GET /api/pairings/:pairingId/daily-summary', () => {
 describe('POST /api/pairings/:pairingId/feeds', () => {
   it('should create a text feed', async () => {
     const { user, pairing } = await createPairingAndUser();
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'POST',
@@ -512,7 +512,7 @@ describe('POST /api/pairings/:pairingId/feeds', () => {
 
   it('should reject empty content for text feed', async () => {
     const { user, pairing } = await createPairingAndUser();
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'POST',
@@ -534,7 +534,7 @@ describe('POST /api/pairings/:pairingId/feeds', () => {
 describe('GET /api/pairings/:pairingId/feeds', () => {
   it('should return feeds in descending order', async () => {
     const { user, pairing } = await createPairingAndUser();
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     await prisma.feedMessage.create({
       data: {

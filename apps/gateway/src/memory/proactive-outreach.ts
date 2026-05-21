@@ -53,11 +53,11 @@ export async function shouldSendOutreach(pairingId: string): Promise<boolean> {
 export async function generateOutreachMessage(
   pairingId: string
 ): Promise<string | null> {
-  const elder = await prisma.participant.findFirst({
-    where: { pairingId, role: 'ELDER', isAI: false },
+  const companionee = await prisma.participant.findFirst({
+    where: { pairingId, role: 'COMPANIONEE', isAI: false },
   });
 
-  if (!elder) return null;
+  if (!companionee) return null;
 
   // Get last session messages for context
   const lastSession = await prisma.session.findFirst({
@@ -84,10 +84,10 @@ export async function generateOutreachMessage(
   const messages = [
     {
       role: 'system' as const,
-      content: `${systemPrompt}\n\n老人已经 ${IDLE_THRESHOLD_HOURS / 24} 天没有和小暖说话了。请生成一句简短、温暖的问候，关心老人最近的情况。只说 1-2 句话，语气像家人一样自然。`,
+      content: `${systemPrompt}\n\n${companionee.name}已经 ${IDLE_THRESHOLD_HOURS / 24} 天没有和小暖说话了。请生成一句简短、温暖的问候，关心${companionee.name}最近的情况。只说 1-2 句话，语气像家人一样自然。`,
     },
     ...recentMessages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-    { role: 'user' as const, content: '（老人很久没说话了）' },
+    { role: 'user' as const, content: `（${companionee.name}很久没说话了）` },
   ];
 
   const reply = await chatCompletion(messages, {

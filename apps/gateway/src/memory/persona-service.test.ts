@@ -61,7 +61,7 @@ describe('persona-service', () => {
 
   describe('addProfiles', () => {
     it('should return 0 when no profiles provided', async () => {
-      const count = await addProfiles('pairing-123', 'elder-1', []);
+      const count = await addProfiles('pairing-123', 'companionee-1', []);
       expect(count).toBe(0);
       expect(prisma.personaProfile.createMany).not.toHaveBeenCalled();
     });
@@ -69,7 +69,7 @@ describe('persona-service', () => {
     it('should create profiles with correct pairingId and participantId', async () => {
       vi.mocked(prisma.personaProfile.createMany).mockResolvedValue({ count: 2 } as any);
 
-      const count = await addProfiles('pairing-123', 'elder-1', [
+      const count = await addProfiles('pairing-123', 'companionee-1', [
         { category: 'hobby', content: '喜欢钓鱼', confidence: 0.9 },
         { category: 'health', content: '血糖高', confidence: 0.8, source: 'feed' },
       ]);
@@ -77,8 +77,8 @@ describe('persona-service', () => {
       expect(count).toBe(2);
       expect(prisma.personaProfile.createMany).toHaveBeenCalledWith({
         data: [
-          { pairingId: 'pairing-123', participantId: 'elder-1', category: 'hobby', content: '喜欢钓鱼', confidence: 0.9, source: null },
-          { pairingId: 'pairing-123', participantId: 'elder-1', category: 'health', content: '血糖高', confidence: 0.8, source: 'feed' },
+          { pairingId: 'pairing-123', participantId: 'companionee-1', category: 'hobby', content: '喜欢钓鱼', confidence: 0.9, source: null },
+          { pairingId: 'pairing-123', participantId: 'companionee-1', category: 'health', content: '血糖高', confidence: 0.8, source: 'feed' },
         ],
       });
     });

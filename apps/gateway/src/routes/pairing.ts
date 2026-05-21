@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { z } from 'zod';
 import { prisma } from '@xiaonuan/prisma';
 import { generateInviteCode } from '../utils/invite-code.js';
-import { verifyElderAuth } from '../middleware/auth.js';
+import { verifyCompanioneeAuth } from '../middleware/auth.js';
 import { transcribeVoice } from '../services/voice-service-client.js';
 import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
@@ -11,9 +11,9 @@ import { emitEvent } from '../events/event-bus.js';
 import { enqueueExtraction } from '../services/extraction-service.js';
 
 const createPairingSchema = z.object({
-  elderName: z.string().min(1),
-  elderAge: z.number().min(50).max(120).optional(),
-  elderDialect: z.string().optional(),
+  companioneeName: z.string().min(1),
+  companioneeAge: z.number().min(50).max(120).optional(),
+  companioneeDialect: z.string().optional(),
 });
 
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
@@ -23,7 +23,7 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
   }
   try {
     await request.jwtVerify();
-    await verifyElderAuth(request, reply);
+    await verifyCompanioneeAuth(request, reply);
   } catch {
     if (reply.sent) return;
     return reply.status(401).send({ success: false, message: '无效的认证令牌' });
@@ -32,7 +32,7 @@ export async function requireAuth(request: FastifyRequest, reply: FastifyReply) 
 
 export async function assertPairingMember(userId: string, pairingId: string, reply: FastifyReply) {
   const participant = await prisma.participant.findFirst({
-    where: { pairingId, role: 'CHILD', userId },
+    where: { pairingId, role: 'STEWARD', userId },
   });
   if (!participant) {
     return reply.status(403).send({ success: false, message: '无权访问该配对' });
@@ -40,8 +40,8 @@ export async function assertPairingMember(userId: string, pairingId: string, rep
   return participant;
 }
 
-function mapElder(participants: any[]) {
-  return participants.find(p => p.role === 'ELDER' && !p.isAI) ?? null;
+function mapCompanionee(participants: any[]) {
+  return participants.find(p => p.role === 'COMPANIONEE' && !p.isAI) ?? null;
 }
 
 function enrichPairingsWithStatus(
@@ -54,22 +54,22 @@ function enrichPairingsWithStatus(
 
   return pairings.map(p => {
     const participants = p.participants ?? [];
-    const elder = mapElder(participants);
+    const companionee = mapCompanionee(participants);
     return {
       id: p.id,
       inviteCode: p.inviteCode,
       inviteCodeExpiresAt: p.inviteCodeExpiresAt,
-      elder: elder ? {
-        id: elder.id,
-        pairingId: elder.pairingId,
-        name: elder.name,
-        gender: elder.metadata?.gender,
-        age: elder.metadata?.age ? Number(elder.metadata.age) : undefined,
-        dialect: elder.metadata?.dialect,
-        hobbies: elder.metadata?.hobbies,
-        healthNotes: elder.metadata?.healthNotes,
-        topicsToAvoid: elder.metadata?.topicsToAvoid,
-        greetingPreference: elder.metadata?.greetingPreference,
+      companionee: companionee ? {
+        id: companionee.id,
+        pairingId: companionee.pairingId,
+        name: companionee.name,
+        gender: companionee.metadata?.gender,
+        age: companionee.metadata?.age ? Number(companionee.metadata.age) : undefined,
+        dialect: companionee.metadata?.dialect,
+        hobbies: companionee.metadata?.hobbies,
+        healthNotes: companionee.metadata?.healthNotes,
+        topicsToAvoid: companionee.metadata?.topicsToAvoid,
+        greetingPreference: companionee.metadata?.greetingPreference,
       } : undefined,
       isOnline: activeMap.has(p.id) ?? false,
       lastActive: lastMap.get(p.id)?.toISOString() ?? null,
@@ -78,19 +78,19 @@ function enrichPairingsWithStatus(
 }
 
 export async function pairingRoutes(app: FastifyInstance) {
-  // List all pairings for a child, or the single pairing for an elder
+  // List all pairings for a steward, or the single pairing for a companionee
   app.get('/', { preHandler: [requireAuth] }, async (request, reply) => {
     const user = request.user;
     if (!user) {
       return reply.status(401).send({ success: false, message: '未认证' });
     }
 
-    if (user.role === 'CHILD' && user.userId) {
-      const childParticipants = await prisma.participant.findMany({
-        where: { role: 'CHILD', userId: user.userId },
+    if (user.role === 'STEWARD' && user.userId) {
+      const stewardParticipants = await prisma.participant.findMany({
+        where: { role: 'STEWARD', userId: user.userId },
         include: { pairing: true },
       });
-      const pairingIds = childParticipants.map(cp => cp.pairing.id);
+      const pairingIds = stewardParticipants.map(cp => cp.pairing.id);
 
       const pairings = await prisma.pairing.findMany({
         where: { id: { in: pairingIds } },
@@ -117,7 +117,7 @@ export async function pairingRoutes(app: FastifyInstance) {
       return reply.send(enrichPairingsWithStatus(pairings, activeSessions, lastSessions));
     }
 
-    if (user.role === 'ELDER' && user.pairingId) {
+    if (user.role === 'COMPANIONEE' && user.pairingId) {
       const pairing = await prisma.pairing.findUnique({
         where: { id: user.pairingId },
         include: { participants: true },
@@ -171,34 +171,34 @@ export async function pairingRoutes(app: FastifyInstance) {
       return reply.status(404).send({ success: false, message: '配对不存在' });
     }
 
-    const elder = mapElder(pairing.participants);
+    const companionee = mapCompanionee(pairing.participants);
 
     return reply.send({
       id: pairing.id,
       inviteCode: pairing.inviteCode,
       inviteCodeExpiresAt: pairing.inviteCodeExpiresAt,
-      elder: elder ? {
-        id: elder.id,
-        pairingId: elder.pairingId,
-        name: elder.name,
-        gender: elder.metadata?.gender,
-        age: elder.metadata?.age ? Number(elder.metadata.age) : undefined,
-        dialect: elder.metadata?.dialect,
-        hobbies: elder.metadata?.hobbies,
-        healthNotes: elder.metadata?.healthNotes,
-        topicsToAvoid: elder.metadata?.topicsToAvoid,
-        greetingPreference: elder.metadata?.greetingPreference,
+      companionee: companionee ? {
+        id: companionee.id,
+        pairingId: companionee.pairingId,
+        name: companionee.name,
+        gender: companionee.metadata?.gender,
+        age: companionee.metadata?.age ? Number(companionee.metadata.age) : undefined,
+        dialect: companionee.metadata?.dialect,
+        hobbies: companionee.metadata?.hobbies,
+        healthNotes: companionee.metadata?.healthNotes,
+        topicsToAvoid: companionee.metadata?.topicsToAvoid,
+        greetingPreference: companionee.metadata?.greetingPreference,
       } : undefined,
       isOnline: undefined,
       lastActive: null,
     });
   });
 
-  // Create a new pairing (Child only)
+  // Create a new pairing (Steward only)
   app.post('/', { preHandler: [requireAuth] }, async (request, reply) => {
     const user = request.user;
-    if (!user || user.role !== 'CHILD' || !user.userId) {
-      return reply.status(403).send({ success: false, message: '仅子女可创建配对' });
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
+      return reply.status(403).send({ success: false, message: '仅照管者可创建配对' });
     }
 
     const body = request.body as Record<string, unknown>;
@@ -208,7 +208,7 @@ export async function pairingRoutes(app: FastifyInstance) {
       return reply.status(400).send({ success: false, message: '参数错误', errors: parsed.error.errors });
     }
 
-    const { elderName, elderAge, elderDialect } = parsed.data;
+    const { companioneeName, companioneeAge, companioneeDialect } = parsed.data;
 
     const userData = await prisma.user.findUnique({ where: { id: user.userId } });
     if (!userData) {
@@ -217,30 +217,30 @@ export async function pairingRoutes(app: FastifyInstance) {
 
     const pairing = await prisma.pairing.create({
       data: {
-        name: elderName,
+        name: companioneeName,
         inviteCode: generateInviteCode(),
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
             {
-              name: elderName,
-              role: 'ELDER',
+              name: companioneeName,
+              role: 'COMPANIONEE',
               isAI: false,
               metadata: {
-                ...(elderAge ? { age: String(elderAge) } : {}),
-                ...(elderDialect ? { dialect: elderDialect } : {}),
+                ...(companioneeAge ? { age: String(companioneeAge) } : {}),
+                ...(companioneeDialect ? { dialect: companioneeDialect } : {}),
               },
             },
             {
-              name: userData.phone ?? '子女',
-              role: 'CHILD',
+              name: userData.phone ?? '照管者',
+              role: 'STEWARD',
               isAI: false,
               userId: user.userId,
-              metadata: { relationshipToElder: '子女' },
+              metadata: { relationshipToCompanionee: '照管者' },
             },
             {
               name: '小暖',
-              role: 'ELDER',
+              role: 'COMPANIONEE',
               isAI: true,
               metadata: { template: 'caring-companion' },
             },
@@ -261,12 +261,12 @@ export async function pairingRoutes(app: FastifyInstance) {
     const participants = await prisma.participant.findMany({
       where: { pairingId: pairing.id },
     });
-    const elderParticipant = participants.find(p => p.role === 'ELDER' && !p.isAI);
-    const childParticipant = participants.find(p => p.role === 'CHILD' && !p.isAI);
+    const companionee = participants.find(p => p.role === 'COMPANIONEE' && !p.isAI);
+    const steward = participants.find(p => p.role === 'STEWARD' && !p.isAI);
     const aiParticipant = participants.find(p => p.isAI);
 
     const token = app.jwt.sign(
-      { pairingId: pairing.id, role: 'CHILD', userId: user.userId },
+      { pairingId: pairing.id, role: 'STEWARD', userId: user.userId },
       { expiresIn: '7d' }
     );
 
@@ -274,8 +274,8 @@ export async function pairingRoutes(app: FastifyInstance) {
       id: pairing.id,
       inviteCode: pairing.inviteCode,
       inviteCodeExpiresAt: pairing.inviteCodeExpiresAt,
-      elder: elderParticipant,
-      child: childParticipant,
+      companionee,
+      steward,
       ai: aiParticipant,
       token,
       expiresIn: 604800,
@@ -287,7 +287,7 @@ export async function pairingRoutes(app: FastifyInstance) {
     const { pairingId } = request.params as { pairingId: string };
     const user = request.user;
 
-    if (!user || user.role !== 'CHILD' || !user.userId) {
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
@@ -308,30 +308,30 @@ export async function pairingRoutes(app: FastifyInstance) {
     });
   });
 
-  // Update elder participant metadata
-  app.put('/:pairingId/elder', { preHandler: [requireAuth] }, async (request, reply) => {
+  // Update companionee participant metadata
+  app.put('/:pairingId/companionee', { preHandler: [requireAuth] }, async (request, reply) => {
     const { pairingId } = request.params as { pairingId: string };
     const user = request.user;
 
-    if (!user || user.role !== 'CHILD' || !user.userId) {
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
     const member = await assertPairingMember(user.userId, pairingId, reply);
     if (!member) return;
 
-    const elder = await prisma.participant.findFirst({
-      where: { pairingId, role: 'ELDER', isAI: false },
+    const companionee = await prisma.participant.findFirst({
+      where: { pairingId, role: 'COMPANIONEE', isAI: false },
     });
-    if (!elder) {
+    if (!companionee) {
       return reply.status(404).send({ success: false, message: '被陪伴者不存在' });
     }
 
     const body = request.body as Record<string, unknown>;
-    const existingMeta = (elder.metadata as Record<string, string> | null) ?? {};
+    const existingMeta = (companionee.metadata as Record<string, string> | null) ?? {};
     const updatedMeta = { ...existingMeta };
 
-    if (typeof body.name === 'string') await prisma.participant.update({ where: { id: elder.id }, data: { name: body.name } });
+    if (typeof body.name === 'string') await prisma.participant.update({ where: { id: companionee.id }, data: { name: body.name } });
     if (typeof body.age === 'number') updatedMeta.age = String(body.age);
     if (typeof body.dialect === 'string') updatedMeta.dialect = body.dialect;
     if (typeof body.hobbies === 'string') updatedMeta.hobbies = body.hobbies;
@@ -340,14 +340,14 @@ export async function pairingRoutes(app: FastifyInstance) {
     if (typeof body.greetingPreference === 'string') updatedMeta.greetingPreference = body.greetingPreference;
 
     const updated = await prisma.participant.update({
-      where: { id: elder.id },
+      where: { id: companionee.id },
       data: { metadata: updatedMeta },
     });
 
-    return reply.send({ success: true, elder: updated });
+    return reply.send({ success: true, companionee: updated });
   });
 
-  // Bind elder device
+  // Bind companionee device
   app.post('/bind', async (request, reply) => {
     try {
       const body = request.body as { inviteCode?: string; deviceId?: string };
@@ -369,46 +369,39 @@ export async function pairingRoutes(app: FastifyInstance) {
       }
 
       // If this device is already bound to another pairing, unbind it first
-      const existingElder = await prisma.participant.findFirst({
-        where: { role: 'ELDER', isAI: false },
-        select: { id: true, pairingId: true, metadata: true },
+      const existingCompanionee = await prisma.participant.findFirst({
+        where: { role: 'COMPANIONEE', isAI: false, deviceId: body.deviceId },
+        select: { id: true, pairingId: true },
       });
 
-      if (existingElder) {
-        const existingMeta = (existingElder.metadata as Record<string, string> | null) ?? {};
-        const existingDeviceId = existingMeta.deviceId;
-        if (existingDeviceId === body.deviceId && existingElder.pairingId !== pairing.id) {
-          const { deviceId: _, ...restMeta } = existingMeta;
-          await prisma.participant.update({
-            where: { id: existingElder.id },
-            data: { metadata: restMeta },
-          });
-        }
+      if (existingCompanionee && existingCompanionee.pairingId !== pairing.id) {
+        await prisma.participant.update({
+          where: { id: existingCompanionee.id },
+          data: { deviceId: null },
+        });
       }
 
-      const elder = await prisma.participant.findFirst({
-        where: { pairingId: pairing.id, role: 'ELDER', isAI: false },
+      const companionee = await prisma.participant.findFirst({
+        where: { pairingId: pairing.id, role: 'COMPANIONEE', isAI: false },
       });
-      if (!elder) {
+      if (!companionee) {
         return reply.status(404).send({ success: false, message: '被陪伴者不存在' });
       }
 
-      const existingMeta = (elder.metadata as Record<string, string> | null) ?? {};
-      const updatedMeta = { ...existingMeta, deviceId: body.deviceId };
       await prisma.participant.update({
-        where: { id: elder.id },
-        data: { metadata: updatedMeta },
+        where: { id: companionee.id },
+        data: { deviceId: body.deviceId },
       });
 
       const token = app.jwt.sign(
-        { pairingId: pairing.id, role: 'ELDER', deviceId: body.deviceId },
+        { pairingId: pairing.id, role: 'COMPANIONEE', deviceId: body.deviceId },
         { expiresIn: '365d' }
       );
 
       return reply.send({
         success: true,
         token,
-        role: 'ELDER',
+        role: 'COMPANIONEE',
         pairingId: pairing.id,
       });
     } catch (error) {
@@ -417,41 +410,39 @@ export async function pairingRoutes(app: FastifyInstance) {
     }
   });
 
-  // Unbind elder device
+  // Unbind companionee device
   app.delete('/:pairingId/bind', { preHandler: [requireAuth] }, async (request, reply) => {
     const { pairingId } = request.params as { pairingId: string };
     const user = request.user;
 
-    if (!user || user.role !== 'CHILD' || !user.userId) {
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
     const member = await assertPairingMember(user.userId, pairingId, reply);
     if (!member) return;
 
-    const elder = await prisma.participant.findFirst({
-      where: { pairingId, role: 'ELDER', isAI: false },
+    const companionee = await prisma.participant.findFirst({
+      where: { pairingId, role: 'COMPANIONEE', isAI: false },
     });
-    if (!elder) {
+    if (!companionee) {
       return reply.status(404).send({ success: false, message: '被陪伴者不存在' });
     }
 
-    const existingMeta = (elder.metadata as Record<string, string> | null) ?? {};
-    const { deviceId: _, ...restMeta } = existingMeta;
     await prisma.participant.update({
-      where: { id: elder.id },
-      data: { metadata: restMeta },
+      where: { id: companionee.id },
+      data: { deviceId: null },
     });
 
     return reply.send({ success: true, message: '解绑成功' });
   });
 
-  // Delete pairing (primary child only)
+  // Delete pairing (primary steward only)
   app.delete('/:pairingId', { preHandler: [requireAuth] }, async (request, reply) => {
     const { pairingId } = request.params as { pairingId: string };
     const user = request.user;
 
-    if (!user || user.role !== 'CHILD' || !user.userId) {
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
@@ -622,5 +613,26 @@ export async function pairingRoutes(app: FastifyInstance) {
     });
 
     return reply.send({ success: true, data: feeds });
+  });
+
+  app.delete('/:pairingId/feeds/:feedId', { preHandler: [requireAuth] }, async (request, reply) => {
+    const { pairingId, feedId } = request.params as { pairingId: string; feedId: string };
+    const user = request.user;
+
+    if (!user || !user.userId) {
+      return reply.status(401).send({ success: false, message: '未认证' });
+    }
+
+    const member = await assertPairingMember(user.userId, pairingId, reply);
+    if (!member) return;
+
+    const feed = await prisma.feedMessage.findUnique({ where: { id: feedId } });
+    if (!feed || feed.pairingId !== pairingId) {
+      return reply.status(404).send({ success: false, message: '记录不存在' });
+    }
+
+    await prisma.feedMessage.delete({ where: { id: feedId } });
+
+    return reply.send({ success: true });
   });
 }

@@ -53,8 +53,8 @@ model Participant {
 }
 
 enum ParticipantRole {
-  ELDER
-  CHILD
+  COMPANIONEE
+  STEWARD
 }
 
 model AIPersona {
@@ -154,8 +154,8 @@ model User {
 }
 
 enum UserRole {
-  ELDER
-  CHILD
+  COMPANIONEE
+  STEWARD
 }
 
 model Session {

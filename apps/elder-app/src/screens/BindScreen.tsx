@@ -84,7 +84,7 @@ export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
         </View>
         <Text style={styles.title}>Hello!</Text>
         <Text style={styles.subtitle}>
-          请输入子女提供的 {CODE_LENGTH} 位绑定码
+          请输入家人提供的 {CODE_LENGTH} 位绑定码
         </Text>
       </View>
 

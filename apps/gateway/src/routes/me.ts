@@ -17,7 +17,7 @@ export async function meRoutes(app: FastifyInstance) {
       return reply.status(401).send({ success: false, message: '未认证' });
     }
 
-    if (user.role === 'CHILD' && user.userId) {
+    if (user.role === 'STEWARD' && user.userId) {
       const dbUser = await prisma.user.findUnique({
         where: { id: user.userId },
         include: { participants: true },
@@ -28,25 +28,25 @@ export async function meRoutes(app: FastifyInstance) {
       }
 
       return reply.send({
-        role: 'CHILD',
+        role: 'STEWARD',
         name: dbUser.name,
         phone: dbUser.phone,
         pairingCount: dbUser.participants.length,
       });
     }
 
-    if (user.role === 'ELDER' && user.pairingId) {
-      const elder = await prisma.participant.findFirst({
-        where: { pairingId: user.pairingId, role: 'ELDER', isAI: false },
+    if (user.role === 'COMPANIONEE' && user.pairingId) {
+      const companionee = await prisma.participant.findFirst({
+        where: { pairingId: user.pairingId, role: 'COMPANIONEE', isAI: false },
       });
 
-      if (!elder) {
+      if (!companionee) {
         return reply.status(404).send({ success: false, message: '被陪伴者信息不存在' });
       }
 
       return reply.send({
-        role: 'ELDER',
-        name: elder.name,
+        role: 'COMPANIONEE',
+        name: companionee.name,
         pairingId: user.pairingId,
       });
     }
@@ -57,8 +57,8 @@ export async function meRoutes(app: FastifyInstance) {
   app.put('/', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user as UserPayload | undefined;
 
-    if (!user || user.role !== 'CHILD' || !user.userId) {
-      return reply.status(401).send({ success: false, message: '未认证或非子女用户' });
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
+      return reply.status(401).send({ success: false, message: '未认证或非照管者用户' });
     }
 
     const body = request.body as Record<string, unknown>;

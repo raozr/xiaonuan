@@ -21,9 +21,9 @@ export default function VoiceClonePage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
         <Users className="h-12 w-12 text-muted-foreground" />
-        <p className="text-muted-foreground">您还没有关联老人</p>
+        <p className="text-muted-foreground">您还没有创建配对</p>
         <Link href="/">
-          <Button>去添加老人</Button>
+          <Button>去添加配对</Button>
         </Link>
       </div>
     );
@@ -34,7 +34,7 @@ export default function VoiceClonePage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">声音复刻</h1>
         <span className="text-sm text-muted-foreground">
-          当前老人：{currentPairing.elder?.name ?? '未知'}
+          当前配对：{currentPairing.companionee?.name ?? '未知'}
         </span>
       </div>
       <VoiceClonePanel pairingId={currentPairingId} />

@@ -1,12 +1,12 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { fetchFeeds, createFeed, type Feed } from '@/lib/api';
+import { fetchFeeds, createFeed, deleteFeed, type Feed } from '@/lib/api';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Mic, Square, Send, Loader2 } from 'lucide-react';
+import { Mic, Square, Send, Loader2, Trash2 } from 'lucide-react';
 
 type InputMode = 'text' | 'voice';
 
@@ -38,6 +38,15 @@ export function PairingFeedPanel({ pairingId }: PairingFeedPanelProps) {
       setLoading(false);
     }
   }, [pairingId]);
+
+  const handleDelete = async (feedId: string) => {
+    try {
+      await deleteFeed(pairingId, feedId);
+      setFeeds((prev) => prev.filter((f) => f.id !== feedId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '删除失败');
+    }
+  };
 
   useEffect(() => {
     loadFeeds();
@@ -143,12 +152,12 @@ export function PairingFeedPanel({ pairingId }: PairingFeedPanelProps) {
         <CardContent className="p-4">
           <p className="text-sm font-medium mb-2">你可以告诉小暖这些事：</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span>• 身体：奶奶最近睡眠不好，夜里容易醒</span>
-            <span>• 爱好：爷爷喜欢听京剧，尤其是包公铡美案</span>
-            <span>• 习惯：奶奶每天早上六点起床锻炼</span>
-            <span>• 回避：别跟奶奶聊她老伴的事</span>
-            <span>• 称呼：叫她王奶奶就好</span>
-            <span>• 语言：爷爷会说四川话</span>
+            <span>• 身体：她最近睡眠不好，夜里容易醒</span>
+            <span>• 爱好：喜欢听京剧，尤其是包公铡美案</span>
+            <span>• 习惯：每天早上六点起床锻炼</span>
+            <span>• 回避：别聊她老伴的事</span>
+            <span>• 称呼：叫她王阿姨就好</span>
+            <span>• 语言：她会说四川话</span>
           </div>
         </CardContent>
       </Card>
@@ -176,7 +185,7 @@ export function PairingFeedPanel({ pairingId }: PairingFeedPanelProps) {
             <div className="space-y-2">
               <Textarea
                 placeholder={
-                  '告诉小暖一件关于老人的事...\n\n可以告诉我：老人的身体状况、兴趣爱好、生活习惯、近期发生的事、需要回避的话题、称呼偏好等。小暖会自动从这些信息中了解老人，让对话更贴心。'
+                  '告诉小暖一件关于对方的事...\n\n可以告诉我：对方的身体状况、兴趣爱好、生活习惯、近期发生的事、需要回避的话题、称呼偏好等。小暖会自动从这些信息中了解TA，让对话更贴心。'
                 }
                 value={textContent}
                 onChange={(e) => setTextContent(e.target.value)}
@@ -230,6 +239,17 @@ export function PairingFeedPanel({ pairingId }: PairingFeedPanelProps) {
                     <p className="text-sm">{feed.content}</p>
                     <p className="text-xs text-muted-foreground mt-1">{formatTime(feed.createdAt)}</p>
                   </div>
+                  <button
+                    onClick={() => {
+                      if (confirm('确定删除这条记录吗？')) {
+                        handleDelete(feed.id);
+                      }
+                    }}
+                    className="text-muted-foreground hover:text-destructive transition-colors shrink-0"
+                    title="删除"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </CardContent>
               </Card>
             ))}

@@ -95,7 +95,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
         if (currentPhase === 'ACTIVE_CHAT' || currentPhase === 'GREETING') {
           const newPhase = definePhaseTransition(
             currentPhase,
-            'elder_silent_timeout'
+            'companionee_silent_timeout'
           );
           await updateSessionPhase(sessionId, newPhase);
           sendMessage('phase:changed', { phase: newPhase });
@@ -138,7 +138,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           sessionId = session.id;
           app.log.info(`[WS] session created id=${session.id}`);
           sendMessage('session:created', { sessionId: session.id });
-          // 新会话在老人首次说话前不启动静默计时，避免还没说话就收到道别
+          // 新会话在对方首次说话前不启动静默计时，避免还没说话就收到道别
           return;
         }
 
@@ -184,7 +184,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           if (currentPhase === 'CLOSING') {
             const newPhase = definePhaseTransition(
               'CLOSING',
-              'elder_speaks_again'
+              'companionee_speaks_again'
             );
             await updateSessionPhase(sessionId, newPhase);
             sendMessage('phase:changed', { phase: newPhase });
@@ -235,13 +235,14 @@ export function createWebSocketHandler(app: FastifyInstance) {
             text = asrResult.success ? (asrResult.text ?? '') : '';
             app.log.info(`[WS] ASR result: ${text}`);
           } catch (asrErr: any) {
-            const errMsg = asrErr instanceof Error ? asrErr.message : String(asrErr);
-            app.log.error(`[WS] ASR failed: ${errMsg}`);
+            const rawMsg = asrErr instanceof Error ? asrErr.message : String(asrErr);
+            app.log.error(`[WS] ASR failed: ${rawMsg}`);
             try {
               const fs = await import('fs/promises');
-              await fs.appendFile('/tmp/gateway-asr.log', `[${new Date().toISOString()}] ASR failed: ${errMsg}\n`, 'utf-8');
+              await fs.appendFile('/tmp/gateway-asr.log', `[${new Date().toISOString()}] ASR failed: ${rawMsg}\n`, 'utf-8');
             } catch {}
-            sendMessage('error', { message: errMsg || '语音识别失败' });
+            // Never expose raw technical errors to the companionee — always return a user-friendly message
+            sendMessage('error', { message: '语音识别失败，请稍后再试' });
             return;
           }
 
@@ -256,7 +257,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           if (currentPhase === 'CLOSING') {
             const newPhase = definePhaseTransition(
               'CLOSING',
-              'elder_speaks_again'
+              'companionee_speaks_again'
             );
             await updateSessionPhase(sessionId, newPhase);
             sendMessage('phase:changed', { phase: newPhase });
@@ -330,17 +331,17 @@ export function createWebSocketHandler(app: FastifyInstance) {
       const user = app.jwt.verify(token) as AuthUser;
 
       if (!user?.pairingId) {
-        if (user?.role !== 'CHILD') {
+        if (user?.role !== 'STEWARD') {
           authReject('Missing pairingId');
           socket.close(1008, 'Missing pairingId');
           return;
         }
       }
 
-      if (user?.role === 'ELDER' && user.deviceId) {
+      if (user?.role === 'COMPANIONEE' && user.deviceId) {
         try {
           const participant = await prisma.participant.findFirst({
-            where: { pairingId: user.pairingId, role: 'ELDER', isAI: false },
+            where: { pairingId: user.pairingId, role: 'COMPANIONEE', isAI: false },
             select: { deviceId: true }
           });
           if (!participant || participant.deviceId !== user.deviceId) {
@@ -349,7 +350,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
             return;
           }
         } catch (err) {
-          app.log.error(`[WebSocket] 验证老人设备失败: ${err instanceof Error ? err.message : String(err)}`);
+          app.log.error(`[WebSocket] 验证对方设备失败: ${err instanceof Error ? err.message : String(err)}`);
           authReject('Server error');
           socket.close(1011, 'Server error');
           return;

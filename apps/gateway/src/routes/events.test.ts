@@ -10,26 +10,26 @@ describe('GET /api/pairings/:pairingId/events', () => {
     user = await prisma.user.create({
       data: {
         phone: `13900${Date.now()}${Math.floor(Math.random() * 1000)}`,
-        role: 'CHILD',
+        role: 'STEWARD',
       },
     });
 
     pairing = await prisma.pairing.create({
       data: {
-        name: 'Test Elder',
+        name: 'Test Companionee',
         inviteCode: `events-test-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
-            { name: 'Test Elder', role: 'ELDER', isAI: false },
+            { name: 'Test Companionee', role: 'COMPANIONEE', isAI: false },
             {
               name: user.phone ?? 'Child',
-              role: 'CHILD',
+              role: 'STEWARD',
               isAI: false,
               userId: user.id,
-              metadata: { relationshipToElder: '子女', isPrimary: true },
+              metadata: { relationshipToCompanionee: '家人', isPrimary: true },
             },
-            { name: '小暖', role: 'ELDER', isAI: true },
+            { name: '小暖', role: 'COMPANIONEE', isAI: true },
           ],
         },
       },
@@ -44,7 +44,7 @@ describe('GET /api/pairings/:pairingId/events', () => {
   });
 
   it('should return events for a pairing', async () => {
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     await prisma.eventStream.create({
       data: {
@@ -70,7 +70,7 @@ describe('GET /api/pairings/:pairingId/events', () => {
   });
 
   it('should filter by event type', async () => {
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     await prisma.eventStream.createMany({
       data: [
@@ -102,9 +102,9 @@ describe('GET /api/pairings/:pairingId/events', () => {
 
   it('should return 403 for non-member', async () => {
     const outsider = await prisma.user.create({
-      data: { phone: `13999${Date.now()}`, role: 'CHILD' },
+      data: { phone: `13999${Date.now()}`, role: 'STEWARD' },
     });
-    const token = app.jwt.sign({ userId: outsider.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: outsider.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'GET',
@@ -126,26 +126,26 @@ describe('GET /api/pairings/:pairingId/events/today', () => {
     user = await prisma.user.create({
       data: {
         phone: `13901${Date.now()}${Math.floor(Math.random() * 1000)}`,
-        role: 'CHILD',
+        role: 'STEWARD',
       },
     });
 
     pairing = await prisma.pairing.create({
       data: {
-        name: 'Test Elder',
+        name: 'Test Companionee',
         inviteCode: `events-today-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
-            { name: 'Test Elder', role: 'ELDER', isAI: false },
+            { name: 'Test Companionee', role: 'COMPANIONEE', isAI: false },
             {
               name: user.phone ?? 'Child',
-              role: 'CHILD',
+              role: 'STEWARD',
               isAI: false,
               userId: user.id,
-              metadata: { relationshipToElder: '子女', isPrimary: true },
+              metadata: { relationshipToCompanionee: '家人', isPrimary: true },
             },
-            { name: '小暖', role: 'ELDER', isAI: true },
+            { name: '小暖', role: 'COMPANIONEE', isAI: true },
           ],
         },
       },
@@ -160,7 +160,7 @@ describe('GET /api/pairings/:pairingId/events/today', () => {
   });
 
   it('should return today events only', async () => {
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     // Today event
     await prisma.eventStream.create({
@@ -201,7 +201,7 @@ describe('GET /api/pairings/:pairingId/events/today', () => {
   });
 
   it('should return empty when no today events', async () => {
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'GET',

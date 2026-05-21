@@ -1,8 +1,8 @@
 import { prisma } from '@xiaonuan/prisma';
-import { getElderTimezone, getStartOfDay } from '../utils/timezone.js';
+import { getCompanioneeTimezone, getStartOfDay } from '../utils/timezone.js';
 
 export async function getShortTermMemory(pairingId: string): Promise<string> {
-  const timezone = await getElderTimezone(pairingId);
+  const timezone = await getCompanioneeTimezone(pairingId);
   const now = new Date();
   const today = getStartOfDay(now, timezone);
   const threeDaysAgo = new Date(today);

@@ -25,9 +25,9 @@ export async function handleVoiceText(
   try {
     console.log('[Loop] handleVoiceText start', { sessionId, pairingId, text });
 
-    // 1. Save elder message
-    await saveMessage(sessionId, 'ELDER', text);
-    console.log('[Loop] elder message saved');
+    // 1. Save companionee message
+    await saveMessage(sessionId, 'COMPANIONEE', text);
+    console.log('[Loop] companionee message saved');
 
     // 2. Increment turn count
     const session = await incrementTurnCount(sessionId);
@@ -130,7 +130,7 @@ export async function sendClosingMessage(
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       {
         role: 'system' as const,
-        content: `${systemPrompt}\n\n当前情境：老人已 3 分钟未说话。请根据上面的聊天记录，结合老人最近提到的事（比如运动、钓鱼、休息等），说一句简短、温暖、有针对性的关心话（2-3句话），不要泛泛地说"歇着"。`,
+        content: `${systemPrompt}\n\n当前情境：对方已 3 分钟未说话。请根据上面的聊天记录，结合对方最近提到的事（比如运动、钓鱼、休息等），说一句简短、温暖、有针对性的关心话（2-3句话），不要泛泛地说"歇着"。`,
       },
       ...recentMessages,
       { role: 'user' as const, content: '（静默）' },

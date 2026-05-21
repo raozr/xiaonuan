@@ -136,7 +136,7 @@ ${conversation}
   // Bull Queue: async persona profile extraction
   const extractionPromise = (async () => {
     try {
-      await enqueueExtraction('checkpoint', pairingId, conversation, 'ELDER', checkpointData.topicSummary);
+      await enqueueExtraction('checkpoint', pairingId, conversation, 'COMPANIONEE', checkpointData.topicSummary);
     } catch (err) {
       console.error('[Checkpoint] Bull Queue 入队失败:', err);
     }

@@ -6,33 +6,33 @@ async function createPairingAndUser() {
   const user = await prisma.user.create({
     data: {
       phone: `13900${Date.now()}${Math.floor(Math.random() * 1000)}`,
-      role: 'CHILD',
+      role: 'STEWARD',
     },
   });
 
   const pairing = await prisma.pairing.create({
     data: {
-      name: 'Test Elder',
+      name: 'Test Companionee',
       inviteCode: `int-test-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       participants: {
         create: [
           {
-            name: 'Test Elder',
-            role: 'ELDER',
+            name: 'Test Companionee',
+            role: 'COMPANIONEE',
             isAI: false,
             metadata: { age: '75' },
           },
           {
             name: user.phone ?? 'Child',
-            role: 'CHILD',
+            role: 'STEWARD',
             isAI: false,
             userId: user.id,
-            metadata: { relationshipToElder: '子女', isPrimary: true },
+            metadata: { relationshipToCompanionee: '家人', isPrimary: true },
           },
           {
             name: '小暖',
-            role: 'ELDER',
+            role: 'COMPANIONEE',
             isAI: true,
             metadata: { template: 'caring-companion' },
           },
@@ -45,17 +45,17 @@ async function createPairingAndUser() {
   return { user, pairing };
 }
 
-async function createElderDeviceToken(pairingId: string) {
-  const elder = await prisma.participant.findFirst({
-    where: { pairingId, role: 'ELDER', isAI: false },
+async function createCompanioneeDeviceToken(pairingId: string) {
+  const companionee = await prisma.participant.findFirst({
+    where: { pairingId, role: 'COMPANIONEE', isAI: false },
   });
-  const updatedMeta = { ...(elder?.metadata as Record<string, unknown> ?? {}), deviceId: 'int-test-device' };
+  const updatedMeta = { ...(companionee?.metadata as Record<string, unknown> ?? {}), deviceId: 'int-test-device' };
   await prisma.participant.update({
-    where: { id: elder!.id },
+    where: { id: companionee!.id },
     data: { metadata: updatedMeta },
   });
   const token = app.jwt.sign(
-    { pairingId, role: 'ELDER', deviceId: 'int-test-device' },
+    { pairingId, role: 'COMPANIONEE', deviceId: 'int-test-device' },
     { expiresIn: '365d' }
   );
   return token;
@@ -79,7 +79,7 @@ describe('Integration: Feed-to-EventStream E2E', () => {
   });
 
   it('should create a feed and verify EventStream row exists', async () => {
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
     const content = `E2E feed test ${Date.now()}`;
 
     // Create feed
@@ -106,16 +106,16 @@ describe('Integration: Feed-to-EventStream E2E', () => {
   });
 });
 
-describe('Integration: Elder role access to shared endpoints', () => {
+describe('Integration: Companionee role access to shared endpoints', () => {
   let user: any;
   let pairing: any;
-  let elderToken: string;
+  let companioneeToken: string;
 
   beforeAll(async () => {
     const result = await createPairingAndUser();
     user = result.user;
     pairing = result.pairing;
-    elderToken = await createElderDeviceToken(pairing.id);
+    companioneeToken = await createCompanioneeDeviceToken(pairing.id);
   });
 
   afterAll(async () => {
@@ -125,31 +125,31 @@ describe('Integration: Elder role access to shared endpoints', () => {
     await prisma.user.delete({ where: { id: user.id } });
   });
 
-  it('should deny elder from listing feeds (requires CHILD userId)', async () => {
+  it('should deny companionee from listing feeds (requires STEWARD userId)', async () => {
     const response = await app.inject({
       method: 'GET',
       url: `/api/pairings/${pairing.id}/feeds`,
-      headers: { authorization: `Bearer ${elderToken}` },
+      headers: { authorization: `Bearer ${companioneeToken}` },
     });
 
     expect(response.statusCode).toBe(401);
   });
 
-  it('should deny elder from listing events (requires CHILD userId)', async () => {
+  it('should deny companionee from listing events (requires STEWARD userId)', async () => {
     const response = await app.inject({
       method: 'GET',
       url: `/api/pairings/${pairing.id}/events`,
-      headers: { authorization: `Bearer ${elderToken}` },
+      headers: { authorization: `Bearer ${companioneeToken}` },
     });
 
     expect(response.statusCode).toBe(401);
   });
 
-  it('should return 401 for elder accessing pairing detail (requires userId)', async () => {
+  it('should return 401 for companionee accessing pairing detail (requires userId)', async () => {
     const response = await app.inject({
       method: 'GET',
       url: `/api/pairings/${pairing.id}`,
-      headers: { authorization: `Bearer ${elderToken}` },
+      headers: { authorization: `Bearer ${companioneeToken}` },
     });
 
     expect(response.statusCode).toBe(401);
@@ -165,14 +165,14 @@ describe('Integration: Multi-participant isolation', () => {
     primaryUser = await prisma.user.create({
       data: {
         phone: `13901${Date.now()}${Math.floor(Math.random() * 1000)}`,
-        role: 'CHILD',
+        role: 'STEWARD',
       },
     });
 
     secondaryUser = await prisma.user.create({
       data: {
         phone: `13902${Date.now()}${Math.floor(Math.random() * 1000)}`,
-        role: 'CHILD',
+        role: 'STEWARD',
       },
     });
 
@@ -183,22 +183,22 @@ describe('Integration: Multi-participant isolation', () => {
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
-            { name: 'Test Elder', role: 'ELDER', isAI: false },
+            { name: 'Test Companionee', role: 'COMPANIONEE', isAI: false },
             {
-              name: primaryUser.phone ?? 'Primary Child',
-              role: 'CHILD',
+              name: primaryUser.phone ?? 'Primary Steward',
+              role: 'STEWARD',
               isAI: false,
               userId: primaryUser.id,
-              metadata: { relationshipToElder: '子女', isPrimary: true },
+              metadata: { relationshipToCompanionee: '家人', isPrimary: true },
             },
             {
-              name: secondaryUser.phone ?? 'Secondary Child',
-              role: 'CHILD',
+              name: secondaryUser.phone ?? 'Secondary Steward',
+              role: 'STEWARD',
               isAI: false,
               userId: secondaryUser.id,
-              metadata: { relationshipToElder: '子女', isPrimary: false },
+              metadata: { relationshipToCompanionee: '家人', isPrimary: false },
             },
-            { name: '小暖', role: 'ELDER', isAI: true },
+            { name: '小暖', role: 'COMPANIONEE', isAI: true },
           ],
         },
       },
@@ -213,8 +213,8 @@ describe('Integration: Multi-participant isolation', () => {
     await prisma.user.delete({ where: { id: primaryUser.id } });
   });
 
-  it('should allow non-primary child to post feeds', async () => {
-    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'CHILD' }, { expiresIn: '7d' });
+  it('should allow non-primary steward to post feeds', async () => {
+    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'POST',
@@ -226,8 +226,8 @@ describe('Integration: Multi-participant isolation', () => {
     expect(response.statusCode).toBe(201);
   });
 
-  it('should allow non-primary child to view events', async () => {
-    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'CHILD' }, { expiresIn: '7d' });
+  it('should allow non-primary steward to view events', async () => {
+    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'GET',
@@ -238,8 +238,8 @@ describe('Integration: Multi-participant isolation', () => {
     expect(response.statusCode).toBe(200);
   });
 
-  it('should prevent non-primary child from deleting pairing', async () => {
-    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'CHILD' }, { expiresIn: '7d' });
+  it('should prevent non-primary steward from deleting pairing', async () => {
+    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'DELETE',
@@ -254,29 +254,29 @@ describe('Integration: Multi-participant isolation', () => {
     expect(check).not.toBeNull();
   });
 
-  it('should allow any child in pairing to update elder profile (no primary check)', async () => {
-    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'CHILD' }, { expiresIn: '7d' });
+  it('should allow any steward in pairing to update companionee profile (no primary check)', async () => {
+    const token = app.jwt.sign({ userId: secondaryUser.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'PUT',
-      url: `/api/pairings/${pairing.id}/elder`,
+      url: `/api/pairings/${pairing.id}/companionee`,
       headers: { authorization: `Bearer ${token}` },
       payload: { name: 'Updated Name' },
     });
 
-    // Any CHILD participant can update elder profile (no primary-only restriction)
+    // Any STEWARD participant can update companionee profile (no primary-only restriction)
     expect(response.statusCode).toBe(200);
   });
 
-  it('should prevent non-member from updating elder profile', async () => {
+  it('should prevent non-member from updating companionee profile', async () => {
     const outsider = await prisma.user.create({
-      data: { phone: `13999${Date.now()}`, role: 'CHILD' },
+      data: { phone: `13999${Date.now()}`, role: 'STEWARD' },
     });
-    const token = app.jwt.sign({ userId: outsider.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: outsider.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'PUT',
-      url: `/api/pairings/${pairing.id}/elder`,
+      url: `/api/pairings/${pairing.id}/companionee`,
       headers: { authorization: `Bearer ${token}` },
       payload: { name: 'Hacked' },
     });

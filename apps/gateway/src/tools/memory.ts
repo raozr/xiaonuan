@@ -9,13 +9,13 @@ export async function memoryContext(pairingId: string) {
     take: 10,
   });
 
-  const elder = await prisma.participant.findFirst({
-    where: { pairingId, role: 'ELDER', isAI: false },
+  const companionee = await prisma.participant.findFirst({
+    where: { pairingId, role: 'COMPANIONEE', isAI: false },
   });
 
   return {
     feeds,
-    elder: elder ?? null,
+    companionee: companionee ?? null,
   };
 }
 

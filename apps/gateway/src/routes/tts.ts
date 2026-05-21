@@ -40,11 +40,11 @@ export async function ttsRoutes(app: FastifyInstance) {
       let voiceId: string | undefined;
       const user = request.user;
 
-      if (user?.role === 'ELDER' && user.pairingId) {
+      if (user?.role === 'COMPANIONEE' && user.pairingId) {
         voiceId = await resolveVoiceId(user.pairingId);
-      } else if (user?.role === 'CHILD' && parsed.data.pairingId && user.userId) {
+      } else if (user?.role === 'STEWARD' && parsed.data.pairingId && user.userId) {
         const member = await prisma.participant.findFirst({
-          where: { pairingId: parsed.data.pairingId, role: 'CHILD', userId: user.userId },
+          where: { pairingId: parsed.data.pairingId, role: 'STEWARD', userId: user.userId },
         });
         if (member) {
           voiceId = await resolveVoiceId(parsed.data.pairingId);

@@ -32,7 +32,7 @@ export default function LoginPage() {
     <Card>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">小暖</CardTitle>
-        <CardDescription>子女端登录</CardDescription>
+        <CardDescription>管理端登录</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

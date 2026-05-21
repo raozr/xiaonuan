@@ -12,7 +12,7 @@ describe('EventBus', () => {
         inviteCode: `eb-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
-          create: { name: '测试老人', role: 'ELDER' },
+          create: { name: '测试被陪伴者', role: 'COMPANIONEE' },
         },
       },
     });
@@ -28,7 +28,7 @@ describe('EventBus', () => {
     await emitEvent({
       pairingId: testPairing.id,
       type: 'feed_message',
-      content: '老人今天吃了米饭',
+      content: '对方今天吃了米饭',
     }, { immediate: true });
 
     const events = await prisma.eventStream.findMany({
@@ -36,7 +36,7 @@ describe('EventBus', () => {
     });
 
     expect(events).toHaveLength(1);
-    expect(events[0]!.content).toBe('老人今天吃了米饭');
+    expect(events[0]!.content).toBe('对方今天吃了米饭');
     expect(events[0]!.type).toBe('feed_message');
   });
 

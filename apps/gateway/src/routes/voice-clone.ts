@@ -19,7 +19,7 @@ const createCloneSchema = z.object({
 
 async function assertPairingMember(userId: string, pairingId: string, reply: FastifyReply) {
   const participant = await prisma.participant.findFirst({
-    where: { pairingId, role: 'CHILD', userId },
+    where: { pairingId, role: 'STEWARD', userId },
   });
   if (!participant) {
     return reply.status(403).send({ success: false, message: '无权访问该配对' });
@@ -31,7 +31,7 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
   // Create clone
   app.post('/', async (request, reply) => {
     const user = request.user;
-    if (!user || user.role !== 'CHILD' || !user.userId) {
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
@@ -84,7 +84,7 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
 
     const clone = await prisma.voiceClone.findFirst({
       where: { voiceId },
-      include: { pairing: { include: { participants: { where: { role: 'CHILD', userId: user.userId } } } } },
+      include: { pairing: { include: { participants: { where: { role: 'STEWARD', userId: user.userId } } } } },
     });
 
     if (!clone) {
@@ -92,8 +92,8 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
     }
 
     const isMember = clone.pairing.participants.length > 0;
-    const isElder = user.role === 'ELDER' && user.pairingId === clone.pairingId;
-    if (!isMember && !isElder) {
+    const isCompanionee = user.role === 'COMPANIONEE' && user.pairingId === clone.pairingId;
+    if (!isMember && !isCompanionee) {
       return reply.status(403).send({ success: false, message: '无权访问' });
     }
 
@@ -116,13 +116,13 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
   app.delete('/:voiceId', async (request, reply) => {
     const { voiceId } = request.params as { voiceId: string };
     const user = request.user;
-    if (!user || user.role !== 'CHILD' || !user.userId) {
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
     const clone = await prisma.voiceClone.findFirst({
       where: { voiceId },
-      include: { pairing: { include: { participants: { where: { role: 'CHILD', userId: user.userId } } } } },
+      include: { pairing: { include: { participants: { where: { role: 'STEWARD', userId: user.userId } } } } },
     });
 
     if (!clone) {
@@ -153,12 +153,12 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
     }
 
     const isMember =
-      user.role === 'CHILD' &&
+      user.role === 'STEWARD' &&
       (await prisma.participant.findFirst({
-        where: { pairingId, role: 'CHILD', userId: user.userId },
+        where: { pairingId, role: 'STEWARD', userId: user.userId },
       })) !== null;
-    const isElder = user.role === 'ELDER' && user.pairingId === pairingId;
-    if (!isMember && !isElder) {
+    const isCompanionee = user.role === 'COMPANIONEE' && user.pairingId === pairingId;
+    if (!isMember && !isCompanionee) {
       return reply.status(403).send({ success: false, message: '无权访问' });
     }
 
@@ -179,13 +179,13 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
   app.post('/:voiceId/activate', async (request, reply) => {
     const { voiceId } = request.params as { voiceId: string };
     const user = request.user;
-    if (!user || user.role !== 'CHILD' || !user.userId) {
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
     const clone = await prisma.voiceClone.findFirst({
       where: { voiceId },
-      include: { pairing: { include: { participants: { where: { role: 'CHILD', userId: user.userId } } } } },
+      include: { pairing: { include: { participants: { where: { role: 'STEWARD', userId: user.userId } } } } },
     });
 
     if (!clone) {
@@ -208,13 +208,13 @@ export async function voiceCloneRoutes(app: FastifyInstance) {
   app.post('/:voiceId/deactivate', async (request, reply) => {
     const { voiceId } = request.params as { voiceId: string };
     const user = request.user;
-    if (!user || user.role !== 'CHILD' || !user.userId) {
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
       return reply.status(403).send({ success: false, message: '无权操作' });
     }
 
     const clone = await prisma.voiceClone.findFirst({
       where: { voiceId },
-      include: { pairing: { include: { participants: { where: { role: 'CHILD', userId: user.userId } } } } },
+      include: { pairing: { include: { participants: { where: { role: 'STEWARD', userId: user.userId } } } } },
     });
 
     if (!clone) {

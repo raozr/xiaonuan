@@ -30,15 +30,15 @@ describe('memory_context', () => {
     vi.clearAllMocks();
   });
 
-  it('should return recent feeds and elder participant for a pairing', async () => {
+  it('should return recent feeds and companionee participant for a pairing', async () => {
     const pairingId = 'pairing-123';
     const mockFeeds = [
       { id: '1', content: '小明下周回家', type: 'TEXT', createdAt: new Date() },
     ];
-    const mockElder = { id: 'p-1', name: '李爷爷', role: 'ELDER' };
+    const mockCompanionee = { id: 'p-1', name: '李爷爷', role: 'COMPANIONEE' };
 
     vi.mocked(prisma.feedMessage.findMany).mockResolvedValueOnce(mockFeeds as any);
-    vi.mocked(prisma.participant.findFirst).mockResolvedValueOnce(mockElder as any);
+    vi.mocked(prisma.participant.findFirst).mockResolvedValueOnce(mockCompanionee as any);
 
     const result = await memoryContext(pairingId);
 
@@ -48,10 +48,10 @@ describe('memory_context', () => {
       take: 10,
     });
     expect(prisma.participant.findFirst).toHaveBeenCalledWith({
-      where: { pairingId, role: 'ELDER', isAI: false },
+      where: { pairingId, role: 'COMPANIONEE', isAI: false },
     });
     expect(result.feeds).toEqual(mockFeeds);
-    expect(result.elder).toEqual(mockElder);
+    expect(result.companionee).toEqual(mockCompanionee);
   });
 });
 

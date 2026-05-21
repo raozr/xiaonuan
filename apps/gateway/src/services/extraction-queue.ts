@@ -10,7 +10,7 @@ export interface ExtractionJob {
   source: 'feed' | 'checkpoint';
   pairingId: string;
   content: string;
-  senderRole?: string;    // 'CHILD' | 'ELDER' | 'AI' — 谁说的
+  senderRole?: string;    // 'STEWARD' | 'COMPANIONEE' | 'AI' — 谁说的
   context?: string;
 }
 
@@ -48,65 +48,86 @@ export function getWorker(): Worker<ExtractionJob, ExtractionOutput> | null {
 
 const EXTRACTION_PROMPT = (
   content: string,
-  senderRole: string,
-  participants: { role: string; name: string }[]
+  targetDescription: string,  // e.g. "关于被陪伴者（张美丽）的信息" | "关于发送者自己（gaotao）的信息"
 ) => {
-  const participantsDesc = participants.map(p => `${p.role}（${p.name}）`).join('、');
-
-  return `你是人物画像提取助手。你需要分析一段文本，提取其中提到的人物的客观信息。
-
-**发送者角色**：${senderRole}
-**配对中的参与者**：${participantsDesc}
-
-**重要规则**：
-1. 先判断这段内容是"关于谁"的信息
-   - 如果 ${senderRole} 说的是自己（如"我腰不好"），targetRole = "self"
-   - 如果说的是配对中的另一位参与者（如"奶奶腰不好"），targetRole = "other"
-   - 如果说的是不在配对中的人（如"我孙子小明"），targetRole = "third_party"
-2. profiles 中的人物信息归到对应的人身上（通过 targetRole 区分）
-3. metadata 只提取与 targetRole="self" 或 "other" 相关的信息，third_party 的信息只记录在 profiles 中
+  return `你是人物画像提取助手。以下文本是${targetDescription}，请从中提取客观事实。
 
 **输出 JSON 格式**：
 {
-  "targetRole": "self" | "other" | "third_party",
-  "targetName": "如果关于第三方，记录其名字或称呼",
   "profiles": [
-    { "category": "类别", "content": "一句话客观事实", "confidence": 0.5-1.0 }
+    { "category": "类别（identity/health/hobby/relationship等）", "content": "一句话客观事实", "confidence": 0.5-1.0 }
   ],
   "metadata": {
-    "dialect": "方言/语言偏好（如果提到）",
-    "hobbies": "爱好（如果提到）",
+    "age": "年龄（如果提到）",
     "healthNotes": "健康相关（如果提到）",
-    "topicsToAvoid": "回避/敏感话题（如果提到）",
-    "greetingPreference": "称呼偏好（如果提到）",
-    "age": "年龄信息（如果提到）",
+    "hobbies": "爱好（如果提到）",
+    "relationshipToCompanionee": "与被陪伴者的关系（如'侄子'、'女儿'。仅当文本描述发送者与被陪伴者的关系时提取）",
+    "dialect": "方言偏好（如果提到）",
     "personality": "性格特征（如果提到）",
-    "relationships": "关系描述（如'孙子小明'、'儿子经常来看'）",
-    "habits": "日常习惯（如'每天早起'、'午饭后散步'）",
-    "preferences": "偏好（如'喜欢喝热的'、'不喜欢吃甜食'）",
-    "recentEvents": "近期发生的事（如'明天要去医院'、'上周摔了一跤'）"
+    "habits": "日常习惯（如果提到）",
+    "preferences": "偏好（如果提到）",
+    "recentEvents": "近期发生的事（如果提到）",
+    "topicsToAvoid": "回避/敏感话题（如果提到）",
+    "greetingPreference": "称呼偏好（如果提到）"
   }
 }
 
-只提取文本中明确提到的信息，不要编造。metadata 中只保留实际提取的字段。
+**规则**：
+- 只提取文本中明确提到的信息，不要编造
+- metadata 中只保留实际提取到的字段，没有就省略该字段
+- profiles 至少提取一条（如果文本有实质内容）
+- 如果文本确实没有实质内容，profiles 可以为空数组
 
 **输入文本**：${content}
 
-**示例 1**（子女说"奶奶最近睡眠不好，夜里容易醒"）：
-{"targetRole":"other","profiles":[{"category":"health","content":"近期睡眠质量差","confidence":0.9}],"metadata":{"healthNotes":"最近睡眠不好，夜里容易醒"}}
+**示例 1**（关于被陪伴者："她今年68岁，有两个子女"）：
+{"profiles":[{"category":"identity","content":"今年68岁，有两个子女","confidence":0.95}],"metadata":{"age":"68岁"}}
 
-**示例 2**（子女说"我叫张伟"）：
-{"targetRole":"self","profiles":[{"category":"identity","content":"名字叫张伟","confidence":0.95}],"metadata":{}}
+**示例 2**（关于被陪伴者："奶奶最近睡眠不好，夜里容易醒"）：
+{"profiles":[{"category":"health","content":"近期睡眠质量差，夜里容易醒","confidence":0.9}],"metadata":{"healthNotes":"最近睡眠不好，夜里容易醒"}}
 
-**示例 3**（子女说"我孙子小明考了满分"）：
-{"targetRole":"third_party","targetName":"小明（孙子）","profiles":[{"category":"relationship","content":"孙子小明，数学优秀","confidence":0.9}],"metadata":{}}`;
+**示例 3**（关于发送者自己："我是她的侄子，小时候是她带我长大的"）：
+{"profiles":[{"category":"relationship","content":"是被陪伴者的侄子，小时候由被陪伴者带大","confidence":0.95}],"metadata":{"relationshipToCompanionee":"侄子"}}
+
+**示例 4**（关于第三方："我孙子小明考了满分"）：
+{"profiles":[{"category":"relationship","content":"孙子小明，学习优秀","confidence":0.9}],"metadata":{}}`;
 };
+
+export function detectTarget(content: string, senderRole: string, participants: { role: string; name: string; isAI: boolean }[]): { targetDescription: string; shouldSkip: boolean } {
+  // Heuristic: look for self-referential relationship statements
+  const hasSelfRelationship = /我是[她他的](的)?[一-龥]{1,4}|我叫|我在[A-Za-z一-龥]{2,}|我[从小]|我们/.test(content);
+  // Look for companionee-referential statements (pronoun + attribute about the companionee)
+  const hasCompanioneeAttr = /[她他]今年|[她他]有[两几个]|[她他]身体|[她他]最[爱喜]|[她他].*岁/.test(content);
+
+  const companionee = participants.find(p => p.role === 'COMPANIONEE' && !p.isAI);
+  const sender = participants.find(p => p.role === senderRole && !p.isAI);
+
+  if (hasSelfRelationship) {
+    return {
+      targetDescription: `关于发送者自己${sender ? '（' + sender.name + '）' : ''}的信息`,
+      shouldSkip: false,
+    };
+  }
+
+  if (hasCompanioneeAttr) {
+    return {
+      targetDescription: `关于被陪伴者${companionee ? '（' + companionee.name + '）' : ''}的信息`,
+      shouldSkip: false,
+    };
+  }
+
+  // Fallback — default to companionee
+  return {
+    targetDescription: `关于被陪伴者${companionee ? '（' + companionee.name + '）' : ''}的信息`,
+    shouldSkip: false,
+  };
+}
 
 export async function startWorker() {
   worker = new Worker<ExtractionJob, ExtractionOutput>(
     QUEUE_NAME,
     async (job: Job<ExtractionJob>) => {
-      const { source, pairingId, content, senderRole = 'CHILD', context } = job.data;
+      const { source, pairingId, content, senderRole = 'STEWARD', context } = job.data;
 
       try {
         // Get all participants in this pairing
@@ -115,41 +136,34 @@ export async function startWorker() {
           select: { id: true, name: true, role: true, isAI: true },
         });
 
-        // Build participant context for the LLM prompt
-        const participantList = participants.map(p => ({
-          role: p.role,
-          name: p.name,
-        }));
+        // Determine target description using heuristic instead of relying on LLM
+        const { targetDescription, shouldSkip } = detectTarget(content, senderRole, participants);
+        if (shouldSkip) return { profiles: [], targetRole: 'other', metadata: {} };
 
         const response = await chatCompletion(
           [
-            { role: 'system', content: '你是一个人物画像提取助手。分析文本，判断内容是关于谁的，并提取客观事实。' },
-            { role: 'user', content: EXTRACTION_PROMPT(`${context ?? ''}\n${content}`, senderRole, participantList) },
+            { role: 'system', content: '你是一个人物画像提取助手。从给定的文本中提取客观事实信息。' },
+            { role: 'user', content: EXTRACTION_PROMPT(`${context ?? ''}\n${content}`, targetDescription) },
           ],
           { temperature: 0.3, maxTokens: 512 }
         );
 
-        const parsed = JSON.parse(response.content ?? '{}') as ExtractionOutput;
-        const profiles = parsed.profiles ?? [];
+        // Strip markdown code blocks if present (LLM may return ```json ... ```)
+        let rawContent = response.content ?? '{}';
+        rawContent = rawContent.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
+
+        const parsed = JSON.parse(rawContent) as ExtractionOutput;
+        const profiles = (parsed.profiles ?? []).filter(p =>
+          p.content && p.content.length > 0 && p.confidence > 0.3
+        );
         const metadata = parsed.metadata;
-        const targetRole = parsed.targetRole ?? 'other';
-        const targetName = parsed.targetName;
 
-        // Determine which participant to write the metadata to
+        // Determine target participant: companionee for "about companionee" text, sender for "about self" text
         let targetParticipantId: string | null = null;
-
-        if (targetRole === 'self') {
-          // Information about the sender themselves
-          const sender = participants.find(p => p.role === senderRole && !p.isAI);
-          targetParticipantId = sender?.id ?? null;
-        } else if (targetRole === 'other') {
-          // Information about the other participant in the pairing
-          // In most cases, this means the non-sender (non-AI) participant
-          const other = participants.find(p => p.role !== senderRole && !p.isAI);
-          targetParticipantId = other?.id ?? null;
-        } else {
-          // third_party — only write to profiles, not metadata
-          // Store under the sender's participant for reference
+        if (targetDescription.includes('关于被陪伴者')) {
+          const companionee = participants.find(p => p.role === 'COMPANIONEE' && !p.isAI);
+          targetParticipantId = companionee?.id ?? null;
+        } else if (targetDescription.includes('关于发送者自己')) {
           const sender = participants.find(p => p.role === senderRole && !p.isAI);
           targetParticipantId = sender?.id ?? null;
         }
@@ -176,32 +190,20 @@ export async function startWorker() {
         }
 
         // Write extracted profiles
-        if (profiles.length > 0) {
-          // If we couldn't identify the target, write to the non-AI participant as fallback
-          const profileTargetId = targetParticipantId
-            ?? participants.find(p => !p.isAI)?.id;
-
-          if (profileTargetId) {
-            await addProfiles(
-              pairingId,
-              profileTargetId,
-              profiles.map((r) => ({
-                category: r.category,
-                content: r.content,
-                confidence: r.confidence,
-                source,
-              }))
-            );
-          }
+        if (profiles.length > 0 && targetParticipantId) {
+          await addProfiles(
+            pairingId,
+            targetParticipantId,
+            profiles.map((r) => ({
+              category: r.category,
+              content: r.content,
+              confidence: r.confidence,
+              source,
+            }))
+          );
         }
 
-        const first = profiles[0];
-        return {
-          profiles,
-          metadata,
-          targetRole,
-          targetName,
-        };
+        return { profiles, metadata, targetRole: 'other' };
       } catch (err) {
         console.error('[LLMExtraction] Worker 处理失败:', err);
         throw err;

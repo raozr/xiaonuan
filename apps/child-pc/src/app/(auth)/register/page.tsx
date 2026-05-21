@@ -43,7 +43,7 @@ export default function RegisterPage() {
     <Card>
       <CardHeader className="text-center">
         <CardTitle className="text-2xl">小暖</CardTitle>
-        <CardDescription>注册子女账号</CardDescription>
+        <CardDescription>注册管理账号</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -14,7 +14,7 @@ import { ArrowLeft, Copy, RefreshCw, Sun, Clock } from 'lucide-react';
 
 type DetailTab = 'summary' | 'feed' | 'voice';
 
-export default function ElderDetailPage() {
+export default function CompanioneeDetailPage() {
   const params = useParams();
   const pairingId = params.id as string;
   const { refreshPairings } = useCurrentPairing();
@@ -81,11 +81,11 @@ export default function ElderDetailPage() {
     );
   }
 
-  if (error || !pairing || !pairing.elder) {
-    return <p className="text-destructive">{error || '老人信息不存在'}</p>;
+  if (error || !pairing || !pairing.companionee) {
+    return <p className="text-destructive">{error || '配对信息不存在'}</p>;
   }
 
-  const elder = pairing.elder;
+  const companionee = pairing.companionee;
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -97,7 +97,7 @@ export default function ElderDetailPage() {
             返回
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold">{elder.name}的陪伴</h1>
+        <h1 className="text-2xl font-bold">{companionee.name}的陪伴</h1>
       </div>
 
       {/* Summary bar */}
@@ -106,17 +106,17 @@ export default function ElderDetailPage() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-medium text-primary">
-                {elder.name[0]}
+                {companionee.name[0]}
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">{elder.name}</h3>
+                  <h3 className="font-semibold">{companionee.name}</h3>
                   <Badge variant={pairing.isOnline ? 'default' : 'secondary'}>
                     {pairing.isOnline ? '陪伴中' : '休息中'}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {elder.age ? `${elder.age}岁` : ''} {elder.dialect ? `· ${elder.dialect}` : ''}
+                  {companionee.age ? `${companionee.age}岁` : ''} {companionee.dialect ? `· ${companionee.dialect}` : ''}
                   {pairing.lastActive ? ` · 最后活跃 ${new Date(pairing.lastActive).toLocaleString('zh-CN')}` : ' · 今日未通话'}
                 </p>
               </div>

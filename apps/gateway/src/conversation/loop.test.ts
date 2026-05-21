@@ -29,7 +29,7 @@ describe('Conversation Loop', () => {
         inviteCode: `conv-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
-          create: { name: '测试老人', role: 'ELDER' },
+          create: { name: '测试被陪伴者', role: 'COMPANIONEE' },
         },
       },
     });
@@ -64,7 +64,7 @@ describe('Conversation Loop', () => {
       orderBy: { createdAt: 'asc' },
     });
     expect(messages).toHaveLength(2);
-    expect(messages[0]!.role).toBe('ELDER');
+    expect(messages[0]!.role).toBe('COMPANIONEE');
     expect(messages[0]!.content).toBe('你好');
     expect(messages[1]!.role).toBe('AI');
     expect(messages[1]!.content).toContain('小暖听到了');

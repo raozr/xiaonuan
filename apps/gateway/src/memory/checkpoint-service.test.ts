@@ -49,7 +49,7 @@ describe('checkpoint-service', () => {
 
   it('should skip when session has < 2 messages', async () => {
     vi.mocked(prisma.sessionMessage.findMany).mockResolvedValueOnce([
-      { id: '1', role: 'ELDER', content: '你好', createdAt: new Date() },
+      { id: '1', role: 'COMPANIONEE', content: '你好', createdAt: new Date() },
     ] as any);
 
     await generateCheckpoint('session-123');
@@ -60,9 +60,9 @@ describe('checkpoint-service', () => {
 
   it('should generate checkpoint and write to prisma, qdrant, eventstream', async () => {
     vi.mocked(prisma.sessionMessage.findMany).mockResolvedValueOnce([
-      { id: '1', role: 'ELDER', content: '你好', createdAt: new Date() },
+      { id: '1', role: 'COMPANIONEE', content: '你好', createdAt: new Date() },
       { id: '2', role: 'AI', content: '您好呀', createdAt: new Date() },
-      { id: '3', role: 'ELDER', content: '我儿子周末回来', createdAt: new Date() },
+      { id: '3', role: 'COMPANIONEE', content: '我儿子周末回来', createdAt: new Date() },
     ] as any);
 
     vi.mocked(prisma.session.findUnique).mockResolvedValueOnce({
@@ -75,10 +75,10 @@ describe('checkpoint-service', () => {
         topicSummary: '聊到家人来访',
         keyFacts: [
           { fact: '儿子周末回来', category: 'EVENT' },
-          { fact: '老人心情很好', category: 'EVENT' },
+          { fact: '对方心情很好', category: 'EVENT' },
         ],
         moodSnapshot: '开心',
-        nextTopicHint: '问问老人想吃什么',
+        nextTopicHint: '问问对方想吃什么',
       })
     });
 
@@ -90,7 +90,7 @@ describe('checkpoint-service', () => {
         where: { checkpointId: 'session-123' },
         update: expect.objectContaining({
           topicSummary: '聊到家人来访',
-          keyFacts: ['儿子周末回来', '老人心情很好'],
+          keyFacts: ['儿子周末回来', '对方心情很好'],
         }),
         create: expect.objectContaining({
           sessionId: 'session-123',
@@ -122,7 +122,7 @@ describe('checkpoint-service', () => {
         pairingId: 'pairing-123',
         type: 'conversation_extracted',
         content: '聊到家人来访',
-        tags: ['儿子周末回来', '老人心情很好'],
+        tags: ['儿子周末回来', '对方心情很好'],
         payload: expect.objectContaining({
           moodSnapshot: '开心',
         }),
@@ -133,7 +133,7 @@ describe('checkpoint-service', () => {
 
   it('should include keyFacts in EventStream tags', async () => {
     vi.mocked(prisma.sessionMessage.findMany).mockResolvedValueOnce([
-      { id: '1', role: 'ELDER', content: '我腰有点疼', createdAt: new Date() },
+      { id: '1', role: 'COMPANIONEE', content: '我腰有点疼', createdAt: new Date() },
       { id: '2', role: 'AI', content: '要多休息', createdAt: new Date() },
     ] as any);
 
@@ -144,7 +144,7 @@ describe('checkpoint-service', () => {
 
     vi.mocked(chatCompletion).mockResolvedValueOnce({
       content: JSON.stringify({
-        topicSummary: '老人腰疼',
+        topicSummary: '对方腰疼',
         keyFacts: [
           { fact: '腰有点疼', category: 'HEALTH' },
           { fact: '喜欢打太极', category: 'PREFERENCE' },
@@ -171,7 +171,7 @@ describe('checkpoint-service', () => {
 
   it('should handle LLM JSON parse failure gracefully', async () => {
     vi.mocked(prisma.sessionMessage.findMany).mockResolvedValueOnce([
-      { id: '1', role: 'ELDER', content: '你好', createdAt: new Date() },
+      { id: '1', role: 'COMPANIONEE', content: '你好', createdAt: new Date() },
       { id: '2', role: 'AI', content: '您好', createdAt: new Date() },
     ] as any);
 

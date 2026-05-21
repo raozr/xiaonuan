@@ -17,7 +17,7 @@ describe('Turn Manager', () => {
         inviteCode: `tm-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
-          create: { name: '测试老人', role: 'ELDER' },
+          create: { name: '测试被陪伴者', role: 'COMPANIONEE' },
         },
       },
     });
@@ -37,11 +37,11 @@ describe('Turn Manager', () => {
   });
 
   it('should return the most recent messages, not the oldest', async () => {
-    // Create 12 messages: alternating ELDER/AI
+    // Create 12 messages: alternating COMPANIONEE/AI
     for (let i = 1; i <= 12; i++) {
       await saveMessage(
         testSession.id,
-        i % 2 === 1 ? 'ELDER' : 'AI',
+        i % 2 === 1 ? 'COMPANIONEE' : 'AI',
         `msg-${i}`
       );
     }
@@ -56,7 +56,7 @@ describe('Turn Manager', () => {
 
   it('should truncate content over 150 chars', async () => {
     const longText = 'a'.repeat(200);
-    await saveMessage(testSession.id, 'ELDER', longText);
+    await saveMessage(testSession.id, 'COMPANIONEE', longText);
 
     const recent = await getRecentMessages(testSession.id, 10);
     expect(recent[0]!.content).toBe('a'.repeat(150) + '…');

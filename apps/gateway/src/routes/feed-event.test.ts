@@ -21,32 +21,32 @@ describe('POST /api/pairings/:pairingId/feeds', () => {
     const user = await prisma.user.create({
       data: {
         phone: `13900${Date.now()}${Math.floor(Math.random() * 1000)}`,
-        role: 'CHILD',
+        role: 'STEWARD',
       },
     });
 
     const pairing = await prisma.pairing.create({
       data: {
-        name: 'Test Elder',
+        name: 'Test Companionee',
         inviteCode: `feed-test-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
             {
-              name: 'Test Elder',
-              role: 'ELDER',
+              name: 'Test Companionee',
+              role: 'COMPANIONEE',
               isAI: false,
             },
             {
               name: user.phone ?? 'Child',
-              role: 'CHILD',
+              role: 'STEWARD',
               isAI: false,
               userId: user.id,
-              metadata: { relationshipToElder: '子女', isPrimary: true },
+              metadata: { relationshipToCompanionee: '家人', isPrimary: true },
             },
             {
               name: '小暖',
-              role: 'ELDER',
+              role: 'COMPANIONEE',
               isAI: true,
             },
           ],
@@ -74,7 +74,7 @@ describe('POST /api/pairings/:pairingId/feeds', () => {
     const user = (globalThis as any).__testUser;
     const pairing = (globalThis as any).__testPairing;
 
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'POST',
@@ -108,7 +108,7 @@ describe('POST /api/pairings/:pairingId/feeds', () => {
       'feed',
       pairing.id,
       '妈妈明天要去医院复查',
-      'CHILD'
+      'STEWARD'
     );
   });
 
@@ -116,7 +116,7 @@ describe('POST /api/pairings/:pairingId/feeds', () => {
     const user = (globalThis as any).__testUser;
     const pairing = (globalThis as any).__testPairing;
 
-    const token = app.jwt.sign({ userId: user.id, role: 'CHILD' }, { expiresIn: '7d' });
+    const token = app.jwt.sign({ userId: user.id, role: 'STEWARD' }, { expiresIn: '7d' });
 
     const response = await app.inject({
       method: 'POST',

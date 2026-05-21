@@ -19,7 +19,7 @@ vi.mock('../services/dashscope.js', () => ({
 }));
 
 vi.mock('./prompt-builder.js', () => ({
-  buildSystemPrompt: vi.fn().mockResolvedValue('你是小暖，一位温暖、耐心、贴心的老人陪伴助手。'),
+  buildSystemPrompt: vi.fn().mockResolvedValue('你是小暖，一位温暖、耐心、贴心的智能陪伴助手。'),
 }));
 
 vi.mock('../conversation/turn-manager.js', () => ({
@@ -88,7 +88,7 @@ describe('Pi Agent', () => {
     vi.mocked(loadSkillsForPhase).mockResolvedValueOnce([]);
     vi.mocked(memoryContext).mockResolvedValueOnce({
       feeds: [],
-      elder: { name: '李爷爷' } as any,
+      companionee: { name: '李爷爷' } as any,
     });
 
     const agent = await createPiAgent({
@@ -98,7 +98,7 @@ describe('Pi Agent', () => {
 
     const result = await agent.callTool('memory_context', { pairingId: 'pairing-123' }) as any;
     expect(memoryContext).toHaveBeenCalledWith('pairing-123');
-    expect(result.elder.name).toBe('李爷爷');
+    expect(result.companionee.name).toBe('李爷爷');
   });
 
   it('should call memory_recall tool when invoked', async () => {
@@ -258,7 +258,7 @@ describe('buildSystemPrompt', () => {
 
   it('should include all filled fields in prompt', async () => {
     const user = await prisma.user.create({
-      data: { phone: `13900${Date.now()}`.slice(-5), role: 'CHILD' },
+      data: { phone: `13900${Date.now()}`.slice(-5), role: 'STEWARD' },
     });
     const pairing = await prisma.pairing.create({
       data: {
@@ -269,7 +269,7 @@ describe('buildSystemPrompt', () => {
           create: [
             {
               name: '王奶奶',
-              role: 'ELDER',
+              role: 'COMPANIONEE',
               metadata: {
                 age: '78',
                 dialect: '四川话',
@@ -281,10 +281,10 @@ describe('buildSystemPrompt', () => {
             },
             {
               name: '小李',
-              role: 'CHILD',
+              role: 'STEWARD',
               userId: user.id,
               metadata: {
-                relationshipToElder: '儿子',
+                relationshipToCompanionee: '儿子',
                 customNotes: '我在北京工作',
               },
             },
@@ -315,7 +315,7 @@ describe('buildSystemPrompt', () => {
 
   it('should omit empty fields from prompt', async () => {
     const user = await prisma.user.create({
-      data: { phone: `13901${Date.now()}`.slice(-5), role: 'CHILD' },
+      data: { phone: `13901${Date.now()}`.slice(-5), role: 'STEWARD' },
     });
     const pairing = await prisma.pairing.create({
       data: {
@@ -326,12 +326,12 @@ describe('buildSystemPrompt', () => {
           create: [
             {
               name: '张爷爷',
-              role: 'ELDER',
+              role: 'COMPANIONEE',
               metadata: { age: '80' },
             },
             {
               name: '小张',
-              role: 'CHILD',
+              role: 'STEWARD',
               userId: user.id,
             },
           ],

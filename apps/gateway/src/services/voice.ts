@@ -17,12 +17,12 @@ export async function resolveVoiceId(pairingId: string): Promise<string> {
   }
 
   // Fall back to gender-based default from participant metadata
-  const elder = await prisma.participant.findFirst({
-    where: { pairingId, role: 'ELDER', isAI: false },
+  const companionee = await prisma.participant.findFirst({
+    where: { pairingId, role: 'COMPANIONEE', isAI: false },
     select: { metadata: true },
   });
 
-  const gender = (elder?.metadata as { gender?: string } | null)?.gender;
+  const gender = (companionee?.metadata as { gender?: string } | null)?.gender;
   if (gender === 'MALE') return DEFAULT_VOICE_MALE;
   if (gender === 'FEMALE') return DEFAULT_VOICE_FEMALE;
 

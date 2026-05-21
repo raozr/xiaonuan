@@ -3,7 +3,7 @@ export async function emergencyAlert(
   reason: string,
   pairingId: string
 ) {
-  // TODO: Implement actual SMS / Push notification to children
+  // TODO: Implement actual SMS / Push notification to stewards
   console.warn(
     `[EMERGENCY_ALERT] [Pairing: ${pairingId}] [Severity: ${severity}] Reason: ${reason}`
   );

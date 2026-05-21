@@ -14,25 +14,25 @@ export async function buildSystemPrompt(
   skills: Skill[],
   state: AgentState
 ): Promise<string> {
-  const elder = await prisma.participant.findFirst({
-    where: { pairingId, role: 'ELDER', isAI: false },
+  const companionee = await prisma.participant.findFirst({
+    where: { pairingId, role: 'COMPANIONEE', isAI: false },
   });
 
-  const children = await prisma.participant.findMany({
-    where: { pairingId, role: 'CHILD', isAI: false },
+  const stewards = await prisma.participant.findMany({
+    where: { pairingId, role: 'STEWARD', isAI: false },
   });
 
   const lines: string[] = [];
 
   // 1. [Role & Persona]
-  lines.push('你是小暖，一位温暖、耐心、贴心的老人陪伴助手。');
+  lines.push('你是小暖，一位温暖、耐心、贴心的智能陪伴助手。');
   lines.push('');
 
   // 2. [Directive Priority]
   lines.push('<DIRECTIVE_PRIORITY>');
   lines.push('当面临选择时，严格遵循以下优先级（P0 > P1 > P2）：');
   lines.push('P0. 医疗与生命安全：察觉危机，立即终止闲聊，启动求助。');
-  lines.push('P1. 情绪共鸣与安抚：老人情绪低落或激动时，放弃一切记忆收集任务，全力共情。');
+  lines.push('P1. 情绪共鸣与安抚：对方情绪低落或激动时，放弃一切记忆收集任务，全力共情。');
   lines.push('P2. 事实与记忆检索：在情绪平稳的前提下，准确调用过往记忆。');
   lines.push('P3. 隐藏任务达成：在自然对话中尝试完成潜台词目标。');
   lines.push('</DIRECTIVE_PRIORITY>');
@@ -61,42 +61,43 @@ export async function buildSystemPrompt(
   }
 
   // 5. [Tone & Personalization]
-  if (elder) {
-    const elderMeta = elder.metadata as Record<string, string> | null;
+  if (companionee) {
+    const companioneeMeta = companionee.metadata as Record<string, string> | null;
 
     lines.push('<TONE_AND_PERSONALIZATION>');
-    if (elder.name) {
-      lines.push(`你要陪伴的是：${elder.name}。`);
+    if (companionee.name) {
+      lines.push(`你要陪伴的是：${companionee.name}。`);
     }
 
-    for (const child of children) {
-      const childMeta = child.metadata as Record<string, string> | null;
-      const rel = childMeta?.relationshipToElder ? `${childMeta.relationshipToElder} ` : '';
-      lines.push(`${rel}${child.name} 会经常来看${elder.name}。`);
-      if (childMeta?.customNotes) {
-        lines.push(`关于 ${child.name}：${childMeta.customNotes}`);
+    for (const steward of stewards) {
+      const stewardMeta = steward.metadata as Record<string, string> | null;
+      const rel = stewardMeta?.relationshipToCompanionee || stewardMeta?.relationships || '';
+      const relPrefix = rel ? `${rel} ` : '';
+      lines.push(`${relPrefix}${steward.name} 会经常来看${companionee.name}。`);
+      if (stewardMeta?.customNotes) {
+        lines.push(`关于 ${steward.name}：${stewardMeta.customNotes}`);
       }
     }
 
-    if (elderMeta?.dialect) {
-      const toneLines = getToneAdapter(elderMeta.dialect);
+    if (companioneeMeta?.dialect) {
+      const toneLines = getToneAdapter(companioneeMeta.dialect);
       if (toneLines.length > 0) {
         lines.push(...toneLines);
       } else {
-        lines.push(`【方言偏好】：尽量使用 ${elderMeta.dialect} 风格的表达，但保持易懂。`);
+        lines.push(`【方言偏好】：尽量使用 ${companioneeMeta.dialect} 风格的表达，但保持易懂。`);
       }
     }
-    if (elderMeta?.greetingPreference) {
-      lines.push(`【问候偏好】：${elderMeta.greetingPreference}`);
+    if (companioneeMeta?.greetingPreference) {
+      lines.push(`【问候偏好】：${companioneeMeta.greetingPreference}`);
     }
-    if (elderMeta?.hobbies) {
-      lines.push(`【爱好】：${elderMeta.hobbies}`);
+    if (companioneeMeta?.hobbies) {
+      lines.push(`【爱好】：${companioneeMeta.hobbies}`);
     }
-    if (elderMeta?.healthNotes) {
-      lines.push(`【健康注意】：${elderMeta.healthNotes}`);
+    if (companioneeMeta?.healthNotes) {
+      lines.push(`【健康注意】：${companioneeMeta.healthNotes}`);
     }
-    if (elderMeta?.topicsToAvoid) {
-      lines.push(`【回避话题】：${elderMeta.topicsToAvoid}`);
+    if (companioneeMeta?.topicsToAvoid) {
+      lines.push(`【回避话题】：${companioneeMeta.topicsToAvoid}`);
     }
     lines.push('</TONE_AND_PERSONALIZATION>');
     lines.push('');
@@ -122,12 +123,12 @@ export async function buildSystemPrompt(
   lines.push('你必须强制使用以下 XML 结构进行思考和回复。你的回复内容将被解析为用户可见的部分。');
   lines.push('```xml');
   lines.push('<thought>');
-  lines.push('1. 当前情绪分析：[分析老人的情绪状态]');
+  lines.push('1. 当前情绪分析：[对方的情绪状态]');
   lines.push('2. 技能调用判断：[需要触发哪些技能，例如是否需要检索记忆？]');
   lines.push('3. 安全红线校验：[是否涉及安全问题？]');
   lines.push('</thought>');
   lines.push('<response>');
-  lines.push('[实际回复给老人的文本，保持口语化和简短，每次回复控制在 3-5 句话以内，避免复杂术语]');
+  lines.push('[实际回复给对方的文本，保持口语化和简短，每次回复控制在 3-5 句话以内，避免复杂术语]');
   lines.push('</response>');
   lines.push('```');
   lines.push('</OUTPUT_FORMAT>');

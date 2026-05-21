@@ -35,7 +35,7 @@ export default function SettingsPage() {
     setSaving(true);
     try {
       await updateMe({ name: childName });
-      showMessage('子女信息已保存');
+      showMessage('个人信息已保存');
     } catch (err) {
       setError(err instanceof Error ? err.message : '保存失败');
     } finally {

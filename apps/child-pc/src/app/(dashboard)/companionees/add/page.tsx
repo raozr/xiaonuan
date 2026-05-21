@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
-export default function AddElderPage() {
+export default function AddCompanioneePage() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
@@ -20,12 +20,12 @@ export default function AddElderPage() {
     e.preventDefault();
     setError('');
     if (!name.trim()) {
-      setError('请输入老人姓名');
+      setError('请输入姓名');
       return;
     }
     setLoading(true);
     try {
-      await createPairing({ elderName: name.trim() });
+      await createPairing({ companioneeName: name.trim() });
       router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : '添加失败');
@@ -43,7 +43,7 @@ export default function AddElderPage() {
             返回
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold">添加老人</h1>
+        <h1 className="text-2xl font-bold">添加配对</h1>
       </div>
 
       <Card>
@@ -53,10 +53,10 @@ export default function AddElderPage() {
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">老人姓名</Label>
+              <Label htmlFor="name">姓名</Label>
               <Input
                 id="name"
-                placeholder="如何称呼老人？"
+                placeholder="如何称呼对方？"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required

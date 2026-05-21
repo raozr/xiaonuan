@@ -14,7 +14,7 @@ export default function HomePage() {
 
   const handleEnterPairing = (pairingId: string) => {
     setCurrentPairingId(pairingId);
-    router.push(`/elders/${pairingId}`);
+    router.push(`/companionees/${pairingId}`);
   };
 
   if (isLoading) {
@@ -29,7 +29,7 @@ export default function HomePage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">我的配对</h1>
-        <Link href="/elders/add">
+        <Link href="/companionees/add">
           <Button size="sm">
             <Plus className="h-4 w-4 mr-1" />
             添加配对
@@ -42,7 +42,7 @@ export default function HomePage() {
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <div className="text-4xl mb-4">👴</div>
             <p className="text-muted-foreground mb-4">您还没有关联任何配对</p>
-            <Link href="/elders/add">
+            <Link href="/companionees/add">
               <Button>添加第一个配对</Button>
             </Link>
           </CardContent>
@@ -50,7 +50,7 @@ export default function HomePage() {
       ) : (
         <div className="grid gap-4">
           {pairings.map((pairing) => {
-            const elderName = pairing.elder?.name ?? '未知';
+            const companioneeName = pairing.companionee?.name ?? '未知';
             return (
             <Card
               key={pairing.id}
@@ -59,11 +59,11 @@ export default function HomePage() {
             >
               <CardContent className="flex items-center gap-4 p-4">
                 <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-medium text-primary">
-                  {elderName[0]}
+                  {companioneeName[0]}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold truncate">{elderName}</h3>
+                    <h3 className="font-semibold truncate">{companioneeName}</h3>
                     <Badge variant={pairing.isOnline ? 'default' : 'secondary'}>
                       {pairing.isOnline ? '陪伴中' : '休息中'}
                     </Badge>

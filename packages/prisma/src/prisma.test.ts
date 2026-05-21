@@ -25,9 +25,9 @@ describe('Prisma Database Connection', () => {
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
-            { name: '张奶奶', role: 'ELDER', metadata: { dialect: '四川话', timezone: 'Asia/Shanghai' } },
-            { name: '小明', role: 'CHILD', phone: '13800138000' },
-            { name: '小暖AI', role: 'CHILD', isAI: true },
+            { name: '张奶奶', role: 'COMPANIONEE', metadata: { dialect: '四川话', timezone: 'Asia/Shanghai' } },
+            { name: '小明', role: 'STEWARD', phone: '13800138000' },
+            { name: '小暖AI', role: 'STEWARD', isAI: true },
           ],
         },
         aiPersona: {
@@ -49,7 +49,7 @@ describe('Prisma Database Connection', () => {
     expect(pairing.inviteCode).toBe('999999');
     expect(pairing.participants).toHaveLength(3);
     expect(pairing.participants.some((p) => p.isAI)).toBe(true);
-    expect(pairing.participants.some((p) => p.role === 'ELDER' && !p.isAI)).toBe(true);
+    expect(pairing.participants.some((p) => p.role === 'COMPANIONEE' && !p.isAI)).toBe(true);
     expect(pairing.aiPersona).not.toBeNull();
     expect(pairing.aiPersona?.name).toBe('贴心小暖');
 
@@ -124,7 +124,7 @@ describe('Prisma Database Connection', () => {
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
-            { name: 'Test Elder', role: 'ELDER' },
+            { name: 'Test Companionee', role: 'COMPANIONEE' },
           ],
         },
       },
@@ -133,12 +133,12 @@ describe('Prisma Database Connection', () => {
       },
     });
 
-    const elder = pairing.participants[0]!;
+    const companionee = pairing.participants[0]!;
 
     const event = await prisma.eventStream.create({
       data: {
         pairingId: pairing.id,
-        actorId: elder.id,
+        actorId: companionee.id,
         type: 'feed_message',
         content: '奶奶今天吃了两碗饭',
         tags: ['health', 'diet'],
@@ -153,7 +153,7 @@ describe('Prisma Database Connection', () => {
     const profile = await prisma.personaProfile.create({
       data: {
         pairingId: pairing.id,
-        participantId: elder.id,
+        participantId: companionee.id,
         category: 'health',
         content: '食欲良好，午餐吃两碗饭',
         confidence: 0.8,
