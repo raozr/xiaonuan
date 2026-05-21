@@ -58,10 +58,11 @@ const EXTRACTION_PROMPT = (
     { "category": "类别（identity/health/hobby/relationship等）", "content": "一句话客观事实", "confidence": 0.5-1.0 }
   ],
   "metadata": {
+    "name": "发送者姓名（如果提到自己的名字，如'我叫王义'→'王义'）",
     "age": "年龄（如果提到）",
     "healthNotes": "健康相关（如果提到）",
     "hobbies": "爱好（如果提到）",
-    "relationshipToCompanionee": "与被陪伴者的关系（如'侄子'、'女儿'。仅当文本描述发送者与被陪伴者的关系时提取）",
+    "relationshipToCompanionee": "与被陪伴者的关系（如'侄子'、'女儿'、'儿子'。仅当文本明确说明发送者是被陪伴者的什么人时才提取，如'我是她的侄子'→'侄子'。不要将'喜欢聊天'等行为描述当作关系。如果文本没有明确说明发送者与被陪伴者的亲属关系，不要提取该字段）",
     "dialect": "方言偏好（如果提到）",
     "personality": "性格特征（如果提到）",
     "habits": "日常习惯（如果提到）",
@@ -90,12 +91,16 @@ const EXTRACTION_PROMPT = (
 {"profiles":[{"category":"relationship","content":"是被陪伴者的侄子，小时候由被陪伴者带大","confidence":0.95}],"metadata":{"relationshipToCompanionee":"侄子"}}
 
 **示例 4**（关于第三方："我孙子小明考了满分"）：
-{"profiles":[{"category":"relationship","content":"孙子小明，学习优秀","confidence":0.9}],"metadata":{}}`;
+{"profiles":[{"category":"relationship","content":"孙子小明，学习优秀","confidence":0.9}],"metadata":{}}
+
+**示例 5**（关于发送者自己："我叫王义，还在上大学，今年大四，没事就喜欢跟他聊天"）：
+{"profiles":[{"category":"identity","content":"姓名王义，目前是大四学生"},{"category":"hobby","content":"喜欢与被陪伴者聊天","confidence":0.9}],"metadata":{}}`;
 };
 
 export function detectTarget(content: string, senderRole: string, participants: { role: string; name: string; isAI: boolean }[]): { targetDescription: string; shouldSkip: boolean } {
   // Heuristic: look for self-referential relationship statements
-  const hasSelfRelationship = /我是[她他的](的)?[一-龥]{1,4}|我叫|我在[A-Za-z一-龥]{2,}|我[从小]|我们/.test(content);
+  // Covers: "我是他的侄子", "他是我的叔叔"/"他是我爸", "我叫王义", "我在北京上班", "我从小...", "我们"
+  const hasSelfRelationship = /我是[她他的](的)?[一-龥]{1,4}|[她他]是我的(的)?[一-龥]{1,4}|[她他]是我[一-龥]{1,4}|我叫|我在[A-Za-z一-龥]{2,}|我[从小]|我们/.test(content);
   // Look for companionee-referential statements (pronoun + attribute about the companionee)
   const hasCompanioneeAttr = /[她他]今年|[她他]有[两几个]|[她他]身体|[她他]最[爱喜]|[她他].*岁/.test(content);
 
@@ -177,14 +182,23 @@ export async function startWorker() {
           if (participant) {
             const existingMeta = (participant.metadata as Record<string, string> | null) ?? {};
             const updatedMeta = { ...existingMeta };
+
+            // If a name was extracted and the participant's current name looks like a phone number, update it
+            const extractedName = metadata.name?.trim();
+            let nameUpdate: { name?: string } = {};
+            if (extractedName && /^\d{11}$/.test(participant.name)) {
+              nameUpdate = { name: extractedName };
+            }
+
             for (const [key, value] of Object.entries(metadata)) {
+              if (key === 'name') continue; // name is handled separately
               if (value && typeof value === 'string' && value.trim()) {
                 updatedMeta[key] = value.trim();
               }
             }
             await prisma.participant.update({
               where: { id: targetParticipantId },
-              data: { metadata: updatedMeta },
+              data: { metadata: updatedMeta, ...nameUpdate },
             });
           }
         }

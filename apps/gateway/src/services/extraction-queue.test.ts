@@ -177,4 +177,26 @@ describe('extraction-queue detectTarget', () => {
       expect(result.targetDescription).toContain('关于发送者自己');
     });
   });
+
+  describe('发送者自己 — "他是我的X" 反向表达', () => {
+    // Bug fix: "他是我的叔叔" 原先被误识别为关于被陪伴者，实际是发送者自述与被陪伴者的关系
+    const cases = [
+      { text: '他是我的叔叔，他有两个孩子', label: '叔叔' },
+      { text: '她是我的姑姑，从小带我', label: '姑姑' },
+      { text: '他是我爸，今年70了', label: '爸爸' },
+      { text: '她是我的妈妈', label: '妈妈' },
+      { text: '他是我哥，还没结婚', label: '哥哥' },
+      { text: '她是我姐，在杭州工作', label: '姐姐' },
+      { text: '他是我的邻居，人很好', label: '邻居' },
+      { text: '她是我的朋友', label: '朋友' },
+    ];
+
+    for (const { text, label } of cases) {
+      it(`"${text}" 应识别为"关于发送者自己"（${label}）`, () => {
+        const result = detectTarget(text, 'STEWARD', baseParticipants);
+        expect(result.targetDescription).toContain('关于发送者自己');
+        expect(result.shouldSkip).toBe(false);
+      });
+    }
+  });
 });
