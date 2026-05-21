@@ -1,12 +1,13 @@
 import { fromZonedTime, toZonedTime } from 'date-fns-tz';
 import { prisma } from '@xiaonuan/prisma';
 
-export async function getElderTimezone(familyId: string): Promise<string> {
-  const elder = await prisma.elderProfile.findUnique({
-    where: { familyId },
-    select: { timezone: true },
+export async function getCompanioneeTimezone(pairingId: string): Promise<string> {
+  const companionee = await prisma.participant.findFirst({
+    where: { pairingId, role: 'COMPANIONEE', isAI: false },
+    select: { metadata: true },
   });
-  return elder?.timezone ?? 'Asia/Shanghai';
+  const meta = (companionee?.metadata as Record<string, string> | null) ?? {};
+  return meta.timezone ?? 'Asia/Shanghai';
 }
 
 export function getStartOfDay(date: Date, timezone: string): Date {

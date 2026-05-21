@@ -2,7 +2,14 @@ import { getDailyMemory } from './daily-memory.js';
 import { getShortTermMemory } from './short-term-memory.js';
 import { getMidTermMemory } from './mid-term-memory.js';
 import { getGreetingHint } from './greeting-hint.js';
+import { getRelationshipLayer } from './relationship-layer.js';
 import { deduplicateSections, type Section } from './dedup.js';
+
+const TOKEN_BUDGET_CHARS = 4096;
+
+function estimateTokens(text: string): number {
+  return Math.ceil(text.length / 1.5);
+}
 
 function parseSection(text: string): Section {
   const lines = text.split('\n');
@@ -11,17 +18,53 @@ function parseSection(text: string): Section {
   return { title, bullets };
 }
 
+function truncateToBudget(sections: Section[], budget: number): Section[] {
+  const totalChars = sections.reduce((sum, s) => {
+    return sum + s.title.length + s.bullets.join('\n').length;
+  }, 0);
+
+  if (totalChars <= budget) return sections;
+
+  const priorityOrder: Record<string, number> = {
+    '【关系档案】': 0,
+    '【相关回忆】': 1,
+    '【近日动态】': 2,
+    '【今日回顾】': 3,
+  };
+
+  const sorted = [...sections].sort(
+    (a, b) => (priorityOrder[a.title] ?? 99) - (priorityOrder[b.title] ?? 99)
+  );
+
+  for (const section of sorted) {
+    while (section.bullets.length > 0) {
+      section.bullets.pop();
+      const currentChars = sections.reduce((sum, s) => {
+        return sum + s.title.length + s.bullets.join('\n').length;
+      }, 0);
+      if (currentChars <= budget) break;
+    }
+    const remainingChars = sections.reduce((sum, s) => {
+      return sum + s.title.length + s.bullets.join('\n').length;
+    }, 0);
+    if (remainingChars <= budget) break;
+  }
+
+  return sections.filter((s) => s.bullets.length > 0);
+}
+
 export async function buildMemoryContext(params: {
-  familyId: string;
+  pairingId: string;
   turnCount: number;
   input: string;
   phase?: string;
 }): Promise<string> {
   const results = await Promise.allSettled([
-    params.turnCount <= 3 ? getDailyMemory(params.familyId) : Promise.resolve(''),
-    params.turnCount <= 3 ? getShortTermMemory(params.familyId) : Promise.resolve(''),
-    getMidTermMemory(params.input, params.familyId),
-    params.phase === 'GREETING' ? getGreetingHint(params.familyId) : Promise.resolve(''),
+    params.turnCount <= 3 ? getDailyMemory(params.pairingId) : Promise.resolve(''),
+    params.turnCount <= 3 ? getShortTermMemory(params.pairingId) : Promise.resolve(''),
+    getMidTermMemory(params.input, params.pairingId),
+    params.phase === 'GREETING' ? getGreetingHint(params.pairingId) : Promise.resolve(''),
+    getRelationshipLayer(params.pairingId),
   ]);
 
   const rawSections: string[] = [];
@@ -38,10 +81,14 @@ export async function buildMemoryContext(params: {
   const greetingHint = results[3].status === 'fulfilled' ? results[3].value : '';
   if (greetingHint) rawSections.push(greetingHint);
 
+  const relationship = results[4].status === 'fulfilled' ? results[4].value : '';
+  if (relationship) rawSections.push(relationship);
+
   const parsed = rawSections.map(parseSection);
   const deduped = deduplicateSections(parsed, 0.6);
+  const truncated = truncateToBudget(deduped, TOKEN_BUDGET_CHARS);
 
-  return deduped
+  return truncated
     .map((s) => `${s.title}\n${s.bullets.join('\n')}`)
     .join('\n\n');
 }

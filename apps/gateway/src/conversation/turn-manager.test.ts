@@ -7,20 +7,23 @@ import {
 } from './turn-manager.js';
 
 describe('Turn Manager', () => {
-  let testFamily: any;
+  let testPairing: any;
   let testSession: any;
 
   beforeEach(async () => {
-    testFamily = await prisma.family.create({
+    testPairing = await prisma.pairing.create({
       data: {
+        name: 'Test Pairing',
         inviteCode: `tm-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '测试老人' } },
+        participants: {
+          create: { name: '测试被陪伴者', role: 'COMPANIONEE' },
+        },
       },
     });
     testSession = await prisma.session.create({
       data: {
-        familyId: testFamily.id,
+        pairingId: testPairing.id,
         phase: 'ACTIVE_CHAT',
         turnCount: 0,
       },
@@ -30,15 +33,15 @@ describe('Turn Manager', () => {
   afterEach(async () => {
     await prisma.sessionMessage.deleteMany({ where: { sessionId: testSession.id } });
     await prisma.session.delete({ where: { id: testSession.id } });
-    await prisma.family.delete({ where: { id: testFamily.id } });
+    await prisma.pairing.delete({ where: { id: testPairing.id } });
   });
 
   it('should return the most recent messages, not the oldest', async () => {
-    // Create 12 messages: alternating ELDER/AI
+    // Create 12 messages: alternating COMPANIONEE/AI
     for (let i = 1; i <= 12; i++) {
       await saveMessage(
         testSession.id,
-        i % 2 === 1 ? 'ELDER' : 'AI',
+        i % 2 === 1 ? 'COMPANIONEE' : 'AI',
         `msg-${i}`
       );
     }
@@ -53,7 +56,7 @@ describe('Turn Manager', () => {
 
   it('should truncate content over 150 chars', async () => {
     const longText = 'a'.repeat(200);
-    await saveMessage(testSession.id, 'ELDER', longText);
+    await saveMessage(testSession.id, 'COMPANIONEE', longText);
 
     const recent = await getRecentMessages(testSession.id, 10);
     expect(recent[0]!.content).toBe('a'.repeat(150) + '…');

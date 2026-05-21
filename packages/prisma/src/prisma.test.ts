@@ -17,45 +17,59 @@ describe('Prisma Database Connection', () => {
     expect(result).toEqual([{ connected: 1 }]);
   });
 
-  it('should create and retrieve a family with elder profile', async () => {
-    const family = await prisma.family.create({
+  it('should create a pairing with participants and AI persona', async () => {
+    const pairing = await prisma.pairing.create({
       data: {
+        name: '奶奶陪伴',
         inviteCode: '999999',
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: {
+        participants: {
+          create: [
+            { name: '张奶奶', role: 'COMPANIONEE', metadata: { dialect: '四川话', timezone: 'Asia/Shanghai' } },
+            { name: '小明', role: 'STEWARD', phone: '13800138000' },
+            { name: '小暖AI', role: 'STEWARD', isAI: true },
+          ],
+        },
+        aiPersona: {
           create: {
-            name: '李爷爷',
-            age: 75,
-            dialect: '四川话',
+            name: '贴心小暖',
+            template: 'caring-companion',
+            traits: { warm: true, patient: true, respectful: true },
+            tone: 'caring',
           },
         },
       },
       include: {
-        elder: true,
+        participants: true,
+        aiPersona: true,
       },
     });
 
-    expect(family.id).toBeDefined();
-    expect(family.inviteCode).toBe('999999');
-    expect(family.elder).not.toBeNull();
-    expect(family.elder?.name).toBe('李爷爷');
-    expect(family.elder?.age).toBe(75);
+    expect(pairing.id).toBeDefined();
+    expect(pairing.inviteCode).toBe('999999');
+    expect(pairing.participants).toHaveLength(3);
+    expect(pairing.participants.some((p) => p.isAI)).toBe(true);
+    expect(pairing.participants.some((p) => p.role === 'COMPANIONEE' && !p.isAI)).toBe(true);
+    expect(pairing.aiPersona).not.toBeNull();
+    expect(pairing.aiPersona?.name).toBe('贴心小暖');
 
     // Cleanup
-    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.pairing.delete({ where: { id: pairing.id } });
   });
 
   it('should enforce unique invite code constraint', async () => {
-    const family1 = await prisma.family.create({
+    const pairing1 = await prisma.pairing.create({
       data: {
+        name: 'Test Pairing',
         inviteCode: '888888',
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
     });
 
     await expect(
-      prisma.family.create({
+      prisma.pairing.create({
         data: {
+          name: 'Test Pairing 2',
           inviteCode: '888888',
           inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
@@ -63,12 +77,13 @@ describe('Prisma Database Connection', () => {
     ).rejects.toThrow();
 
     // Cleanup
-    await prisma.family.delete({ where: { id: family1.id } });
+    await prisma.pairing.delete({ where: { id: pairing1.id } });
   });
 
-  it('should create a session with checkpoints', async () => {
-    const family = await prisma.family.create({
+  it('should create a session with checkpoints under a pairing', async () => {
+    const pairing = await prisma.pairing.create({
       data: {
+        name: 'Test Pairing',
         inviteCode: '777777',
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
       },
@@ -76,7 +91,7 @@ describe('Prisma Database Connection', () => {
 
     const session = await prisma.session.create({
       data: {
-        familyId: family.id,
+        pairingId: pairing.id,
         phase: 'GREETING',
         checkpoints: {
           create: [
@@ -98,6 +113,84 @@ describe('Prisma Database Connection', () => {
     expect(session.checkpoints[0]?.topicSummary).toBe('聊天气');
 
     // Cleanup
-    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.pairing.delete({ where: { id: pairing.id } });
+  });
+
+  it('should create EventStream events and PersonaProfile entries', async () => {
+    const pairing = await prisma.pairing.create({
+      data: {
+        name: 'Test Pairing',
+        inviteCode: '666666',
+        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        participants: {
+          create: [
+            { name: 'Test Companionee', role: 'COMPANIONEE' },
+          ],
+        },
+      },
+      include: {
+        participants: true,
+      },
+    });
+
+    const companionee = pairing.participants[0]!;
+
+    const event = await prisma.eventStream.create({
+      data: {
+        pairingId: pairing.id,
+        actorId: companionee.id,
+        type: 'feed_message',
+        content: '奶奶今天吃了两碗饭',
+        tags: ['health', 'diet'],
+        payload: { meal: 'lunch', amount: 'large' },
+      },
+    });
+
+    expect(event.id).toBeDefined();
+    expect(event.type).toBe('feed_message');
+    expect(event.tags).toContain('health');
+
+    const profile = await prisma.personaProfile.create({
+      data: {
+        pairingId: pairing.id,
+        participantId: companionee.id,
+        category: 'health',
+        content: '食欲良好，午餐吃两碗饭',
+        confidence: 0.8,
+        source: 'feed',
+      },
+    });
+
+    expect(profile.id).toBeDefined();
+    expect(profile.confidence).toBe(0.8);
+
+    // Cleanup
+    await prisma.pairing.delete({ where: { id: pairing.id } });
+  });
+
+  it('should create FeedMessage without category field', async () => {
+    const pairing = await prisma.pairing.create({
+      data: {
+        name: 'Test Pairing',
+        inviteCode: '555555',
+        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      },
+    });
+
+    const feed = await prisma.feedMessage.create({
+      data: {
+        pairingId: pairing.id,
+        type: 'TEXT',
+        content: '今天天气真好',
+      },
+    });
+
+    expect(feed.id).toBeDefined();
+    expect(feed.content).toBe('今天天气真好');
+    // FeedMessage should NOT have a category field
+    expect(feed).not.toHaveProperty('category');
+
+    // Cleanup
+    await prisma.pairing.delete({ where: { id: pairing.id } });
   });
 });

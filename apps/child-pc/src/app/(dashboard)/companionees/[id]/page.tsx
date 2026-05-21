@@ -3,39 +3,37 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { fetchFamily, fetchDailySummary, updateElder, refreshInviteCode, type Family, type DailySummary } from '@/lib/api';
-import { useCurrentFamily } from '@/components/providers/current-family-provider';
-import { FamilyFeedPanel } from '@/components/family-feed-panel';
+import { fetchPairing, fetchDailySummary, refreshInviteCode, type Pairing, type DailySummary } from '@/lib/api';
+import { useCurrentPairing } from '@/components/providers/current-pairing-provider';
+import { PairingFeedPanel } from '@/components/pairing-feed-panel';
 import { VoiceClonePanel } from '@/components/voice-clone-panel';
-import { ElderForm } from '@/components/elder-form';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Copy, RefreshCw, Sun, Clock } from 'lucide-react';
 
-type DetailTab = 'summary' | 'feed' | 'voice' | 'settings';
+type DetailTab = 'summary' | 'feed' | 'voice';
 
-export default function ElderDetailPage() {
+export default function CompanioneeDetailPage() {
   const params = useParams();
-  const familyId = params.id as string;
-  const { refreshFamilies } = useCurrentFamily();
+  const pairingId = params.id as string;
+  const { refreshPairings } = useCurrentPairing();
 
-  const [family, setFamily] = useState<Family | null>(null);
+  const [pairing, setPairing] = useState<Pairing | null>(null);
   const [summary, setSummary] = useState<DailySummary | null>(null);
   const [activeTab, setActiveTab] = useState<DetailTab>('summary');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   const loadData = async () => {
     try {
       const [f, s] = await Promise.all([
-        fetchFamily(familyId),
-        fetchDailySummary(familyId),
+        fetchPairing(pairingId),
+        fetchDailySummary(pairingId),
       ]);
-      setFamily(f);
+      setPairing(f);
       setSummary(s.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载失败');
@@ -46,25 +44,11 @@ export default function ElderDetailPage() {
 
   useEffect(() => {
     loadData();
-  }, [familyId]);
-
-  const handleSaveElder = async (data: Partial<Family['elder']>) => {
-    if (!familyId) return;
-    setSaving(true);
-    try {
-      await updateElder(familyId, data);
-      await refreshFamilies();
-      await loadData();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '保存失败');
-    } finally {
-      setSaving(false);
-    }
-  };
+  }, [pairingId]);
 
   const handleCopyInviteCode = async () => {
-    if (!family?.inviteCode) return;
-    await navigator.clipboard.writeText(family.inviteCode);
+    if (!pairing?.inviteCode) return;
+    await navigator.clipboard.writeText(pairing.inviteCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -72,8 +56,8 @@ export default function ElderDetailPage() {
   const handleRefreshInviteCode = async () => {
     setRefreshing(true);
     try {
-      await refreshInviteCode(familyId);
-      await refreshFamilies();
+      await refreshInviteCode(pairingId);
+      await refreshPairings();
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : '刷新失败');
@@ -97,11 +81,11 @@ export default function ElderDetailPage() {
     );
   }
 
-  if (error || !family) {
-    return <p className="text-destructive">{error || '老人信息不存在'}</p>;
+  if (error || !pairing || !pairing.companionee) {
+    return <p className="text-destructive">{error || '配对信息不存在'}</p>;
   }
 
-  const elder = family.elder;
+  const companionee = pairing.companionee;
 
   return (
     <div className="space-y-6 max-w-3xl">
@@ -113,7 +97,7 @@ export default function ElderDetailPage() {
             返回
           </Button>
         </Link>
-        <h1 className="text-2xl font-bold">{elder.name}的陪伴</h1>
+        <h1 className="text-2xl font-bold">{companionee.name}的陪伴</h1>
       </div>
 
       {/* Summary bar */}
@@ -122,23 +106,23 @@ export default function ElderDetailPage() {
           <div className="flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-lg font-medium text-primary">
-                {elder.name[0]}
+                {companionee.name[0]}
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">{elder.name}</h3>
-                  <Badge variant={family.isOnline ? 'default' : 'secondary'}>
-                    {family.isOnline ? '陪伴中' : '休息中'}
+                  <h3 className="font-semibold">{companionee.name}</h3>
+                  <Badge variant={pairing.isOnline ? 'default' : 'secondary'}>
+                    {pairing.isOnline ? '陪伴中' : '休息中'}
                   </Badge>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  {elder.age ? `${elder.age}岁` : ''} {elder.dialect ? `· ${elder.dialect}` : ''}
-                  {family.lastActive ? ` · 最后活跃 ${new Date(family.lastActive).toLocaleString('zh-CN')}` : ' · 今日未通话'}
+                  {companionee.age ? `${companionee.age}岁` : ''} {companionee.dialect ? `· ${companionee.dialect}` : ''}
+                  {pairing.lastActive ? ` · 最后活跃 ${new Date(pairing.lastActive).toLocaleString('zh-CN')}` : ' · 今日未通话'}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <code className="bg-muted px-2 py-1 rounded text-sm font-mono">{family.inviteCode}</code>
+              <code className="bg-muted px-2 py-1 rounded text-sm font-mono">{pairing.inviteCode}</code>
               <Button variant="outline" size="sm" onClick={handleCopyInviteCode}>
                 <Copy className="h-3.5 w-3.5 mr-1" />
                 {copied ? '已复制' : '复制'}
@@ -174,13 +158,6 @@ export default function ElderDetailPage() {
           onClick={() => setActiveTab('voice')}
         >
           声音复刻
-        </Button>
-        <Button
-          variant={activeTab === 'settings' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setActiveTab('settings')}
-        >
-          老人设置
         </Button>
       </div>
 
@@ -235,20 +212,9 @@ export default function ElderDetailPage() {
         </Card>
       )}
 
-      {activeTab === 'feed' && <FamilyFeedPanel familyId={familyId} />}
+      {activeTab === 'feed' && <PairingFeedPanel pairingId={pairingId} />}
 
-      {activeTab === 'voice' && <VoiceClonePanel familyId={familyId} />}
-
-      {activeTab === 'settings' && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">老人信息</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <ElderForm elder={family.elder} onSave={handleSaveElder} saving={saving} />
-          </CardContent>
-        </Card>
-      )}
+      {activeTab === 'voice' && <VoiceClonePanel pairingId={pairingId} />}
     </div>
   );
 }

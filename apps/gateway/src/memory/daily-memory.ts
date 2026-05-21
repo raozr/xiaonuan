@@ -1,15 +1,15 @@
 import { prisma } from '@xiaonuan/prisma';
-import { getElderTimezone, getStartOfDay, getEndOfDay } from '../utils/timezone.js';
+import { getCompanioneeTimezone, getStartOfDay, getEndOfDay } from '../utils/timezone.js';
 
-export async function getDailyMemory(familyId: string): Promise<string> {
-  const timezone = await getElderTimezone(familyId);
+export async function getDailyMemory(pairingId: string): Promise<string> {
+  const timezone = await getCompanioneeTimezone(pairingId);
   const now = new Date();
   const startOfDay = getStartOfDay(now, timezone);
   const endOfDay = getEndOfDay(now, timezone);
 
   const sessions = await prisma.session.findMany({
     where: {
-      familyId,
+      pairingId,
       endedAt: { not: null },
       updatedAt: {
         gte: startOfDay,

@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Settings, Plus } from 'lucide-react';
+import { Home, Settings, Plus, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
-  { href: '/', label: '我的老人', icon: Home },
+  { href: '/', label: '我的配对', icon: Home },
+  { href: '/events', label: '事件时间线', icon: Clock },
   { href: '/settings', label: '设置', icon: Settings },
 ];
 
@@ -17,7 +18,7 @@ export function Sidebar() {
     <aside className="w-64 border-r bg-card flex flex-col h-screen sticky top-0">
       <div className="p-6">
         <h1 className="text-xl font-bold text-primary">小暖</h1>
-        <p className="text-xs text-muted-foreground mt-1">子女管理端</p>
+        <p className="text-xs text-muted-foreground mt-1">管理端</p>
       </div>
       <nav className="flex-1 px-4 space-y-1">
         {navItems.map((item) => {
@@ -42,11 +43,11 @@ export function Sidebar() {
       </nav>
       <div className="p-4 border-t">
         <Link
-          href="/elders/add"
+          href="/companionees/add"
           className="flex items-center justify-center gap-2 rounded-lg bg-primary text-primary-foreground px-3 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
         >
           <Plus className="h-4 w-4" />
-          添加老人
+          添加配对
         </Link>
       </div>
     </aside>

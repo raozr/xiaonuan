@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "小暖 - 子女端",
-  description: "小暖 AI 老人陪伴平台 - 子女管理端",
+  title: "小暖 - 管理端",
+  description: "小暖 AI 陪伴平台 - 管理端",
 };
 
 export default function RootLayout({

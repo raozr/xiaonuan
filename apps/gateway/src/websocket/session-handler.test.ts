@@ -12,7 +12,7 @@ describe('WebSocket Session Handler', () => {
   let messageHandler: ((data: string) => void) | undefined;
   let mockApp: any;
   let handler: any;
-  let testFamily: any;
+  let testPairing: any;
 
   beforeEach(async () => {
     messageHandler = undefined;
@@ -25,19 +25,22 @@ describe('WebSocket Session Handler', () => {
       readyState: 1,
     };
 
-    testFamily = await prisma.family.create({
+    testPairing = await prisma.pairing.create({
       data: {
+        name: 'Test Pairing',
         inviteCode: Math.floor(100000 + Math.random() * 900000).toString(),
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '测试老人' } },
+        participants: {
+          create: { name: '测试被陪伴者', role: 'COMPANIONEE' },
+        },
       },
     });
 
     mockApp = {
       jwt: {
         verify: vi.fn(() => ({
-          familyId: testFamily.id,
-          role: 'ELDER',
+          pairingId: testPairing.id,
+          role: 'COMPANIONEE',
         })),
       },
       log: {
@@ -52,10 +55,10 @@ describe('WebSocket Session Handler', () => {
 
   afterEach(async () => {
     await prisma.sessionMessage.deleteMany({
-      where: { session: { familyId: testFamily.id } },
+      where: { session: { pairingId: testPairing.id } },
     });
-    await prisma.session.deleteMany({ where: { familyId: testFamily.id } });
-    await prisma.family.delete({ where: { id: testFamily.id } });
+    await prisma.session.deleteMany({ where: { pairingId: testPairing.id } });
+    await prisma.pairing.delete({ where: { id: testPairing.id } });
   });
 
   it('should close connection when JWT is missing', async () => {
@@ -86,7 +89,7 @@ describe('WebSocket Session Handler', () => {
     expect(createdMsg.payload.sessionId).toBeDefined();
 
     const session = await prisma.session.findFirst({
-      where: { familyId: testFamily.id },
+      where: { pairingId: testPairing.id },
     });
     expect(session).not.toBeNull();
     expect(session!.phase).toBe('GREETING');
@@ -95,7 +98,7 @@ describe('WebSocket Session Handler', () => {
   it('should resume an existing session on session:resume', async () => {
     const session = await prisma.session.create({
       data: {
-        familyId: testFamily.id,
+        pairingId: testPairing.id,
         phase: 'ACTIVE_CHAT',
       },
     });

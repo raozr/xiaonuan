@@ -1,15 +1,15 @@
 'use client';
 
-import { useCurrentFamily } from '@/components/providers/current-family-provider';
-import { FamilyFeedPanel } from '@/components/family-feed-panel';
+import { useCurrentPairing } from '@/components/providers/current-pairing-provider';
+import { PairingFeedPanel } from '@/components/pairing-feed-panel';
 import { Button } from '@/components/ui/button';
 import { Users } from 'lucide-react';
 import Link from 'next/link';
 
 export default function FeedPage() {
-  const { currentFamilyId, currentFamily, isLoading: familyLoading } = useCurrentFamily();
+  const { currentPairingId, currentPairing, isLoading: pairingLoading } = useCurrentPairing();
 
-  if (familyLoading) {
+  if (pairingLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
@@ -17,13 +17,13 @@ export default function FeedPage() {
     );
   }
 
-  if (!currentFamily) {
+  if (!currentPairing) {
     return (
       <div className="flex flex-col items-center justify-center h-64 text-center space-y-4">
         <Users className="h-12 w-12 text-muted-foreground" />
-        <p className="text-muted-foreground">您还没有关联老人</p>
+        <p className="text-muted-foreground">您还没有创建配对</p>
         <Link href="/">
-          <Button>去添加老人</Button>
+          <Button>去添加配对</Button>
         </Link>
       </div>
     );
@@ -34,10 +34,10 @@ export default function FeedPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">告诉小暖一件事</h1>
         <span className="text-sm text-muted-foreground">
-          当前老人：{currentFamily.elder.name}
+          当前配对：{currentPairing.companionee?.name ?? '未知'}
         </span>
       </div>
-      <FamilyFeedPanel familyId={currentFamilyId} />
+      <PairingFeedPanel pairingId={currentPairingId} />
     </div>
   );
 }

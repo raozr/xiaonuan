@@ -18,7 +18,7 @@ import { useVoice } from '../hooks/useVoice';
 
 interface HomeScreenProps {
   token: string;
-  familyId: string;
+  pairingId: string;
   onUnbind: () => void;
 }
 
@@ -31,7 +31,7 @@ const API_URL = __DEV__
 const WS_URL = API_URL.replace(/^https/, 'wss').replace(/^http/, 'ws') + '/ws';
 const MIN_RECORDING_MS = 500;
 
-export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
+export function HomeScreen({ token, pairingId, onUnbind }: HomeScreenProps) {
   const [state, setState] = useState<InteractionState>('IDLE');
   const [aiText, setAiText] = useState('您好，我是小暖，想和我聊聊吗？');
   const pulseAnim = useRef(new Animated.Value(1)).current;
@@ -75,7 +75,16 @@ export function HomeScreen({ token, familyId, onUnbind }: HomeScreenProps) {
       if (msg.payload.code === 401) {
         Alert.alert('身份过期', '请重新绑定', [{ text: '确定', onPress: onUnbind }]);
       } else {
-        Alert.alert('提示', msg.payload.message || '处理失败');
+        const raw = msg.payload.message || '';
+        let friendly = '处理失败';
+        if (raw.includes('语音识别') || raw.includes('ASR') || raw.includes('429')) {
+          friendly = '语音识别失败，请稍后再试';
+        } else if (raw.includes('会话')) {
+          friendly = '会话已过期，请重新开始';
+        } else if (raw.includes('合成') || raw.includes('TTS')) {
+          friendly = '语音播放失败，请稍后再试';
+        }
+        Alert.alert('提示', friendly);
         setState('IDLE');
       }
     }

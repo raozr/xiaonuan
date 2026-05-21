@@ -2,27 +2,26 @@ import { prisma } from '@xiaonuan/prisma';
 import { qdrant } from '../qdrant/client.js';
 import { embedText } from '../services/embedding.js';
 
-export async function memoryContext(familyId: string) {
-  const feeds = await prisma.familyFeed.findMany({
-    where: { familyId },
+export async function memoryContext(pairingId: string) {
+  const feeds = await prisma.feedMessage.findMany({
+    where: { pairingId },
     orderBy: { createdAt: 'desc' },
     take: 10,
   });
 
-  const family = await prisma.family.findUnique({
-    where: { id: familyId },
-    include: { elder: true },
+  const companionee = await prisma.participant.findFirst({
+    where: { pairingId, role: 'COMPANIONEE', isAI: false },
   });
 
   return {
     feeds,
-    elder: family?.elder ?? null,
+    companionee: companionee ?? null,
   };
 }
 
 export async function memoryRecall(
   query: string,
-  familyId: string,
+  pairingId: string,
   checkpointId?: string,
   topK: number = 5
 ) {
@@ -35,7 +34,7 @@ export async function memoryRecall(
   }
 
   const must: Array<Record<string, unknown>> = [
-    { key: 'familyId', match: { value: familyId } },
+    { key: 'pairingId', match: { value: pairingId } },
   ];
 
   if (checkpointId) {
@@ -43,37 +42,36 @@ export async function memoryRecall(
   }
 
   try {
-    const results = await qdrant.search('family_memories', {
+    const results = await qdrant.search('pairing_memories', {
       vector,
       limit: topK,
       filter: { must },
       with_payload: true,
     });
     return results;
-    } catch (err) {
+  } catch (err) {
     console.error('[memoryRecall] Qdrant 查询失败，降级返回空结果:', err);
     return [];
   }
 }
 
 export async function memoryNote(
-  category: 'PREFERENCE' | 'HEALTH' | 'EVENT' | 'PERSON' | 'PLACE',
+  category: string,
   content: string,
-  familyId: string
+  pairingId: string
 ) {
   try {
-    const feed = await prisma.familyFeed.create({
+    const event = await prisma.eventStream.create({
       data: {
-        familyId,
-        type: 'TEXT',
-        category,
+        pairingId,
+        type: 'info_extracted',
         content,
-        isRecent: true,
+        tags: [category],
       },
     });
-    return { success: true, feedId: feed.id };
+    return { success: true, eventId: event.id };
   } catch (err) {
-    console.error('[memoryNote] 写入 FamilyFeed 失败:', err);
+    console.error('[memoryNote] 写入 EventStream 失败:', err);
     return { success: false, error: '写入失败' };
   }
 }

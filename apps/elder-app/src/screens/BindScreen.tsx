@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 
 interface BindScreenProps {
-  onBindSuccess: (token: string, familyId: string) => void;
+  onBindSuccess: (token: string, pairingId: string) => void;
   deviceId: string | null;
 }
 
@@ -48,7 +48,7 @@ export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/family/bind`, {
+      const response = await fetch(`${API_URL}/api/pairings/bind`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ inviteCode: code, deviceId }),
@@ -62,7 +62,7 @@ export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
       }
 
       if (data.success) {
-        onBindSuccess(data.token, data.familyId);
+        onBindSuccess(data.token, data.pairingId);
       } else {
         Alert.alert('绑定失败', data.message || '请检查绑定码是否正确');
       }
@@ -84,7 +84,7 @@ export function BindScreen({ onBindSuccess, deviceId }: BindScreenProps) {
         </View>
         <Text style={styles.title}>Hello!</Text>
         <Text style={styles.subtitle}>
-          请输入子女提供的 {CODE_LENGTH} 位绑定码
+          请输入家人提供的 {CODE_LENGTH} 位绑定码
         </Text>
       </View>
 

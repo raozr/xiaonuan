@@ -1,26 +1,26 @@
 import type { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { prisma } from '@xiaonuan/prisma';
 
-export async function verifyElderAuth(request: FastifyRequest, reply: FastifyReply) {
+export async function verifyCompanioneeAuth(request: FastifyRequest, reply: FastifyReply) {
   const user = request.user;
-  if (!user || user.role !== 'ELDER' || !user.familyId) {
+  if (!user || user.role !== 'COMPANIONEE' || !user.pairingId) {
     return;
   }
 
-  const elder = await prisma.elderProfile.findUnique({
-    where: { familyId: user.familyId },
+  const participant = await prisma.participant.findFirst({
+    where: { pairingId: user.pairingId, role: 'COMPANIONEE', isAI: false },
     select: { deviceId: true, openid: true },
   });
 
-  if (!elder) {
-    return reply.status(401).send({ success: false, message: '老人信息不存在' });
+  if (!participant) {
+    return reply.status(401).send({ success: false, message: '被陪伴者信息不存在' });
   }
 
-  if (user.deviceId && elder.deviceId !== user.deviceId) {
+  if (user.deviceId && participant.deviceId !== user.deviceId) {
     return reply.status(401).send({ success: false, message: '设备已解绑' });
   }
 
-  if (user.openid && elder.openid !== user.openid) {
+  if (user.openid && participant.openid !== user.openid) {
     return reply.status(401).send({ success: false, message: '认证信息无效' });
   }
 }
@@ -36,9 +36,11 @@ export async function authenticate(app: FastifyInstance) {
     const token = authHeader.slice(7);
 
     try {
-      const decoded = await request.jwtVerify<{ role: string; phone?: string; familyId?: string; deviceId?: string; openid?: string }>();
+      const decoded = await request.jwtDecode<{ role: string; phone?: string; pairingId?: string; deviceId?: string; openid?: string }>();
       request.user = decoded;
-      await verifyElderAuth(request, reply);
+      if (decoded.role === 'COMPANIONEE') {
+        await verifyCompanioneeAuth(request, reply);
+      }
     } catch (err) {
       if (reply.sent) return;
       return reply.status(401).send({ success: false, message: '无效的认证令牌' });

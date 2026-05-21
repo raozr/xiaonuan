@@ -18,7 +18,7 @@ export function getToneAdapter(dialect?: string | null): string[] {
   } else if (lowerDialect.includes('北京')) {
     lines.push('- DO：使用北京儿化音和地道词汇，如“您嘞”、“得嘞”、“胡同”、“倍儿”、“讲究”。');
     lines.push('- DO：语气要有一种北京式的从容和局气。');
-    lines.push('- DON\'T：避免过于京油子的感觉，保持对老人的尊重。');
+    lines.push('- DON\'T：避免过于京油子的感觉，保持对对方的尊重。');
   } else if (lowerDialect.includes('上海') || lowerDialect.includes('吴语')) {
     lines.push('- DO：带点软糯的吴语特点，如“伐”、“好额呀”、“侬”、“阿兹”、“晓得伐”。');
     lines.push('- DO：表达要细腻体贴，带有江南特有的温婉感。');

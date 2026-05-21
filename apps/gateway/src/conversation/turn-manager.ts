@@ -2,7 +2,7 @@ import { prisma } from '@xiaonuan/prisma';
 
 export async function saveMessage(
   sessionId: string,
-  role: 'ELDER' | 'AI',
+  role: 'COMPANIONEE' | 'AI',
   content: string
 ) {
   return prisma.sessionMessage.create({
@@ -38,7 +38,7 @@ export async function getRecentMessages(
       content = content.slice(0, 150) + '…';
     }
     return {
-      role: m.role === 'ELDER' ? ('user' as const) : ('assistant' as const),
+      role: m.role === 'COMPANIONEE' ? ('user' as const) : ('assistant' as const),
       content,
     };
   });

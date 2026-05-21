@@ -5,7 +5,7 @@ type UserPayload = {
   userId?: string;
   role: string;
   phone?: string;
-  familyId?: string;
+  pairingId?: string;
   deviceId?: string;
 };
 
@@ -17,10 +17,10 @@ export async function meRoutes(app: FastifyInstance) {
       return reply.status(401).send({ success: false, message: '未认证' });
     }
 
-    if (user.role === 'CHILD' && user.userId) {
+    if (user.role === 'STEWARD' && user.userId) {
       const dbUser = await prisma.user.findUnique({
         where: { id: user.userId },
-        include: { childProfiles: true },
+        include: { participants: true },
       });
 
       if (!dbUser) {
@@ -28,26 +28,26 @@ export async function meRoutes(app: FastifyInstance) {
       }
 
       return reply.send({
-        role: 'CHILD',
+        role: 'STEWARD',
         name: dbUser.name,
         phone: dbUser.phone,
-        familyCount: dbUser.childProfiles.length,
+        pairingCount: dbUser.participants.length,
       });
     }
 
-    if (user.role === 'ELDER' && user.familyId) {
-      const elderProfile = await prisma.elderProfile.findUnique({
-        where: { familyId: user.familyId },
+    if (user.role === 'COMPANIONEE' && user.pairingId) {
+      const companionee = await prisma.participant.findFirst({
+        where: { pairingId: user.pairingId, role: 'COMPANIONEE', isAI: false },
       });
 
-      if (!elderProfile) {
-        return reply.status(404).send({ success: false, message: '老人信息不存在' });
+      if (!companionee) {
+        return reply.status(404).send({ success: false, message: '被陪伴者信息不存在' });
       }
 
       return reply.send({
-        role: 'ELDER',
-        name: elderProfile.name,
-        familyId: user.familyId,
+        role: 'COMPANIONEE',
+        name: companionee.name,
+        pairingId: user.pairingId,
       });
     }
 
@@ -57,8 +57,8 @@ export async function meRoutes(app: FastifyInstance) {
   app.put('/', async (request: FastifyRequest, reply: FastifyReply) => {
     const user = request.user as UserPayload | undefined;
 
-    if (!user || user.role !== 'CHILD' || !user.userId) {
-      return reply.status(401).send({ success: false, message: '未认证或非子女用户' });
+    if (!user || user.role !== 'STEWARD' || !user.userId) {
+      return reply.status(401).send({ success: false, message: '未认证或非照管者用户' });
     }
 
     const body = request.body as Record<string, unknown>;

@@ -6,27 +6,11 @@ describe('GET /api/me', () => {
   it('should return child profile with valid child token', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
     const user = await prisma.user.create({
-      data: { phone: uniquePhone, name: '小明', role: 'CHILD' },
-    });
-
-    const family = await prisma.family.create({
-      data: {
-        inviteCode: `child-${Date.now()}`,
-        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '测试老人' } },
-        children: {
-          create: {
-            userId: user.id,
-            name: '小明',
-            phone: uniquePhone,
-          },
-        },
-      },
-      include: { children: true },
+      data: { phone: uniquePhone, name: '小明', role: 'STEWARD' },
     });
 
     const childToken = app.jwt.sign(
-      { userId: user.id, role: 'CHILD' },
+      { userId: user.id, role: 'STEWARD' },
       { expiresIn: '7d' }
     );
 
@@ -38,30 +22,32 @@ describe('GET /api/me', () => {
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
-    expect(body.role).toBe('CHILD');
+    expect(body.role).toBe('STEWARD');
     expect(body.name).toBe('小明');
 
-    await prisma.family.delete({ where: { id: family.id } });
     await prisma.user.delete({ where: { id: user.id } });
   });
 
   it('should return elder profile with valid elder token', async () => {
-    const family = await prisma.family.create({
+    const pairing = await prisma.pairing.create({
       data: {
         inviteCode: `elder-${Date.now()}`,
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: {
-          create: {
-            name: '张奶奶',
-            deviceId: 'device-abc',
-          },
+        name: 'Test Pairing',
+        participants: {
+          create: [
+            { name: '张奶奶', role: 'COMPANIONEE', isAI: false, deviceId: 'device-abc' },
+            { name: '小暖', role: 'COMPANIONEE', isAI: true },
+          ],
         },
       },
-      include: { elder: true },
+      include: { participants: true },
     });
 
+    const companioneeParticipant = pairing.participants.find(p => p.role === 'COMPANIONEE' && !p.isAI);
+
     const elderToken = app.jwt.sign(
-      { familyId: family.id, role: 'ELDER', deviceId: 'device-abc' },
+      { pairingId: pairing.id, role: 'COMPANIONEE', deviceId: 'device-abc' },
       { expiresIn: '365d' }
     );
 
@@ -73,10 +59,10 @@ describe('GET /api/me', () => {
 
     expect(response.statusCode).toBe(200);
     const body = JSON.parse(response.body);
-    expect(body.role).toBe('ELDER');
+    expect(body.role).toBe('COMPANIONEE');
     expect(body.name).toBe('张奶奶');
 
-    await prisma.family.delete({ where: { id: family.id } });
+    await prisma.pairing.delete({ where: { id: pairing.id } });
   });
 
   it('should return 401 without token', async () => {
@@ -103,27 +89,11 @@ describe('PUT /api/me', () => {
   it('should update child profile fields', async () => {
     const uniquePhone = `138${Date.now().toString().slice(-8)}`;
     const user = await prisma.user.create({
-      data: { phone: uniquePhone, name: '小明', role: 'CHILD' },
-    });
-
-    const family = await prisma.family.create({
-      data: {
-        inviteCode: `put-me-${Date.now()}`,
-        inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        elder: { create: { name: '测试老人' } },
-        children: {
-          create: {
-            userId: user.id,
-            name: '小明',
-            phone: uniquePhone,
-          },
-        },
-      },
-      include: { children: true },
+      data: { phone: uniquePhone, name: '小明', role: 'STEWARD' },
     });
 
     const childToken = app.jwt.sign(
-      { userId: user.id, role: 'CHILD' },
+      { userId: user.id, role: 'STEWARD' },
       { expiresIn: '7d' }
     );
 
@@ -141,7 +111,6 @@ describe('PUT /api/me', () => {
     expect(body.success).toBe(true);
     expect(body.name).toBe('大明');
 
-    await prisma.family.delete({ where: { id: family.id } });
     await prisma.user.delete({ where: { id: user.id } });
   });
 

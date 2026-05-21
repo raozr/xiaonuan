@@ -11,8 +11,9 @@ import {
 import { generateCheckpoint } from '../memory/checkpoint-service.js';
 import { transcribeVoice } from '../services/voice-service-client.js';
 import { convertM4aToWav } from '../utils/audio-convert.js';
+import { markCheckpointPending } from '../events/checkpoint-persistence.js';
 
-type AuthUser = { familyId?: string; role?: string; deviceId?: string; userId?: string };
+type AuthUser = { pairingId?: string; role?: string; deviceId?: string; userId?: string };
 
 export function createWebSocketHandler(app: FastifyInstance) {
   return async (socket: WebSocket, req: FastifyRequest) => {
@@ -28,8 +29,13 @@ export function createWebSocketHandler(app: FastifyInstance) {
     let authReject!: (reason: string) => void;
     const authPromise = new Promise<AuthUser>((resolve, reject) => {
       authResolve = resolve;
-      authReject = reject;
+      authReject = (reason: string) => {
+        reject(reason);
+        // Swallow the rejection so it doesn't become unhandled
+      };
     });
+    // Prevent unhandled rejection when auth fails early
+    authPromise.catch(() => {});
 
     const baseUrl =
       env.PUBLIC_BASE_URL ||
@@ -83,19 +89,21 @@ export function createWebSocketHandler(app: FastifyInstance) {
       if (!sessionId) return;
       if (closingMessageSent) return;
       const user = authenticatedUser;
-      if (!user?.familyId) return;
+      if (!user?.pairingId) return;
       try {
         const currentPhase = await getSessionPhase(sessionId);
         if (currentPhase === 'ACTIVE_CHAT' || currentPhase === 'GREETING') {
           const newPhase = definePhaseTransition(
             currentPhase,
-            'elder_silent_timeout'
+            'companionee_silent_timeout'
           );
           await updateSessionPhase(sessionId, newPhase);
           sendMessage('phase:changed', { phase: newPhase });
-          await sendClosingMessage(sessionId, user.familyId, socket, baseUrl);
+          await sendClosingMessage(sessionId, user.pairingId, socket, baseUrl);
           closingMessageSent = true;
           clearSilenceTimer();
+          // Mark checkpoint as pending for later generation
+          await markCheckpointPending(sessionId, user.pairingId);
         }
       } catch (err) {
         console.error('[WebSocket] 静默检测处理失败:', err);
@@ -123,14 +131,14 @@ export function createWebSocketHandler(app: FastifyInstance) {
         if (type === 'session:create') {
           const session = await prisma.session.create({
             data: {
-              familyId: user.familyId!,
+              pairingId: user.pairingId!,
               phase: 'GREETING',
             },
           });
           sessionId = session.id;
           app.log.info(`[WS] session created id=${session.id}`);
           sendMessage('session:created', { sessionId: session.id });
-          // 新会话在老人首次说话前不启动静默计时，避免还没说话就收到道别
+          // 新会话在对方首次说话前不启动静默计时，避免还没说话就收到道别
           return;
         }
 
@@ -141,7 +149,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
             return;
           }
           const session = await prisma.session.findFirst({
-            where: { id: targetId, familyId: user.familyId! },
+            where: { id: targetId, pairingId: user.pairingId! },
           });
           if (!session) {
             sendMessage('error', { message: '会话不存在' });
@@ -176,7 +184,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           if (currentPhase === 'CLOSING') {
             const newPhase = definePhaseTransition(
               'CLOSING',
-              'elder_speaks_again'
+              'companionee_speaks_again'
             );
             await updateSessionPhase(sessionId, newPhase);
             sendMessage('phase:changed', { phase: newPhase });
@@ -185,7 +193,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           clearSilenceTimer();
           app.log.info('[WS] calling handleVoiceText...');
           try {
-            await handleVoiceText(sessionId, user.familyId!, text, socket, baseUrl);
+            await handleVoiceText(sessionId, user.pairingId!, text, socket, baseUrl);
           } finally {
             app.log.info('[WS] handleVoiceText done');
             resetSilenceTimer();
@@ -227,14 +235,14 @@ export function createWebSocketHandler(app: FastifyInstance) {
             text = asrResult.success ? (asrResult.text ?? '') : '';
             app.log.info(`[WS] ASR result: ${text}`);
           } catch (asrErr: any) {
-            const errMsg = asrErr instanceof Error ? asrErr.message : String(asrErr);
-            app.log.error(`[WS] ASR failed: ${errMsg}`);
-            // Write to local log file for direct inspection
+            const rawMsg = asrErr instanceof Error ? asrErr.message : String(asrErr);
+            app.log.error(`[WS] ASR failed: ${rawMsg}`);
             try {
               const fs = await import('fs/promises');
-              await fs.appendFile('/tmp/gateway-asr.log', `[${new Date().toISOString()}] ASR failed: ${errMsg}\n`, 'utf-8');
+              await fs.appendFile('/tmp/gateway-asr.log', `[${new Date().toISOString()}] ASR failed: ${rawMsg}\n`, 'utf-8');
             } catch {}
-            sendMessage('error', { message: errMsg || '语音识别失败' });
+            // Never expose raw technical errors to the companionee — always return a user-friendly message
+            sendMessage('error', { message: '语音识别失败，请稍后再试' });
             return;
           }
 
@@ -249,7 +257,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           if (currentPhase === 'CLOSING') {
             const newPhase = definePhaseTransition(
               'CLOSING',
-              'elder_speaks_again'
+              'companionee_speaks_again'
             );
             await updateSessionPhase(sessionId, newPhase);
             sendMessage('phase:changed', { phase: newPhase });
@@ -258,7 +266,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           clearSilenceTimer();
           app.log.info('[WS] calling handleVoiceText with ASR result...');
           try {
-            await handleVoiceText(sessionId, user.familyId!, text, socket, baseUrl);
+            await handleVoiceText(sessionId, user.pairingId!, text, socket, baseUrl);
           } finally {
             app.log.info('[WS] handleVoiceText done');
             resetSilenceTimer();
@@ -286,6 +294,11 @@ export function createWebSocketHandler(app: FastifyInstance) {
       clearSilenceTimer();
       authReject('Socket closed');
       if (sessionId) {
+        // Mark checkpoint as pending before the delayed generation
+        const user = authenticatedUser;
+        if (user?.pairingId) {
+          markCheckpointPending(sessionId, user.pairingId).catch(console.error);
+        }
         checkpointTimeout = setTimeout(async () => {
           try {
             const newPhase = definePhaseTransition(
@@ -317,27 +330,27 @@ export function createWebSocketHandler(app: FastifyInstance) {
       }
       const user = app.jwt.verify(token) as AuthUser;
 
-      if (!user?.familyId) {
-        if (user?.role !== 'CHILD') {
-          authReject('Missing familyId');
-          socket.close(1008, 'Missing familyId');
+      if (!user?.pairingId) {
+        if (user?.role !== 'STEWARD') {
+          authReject('Missing pairingId');
+          socket.close(1008, 'Missing pairingId');
           return;
         }
       }
 
-      if (user?.role === 'ELDER' && user.deviceId) {
+      if (user?.role === 'COMPANIONEE' && user.deviceId) {
         try {
-          const profile = await prisma.elderProfile.findUnique({
-            where: { familyId: user.familyId },
+          const participant = await prisma.participant.findFirst({
+            where: { pairingId: user.pairingId, role: 'COMPANIONEE', isAI: false },
             select: { deviceId: true }
           });
-          if (!profile || profile.deviceId !== user.deviceId) {
+          if (!participant || participant.deviceId !== user.deviceId) {
             authReject('Invalid device');
             socket.close(1008, 'Invalid device');
             return;
           }
         } catch (err) {
-          app.log.error(`[WebSocket] 验证老人设备失败: ${err instanceof Error ? err.message : String(err)}`);
+          app.log.error(`[WebSocket] 验证对方设备失败: ${err instanceof Error ? err.message : String(err)}`);
           authReject('Server error');
           socket.close(1011, 'Server error');
           return;

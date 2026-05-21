@@ -20,10 +20,10 @@ const prompts = [
 ];
 
 interface VoiceClonePanelProps {
-  familyId: string;
+  pairingId: string;
 }
 
-export function VoiceClonePanel({ familyId }: VoiceClonePanelProps) {
+export function VoiceClonePanel({ pairingId }: VoiceClonePanelProps) {
   const [clones, setClones] = useState<VoiceClone[]>([]);
   const [activeVoiceId, setActiveVoiceId] = useState('');
   const [samples, setSamples] = useState<{ id: string; blob: Blob; url: string }[]>([]);
@@ -40,7 +40,7 @@ export function VoiceClonePanel({ familyId }: VoiceClonePanelProps) {
   const loadClones = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetchVoiceClones(familyId);
+      const res = await fetchVoiceClones(pairingId);
       setClones(res.data);
       setActiveVoiceId(res.activeVoiceId);
     } catch {
@@ -49,7 +49,7 @@ export function VoiceClonePanel({ familyId }: VoiceClonePanelProps) {
     } finally {
       setLoading(false);
     }
-  }, [familyId]);
+  }, [pairingId]);
 
   useEffect(() => {
     loadClones();
@@ -114,7 +114,7 @@ export function VoiceClonePanel({ familyId }: VoiceClonePanelProps) {
           });
         })
       );
-      await createVoiceClone({ familyId, samples: converted });
+      await createVoiceClone({ pairingId, samples: converted });
       setSamples([]);
       await loadClones();
     } catch (err) {

@@ -58,6 +58,8 @@ services:
       dockerfile: Dockerfile
     container_name: xiaonuan-gateway
     restart: always
+    ports:
+      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,7 +100,7 @@ services:
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://xiaonuan-gateway:3000}
+      - NEXT_PUBLIC_API_URL=http://xiaonuan-gateway:3000
     networks:
       - app-network
 

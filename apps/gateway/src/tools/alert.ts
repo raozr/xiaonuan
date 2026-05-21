@@ -1,11 +1,11 @@
 export async function emergencyAlert(
   severity: 'HIGH' | 'CRITICAL',
   reason: string,
-  familyId: string
+  pairingId: string
 ) {
-  // TODO: Implement actual SMS / Push notification to children
+  // TODO: Implement actual SMS / Push notification to stewards
   console.warn(
-    `[EMERGENCY_ALERT] [Family: ${familyId}] [Severity: ${severity}] Reason: ${reason}`
+    `[EMERGENCY_ALERT] [Pairing: ${pairingId}] [Severity: ${severity}] Reason: ${reason}`
   );
 
   // Fallback / mock implementation:

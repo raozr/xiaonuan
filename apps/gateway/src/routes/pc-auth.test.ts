@@ -21,7 +21,7 @@ describe('POST /api/pc-auth/register', () => {
     const body = JSON.parse(response.body);
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
-    expect(body.role).toBe('CHILD');
+    expect(body.role).toBe('STEWARD');
 
     const dbUser = await prisma.user.findUnique({ where: { phone } });
     expect(dbUser).toBeDefined();
@@ -35,7 +35,7 @@ describe('POST /api/pc-auth/register', () => {
   it('should return 409 for duplicate phone', async () => {
     const phone = uniquePhone();
     await prisma.user.create({
-      data: { name: '已有用户', phone, password: 'hashed', role: 'CHILD' },
+      data: { name: '已有用户', phone, password: 'hashed', role: 'STEWARD' },
     });
 
     const response = await app.inject({
@@ -95,7 +95,7 @@ describe('POST /api/pc-auth/login', () => {
     const body = JSON.parse(loginResponse.body);
     expect(body.success).toBe(true);
     expect(body.token).toBeDefined();
-    expect(body.role).toBe('CHILD');
+    expect(body.role).toBe('STEWARD');
 
     await prisma.user.delete({ where: { phone } });
   });

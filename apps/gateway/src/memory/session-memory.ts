@@ -13,7 +13,7 @@ export async function getSessionMemory(
   if (messages.length === 0) return '';
 
   const lines = messages.map((m) => {
-    const speaker = m.role === 'ELDER' ? '老人' : '小暖';
+    const speaker = m.role === 'COMPANIONEE' ? '对方' : '小暖';
     let content = m.content;
     if (content.length > 150) {
       content = content.slice(0, 150) + '…';

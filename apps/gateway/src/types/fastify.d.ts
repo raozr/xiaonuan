@@ -6,7 +6,7 @@ declare module '@fastify/jwt' {
       userId?: string;
       role: string;
       phone?: string;
-      familyId?: string;
+      pairingId?: string;
       deviceId?: string;
       openid?: string;
     };
