@@ -1,13 +1,14 @@
 import React from 'react';
-import { View } from 'react-native';
+import { View, ViewStyle } from 'react-native';
 import { colors } from '../../utils/theme';
 
 interface CardProps {
   children: React.ReactNode;
   className?: string;
+  style?: ViewStyle;
 }
 
-export function Card({ children, className = '' }: CardProps) {
+export function Card({ children, className = '', style }: CardProps) {
   return (
     <View
       className={`bg-surfaceLowest rounded-3xl shadow-md p-gutter ${className}`}
@@ -17,6 +18,7 @@ export function Card({ children, className = '' }: CardProps) {
         shadowOpacity: 0.08,
         shadowRadius: 16,
         elevation: 3,
+        ...style,
       }}
     >
       {children}
