@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore, ensureDeviceId } from '../../src/store/auth-store';
-import { API_URL } from '../../src/utils/constants';
+import { bindPairing } from '../../src/services/pairing';
 import { colors, typography, spacing } from '../../src/utils/theme';
 
 const LOGO = require('../../assets/logo-smalll.jpg');
@@ -39,32 +39,17 @@ export default function CompanioneeBinding() {
     const deviceId = await ensureDeviceId();
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/pairings/bind`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ inviteCode: code, deviceId }),
+      const data = await bindPairing({ code, deviceId });
+      await setAuth({
+        token: data.token,
+        pairingId: data.pairingId,
+        stewardName: data.stewardName,
+        companioneeName: data.companioneeName,
       });
-
-      let data;
-      try {
-        data = await response.json();
-      } catch {
-        data = { success: false, message: '服务器开小差了，请稍后再试' };
-      }
-
-      if (data.success) {
-        await setAuth({
-          token: data.token,
-          pairingId: data.pairingId,
-          stewardName: data.stewardName,
-          companioneeName: data.companioneeName,
-        });
-        router.replace('/(companionee)/home');
-      } else {
-        Alert.alert('绑定失败', data.message || '请检查绑定码是否正确');
-      }
-    } catch {
-      Alert.alert('网络连接失败', '网络不太顺畅，请检查网络后重试');
+      router.replace('/(companionee)/home');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '请检查绑定码是否正确';
+      Alert.alert('绑定失败', message);
     } finally {
       setLoading(false);
     }

@@ -13,7 +13,7 @@ interface ButtonProps {
   className?: string;
 }
 
-const variantStyles: Record<string, { bg: string; text: string }> = {
+const variantStyles: Record<'primary' | 'secondary' | 'outline' | 'danger', { bg: string; text: string }> = {
   primary: { bg: colors.primaryContainer, text: colors.onPrimary },
   secondary: { bg: colors.secondaryContainer, text: colors.onSecondaryContainer },
   outline: { bg: 'transparent', text: colors.primary },
@@ -29,7 +29,8 @@ export function Button({
   loading = false,
   fullWidth = true,
 }: ButtonProps) {
-  const { bg, text } = variantStyles[variant];
+  const styles = variantStyles[variant] ?? variantStyles.primary;
+  const { bg, text } = styles;
 
   return (
     <TouchableOpacity

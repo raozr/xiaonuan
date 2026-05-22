@@ -44,11 +44,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   loadFromStorage: async () => {
-    const [token, pairingId] = await AsyncStorage.multiGet([
+    const results = await AsyncStorage.multiGet([
       STORAGE_KEYS.TOKEN,
       STORAGE_KEYS.PAIRING_ID,
     ]);
-    set({ token: token[1], pairingId: pairingId[1] });
+    set({ token: results[0]?.[1] ?? null, pairingId: results[1]?.[1] ?? null });
   },
 }));
 
@@ -58,8 +58,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 export async function ensureDeviceId(): Promise<string> {
   const stored = await AsyncStorage.getItem(STORAGE_KEYS.DEVICE_ID);
   if (stored) return stored;
-  const { default: uuid } = await import('react-native-uuid');
-  const newId = uuid.v4() as string;
+  const uuid = await import('react-native-uuid');
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+  const newId = (uuid.default as any).v4() as string;
   await AsyncStorage.setItem(STORAGE_KEYS.DEVICE_ID, newId);
   return newId;
 }

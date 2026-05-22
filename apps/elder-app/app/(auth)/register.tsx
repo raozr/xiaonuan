@@ -16,7 +16,7 @@ import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
 import { useAuthStore } from '../../src/store/auth-store';
 import { useRoleStore } from '../../src/store/role-store';
-import { API_URL } from '../../src/utils/constants';
+import { register } from '../../src/services/auth';
 import { colors, typography } from '../../src/utils/theme';
 
 const LOGO = require('../../assets/logo-smalll.jpg');
@@ -43,25 +43,17 @@ export default function RegisterScreen() {
     }
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/pc-auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, phone, password }),
+      const data = await register({ name, phone, password });
+      await setAuth({
+        token: data.token,
+        pairingId: '',
+        stewardName: data.user?.name,
       });
-      const data = await response.json();
-      if (data.success) {
-        await setAuth({
-          token: data.token,
-          pairingId: '',
-          stewardName: data.user?.name,
-        });
-        setRole('STEWARD');
-        router.replace('/(steward)');
-      } else {
-        Alert.alert('注册失败', data.message || '请稍后再试');
-      }
-    } catch {
-      Alert.alert('网络连接失败', '网络不太顺畅，请检查网络后重试');
+      setRole('STEWARD');
+      router.replace('/(steward)');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '请稍后再试';
+      Alert.alert('注册失败', message);
     } finally {
       setLoading(false);
     }

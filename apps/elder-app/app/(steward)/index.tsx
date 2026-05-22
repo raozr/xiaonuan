@@ -6,16 +6,9 @@ import { TopAppBar } from '../../src/components/shared/TopAppBar';
 import { PairingCard } from '../../src/components/steward/PairingCard';
 import { EmptyStateIllustration } from '../../src/components/steward/EmptyStateIllustration';
 import { Button } from '../../src/components/ui/Button';
-import { API_URL } from '../../src/utils/constants';
+import { listPairings, type Pairing } from '../../src/services/pairing';
 import { colors, typography, spacing } from '../../src/utils/theme';
 import { useAuthStore } from '../../src/store/auth-store';
-
-interface Pairing {
-  id: string;
-  companioneeName: string;
-  online: boolean;
-  lastActive?: string;
-}
 
 export default function PairingListScreen() {
   const [pairings, setPairings] = useState<Pairing[]>([]);
@@ -29,13 +22,8 @@ export default function PairingListScreen() {
   async function fetchPairings() {
     if (!token) return;
     try {
-      const response = await fetch(`${API_URL}/api/pairings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setPairings(data.pairings || []);
-      }
+      const data = await listPairings(token);
+      setPairings(data || []);
     } catch (e) {
       console.error('Failed to fetch pairings:', e);
     } finally {

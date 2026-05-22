@@ -127,7 +127,7 @@ export default function CompanioneeHome() {
 
   const wsUrl = `${WS_URL}?token=${token}`;
   const { isConnected, sendMessage } = useWebSocket(
-    wsUrl.split('?')[0],
+    wsUrl.split('?')[0] ?? WS_URL,
     token ?? '',
     handleMessage,
   );

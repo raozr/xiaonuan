@@ -16,7 +16,7 @@ import { Button } from '../../src/components/ui/Button';
 import { Card } from '../../src/components/ui/Card';
 import { useAuthStore } from '../../src/store/auth-store';
 import { useRoleStore } from '../../src/store/role-store';
-import { API_URL } from '../../src/utils/constants';
+import { login } from '../../src/services/auth';
 import { colors, typography } from '../../src/utils/theme';
 
 const LOGO = require('../../assets/logo-smalll.jpg');
@@ -36,25 +36,17 @@ export default function LoginScreen() {
     }
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/pc-auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone, password }),
+      const data = await login({ phone, password });
+      await setAuth({
+        token: data.token,
+        pairingId: '',
+        stewardName: data.user?.name,
       });
-      const data = await response.json();
-      if (data.success) {
-        await setAuth({
-          token: data.token,
-          pairingId: '',
-          stewardName: data.user?.name,
-        });
-        setRole('STEWARD');
-        router.replace('/(steward)');
-      } else {
-        Alert.alert('登录失败', data.message || '请检查手机号和密码');
-      }
-    } catch {
-      Alert.alert('网络连接失败', '网络不太顺畅，请检查网络后重试');
+      setRole('STEWARD');
+      router.replace('/(steward)');
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '请检查手机号和密码';
+      Alert.alert('登录失败', message);
     } finally {
       setLoading(false);
     }
