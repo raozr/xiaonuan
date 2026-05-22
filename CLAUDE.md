@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **XiaoNuan (小暖)** is an AI elderly companion platform with a monorepo structure organized by PNPM workspaces. It consists of:
 - **AI Gateway** (`apps/gateway`): Fastify-based Node.js backend with WebSocket support
-- **Elder App** (`apps/elder-app`): React Native mobile app (Expo) for elderly users
+- **XiaoNuan App** (`apps/xiaonuan-app`): Unified React Native mobile app (Expo) for elderly users (COMPANIONEE) and caregivers (STEWARD)
 - **Family Mini-Program** (`apps/mini-program`): WeChat mini-program for family members
 - **Child PC** (`apps/child-pc`): Next.js 16+ web application (see its own CLAUDE.md)
 - **Voice Service** (`apps/voice-service`): Python FastAPI service for speech processing

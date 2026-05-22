@@ -30,7 +30,7 @@ xiaonuan/
 │   ├── gateway/          # AI Agent Gateway (Fastify + WebSocket)
 │   ├── child-pc/         # Next.js 16+ Web App (Family Member PC Client)
 │   ├── mini-program/     # WeChat Mini-program (Family Member Mobile Client)
-│   ├── elder-app/        # React Native Mobile App (Elder Client, Expo)
+│   ├── xiaonuan-app/     # Unified React Native Mobile App (Elder + Caregiver, Expo)
 │   └── voice-service/    # Python FastAPI Voice Processing Service
 ├── packages/
 │   ├── prisma/           # DB Schema & Persistence Layer (PostgreSQL)
@@ -116,18 +116,18 @@ A Next.js 16+ web application for family members managing elders from PC.
 
 ### Elder App (Elder Client)
 
-The elder app is a React Native application built with **Expo**.
+The XiaoNuan app is a unified React Native application built with **Expo**, serving both elderly users (COMPANIONEE) and caregivers (STEWARD).
 
 - **Development**:
   ```bash
-  cd apps/elder-app
+  cd apps/xiaonuan-app
   pnpm install
   pnpm start        # Expo dev server
   pnpm android      # or pnpm ios
   ```
 - **Build & Deploy via EAS**:
   ```bash
-  cd apps/elder-app
+  cd apps/xiaonuan-app
   eas build --profile preview    # Build APK for internal testing
   eas build --profile production # Build AAB for Play Store
   ```
