@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "小暖长辈端",
-    "slug": "xiaonuan-elder-app",
+    "name": "小暖",
+    "slug": "xiaonuan-app",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
