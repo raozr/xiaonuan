@@ -34,28 +34,28 @@ export default function PairingDetailLayout() {
         name="index"
         options={{
           title: '概览',
-          tabBarIcon: ({ color }) => null,
+          tabBarIcon: ({ color: _color }: { color: string }) => null,
         }}
       />
       <Tabs.Screen
         name="logs"
         options={{
           title: '日志',
-          tabBarIcon: ({ color }) => null,
+          tabBarIcon: ({ color: _color }: { color: string }) => null,
         }}
       />
       <Tabs.Screen
         name="feed"
         options={{
           title: '留言',
-          tabBarIcon: ({ color }) => null,
+          tabBarIcon: ({ color: _color }: { color: string }) => null,
         }}
       />
       <Tabs.Screen
         name="voice"
         options={{
           title: '声音',
-          tabBarIcon: ({ color }) => null,
+          tabBarIcon: ({ color: _color }: { color: string }) => null,
         }}
       />
     </Tabs>
