@@ -8,10 +8,13 @@ import { Input } from '../../src/components/ui/Input';
 import { NotificationToggle } from '../../src/components/steward/NotificationToggle';
 import { Button } from '../../src/components/ui/Button';
 import { useAuthStore } from '../../src/store/auth-store';
+import { useRoleStore } from '../../src/store/role-store';
+import { COMPANIONEE_ROLE } from '../../src/utils/constants';
 import { colors, typography } from '../../src/utils/theme';
 
 export default function SettingsScreen() {
   const { stewardName, companioneeName, clearAuth } = useAuthStore();
+  const { setRole } = useRoleStore();
   const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(stewardName ?? '');
   const [dailySummaries, setDailySummaries] = useState(true);
@@ -26,6 +29,7 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await clearAuth();
+          await setRole(COMPANIONEE_ROLE);
           router.replace('/(companionee)');
         },
       },

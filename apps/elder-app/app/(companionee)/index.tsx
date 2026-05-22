@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuthStore, ensureDeviceId } from '../../src/store/auth-store';
+import { useRoleStore } from '../../src/store/role-store';
+import { COMPANIONEE_ROLE } from '../../src/utils/constants';
 import { bindPairing } from '../../src/services/pairing';
 import { colors, typography, spacing } from '../../src/utils/theme';
 
@@ -20,6 +22,7 @@ export default function CompanioneeBinding() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const { setAuth } = useAuthStore();
+  const { setRole } = useRoleStore();
 
   const handleDigit = useCallback((digit: string) => {
     setCode((prev) => (prev.length < CODE_LENGTH ? prev + digit : prev));
@@ -46,6 +49,7 @@ export default function CompanioneeBinding() {
         stewardName: data.stewardName,
         companioneeName: data.companioneeName,
       });
+      await setRole(COMPANIONEE_ROLE);
       router.replace('/(companionee)/home');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '请检查绑定码是否正确';

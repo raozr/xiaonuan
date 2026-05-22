@@ -18,6 +18,7 @@ import { useAuthStore } from '../../src/store/auth-store';
 import { useRoleStore } from '../../src/store/role-store';
 import { register } from '../../src/services/auth';
 import { colors, typography } from '../../src/utils/theme';
+import { STEWARD_ROLE } from '../../src/utils/constants';
 
 const LOGO = require('../../assets/logo-smalll.jpg');
 
@@ -49,7 +50,7 @@ export default function RegisterScreen() {
         pairingId: '',
         stewardName: data.user?.name,
       });
-      setRole('STEWARD');
+      setRole(STEWARD_ROLE);
       router.replace('/(steward)');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : '请稍后再试';

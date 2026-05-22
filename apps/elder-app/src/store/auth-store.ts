@@ -21,10 +21,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   companioneeName: null,
 
   setAuth: async (data) => {
-    await AsyncStorage.multiSet([
+    const pairs: [string, string][] = [
       [STORAGE_KEYS.TOKEN, data.token],
       [STORAGE_KEYS.PAIRING_ID, data.pairingId],
-    ]);
+    ];
+    if (data.stewardName || data.companioneeName) {
+      pairs.push([STORAGE_KEYS.USER, JSON.stringify({ stewardName: data.stewardName, companioneeName: data.companioneeName })]);
+    }
+    await AsyncStorage.multiSet(pairs);
     set({
       token: data.token,
       pairingId: data.pairingId,
@@ -34,7 +38,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   clearAuth: async () => {
-    await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.PAIRING_ID]);
+    await AsyncStorage.multiRemove([STORAGE_KEYS.TOKEN, STORAGE_KEYS.PAIRING_ID, STORAGE_KEYS.USER]);
     set({
       token: null,
       pairingId: null,
@@ -47,8 +51,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const results = await AsyncStorage.multiGet([
       STORAGE_KEYS.TOKEN,
       STORAGE_KEYS.PAIRING_ID,
+      STORAGE_KEYS.USER,
     ]);
-    set({ token: results[0]?.[1] ?? null, pairingId: results[1]?.[1] ?? null });
+    const token = results[0]?.[1] ?? null;
+    const pairingId = results[1]?.[1] ?? null;
+    try {
+      const userData = results[2]?.[1] ? JSON.parse(results[2][1]) : {};
+      set({ token, pairingId, stewardName: userData.stewardName ?? null, companioneeName: userData.companioneeName ?? null });
+    } catch {
+      set({ token, pairingId, stewardName: null, companioneeName: null });
+    }
   },
 }));
 
