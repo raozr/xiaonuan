@@ -11,9 +11,9 @@ import { emitEvent } from '../events/event-bus.js';
 import { enqueueExtraction } from '../services/extraction-service.js';
 
 const createPairingSchema = z.object({
-  companioneeName: z.string().min(1),
-  companioneeAge: z.number().min(50).max(120).optional(),
-  companioneeDialect: z.string().optional(),
+  name: z.string().min(1),
+  relationship: z.string().min(1),
+  notes: z.string().optional(),
 });
 
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
@@ -208,7 +208,7 @@ export async function pairingRoutes(app: FastifyInstance) {
       return reply.status(400).send({ success: false, message: '参数错误', errors: parsed.error.errors });
     }
 
-    const { companioneeName, companioneeAge, companioneeDialect } = parsed.data;
+    const { name, relationship, notes } = parsed.data;
 
     const userData = await prisma.user.findUnique({ where: { id: user.userId } });
     if (!userData) {
@@ -217,18 +217,18 @@ export async function pairingRoutes(app: FastifyInstance) {
 
     const pairing = await prisma.pairing.create({
       data: {
-        name: companioneeName,
+        name: name,
         inviteCode: generateInviteCode(),
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
             {
-              name: companioneeName,
+              name: name,
               role: 'COMPANIONEE',
               isAI: false,
               metadata: {
-                ...(companioneeAge ? { age: String(companioneeAge) } : {}),
-                ...(companioneeDialect ? { dialect: companioneeDialect } : {}),
+                relationship: relationship,
+                ...(notes ? { notes } : {}),
               },
             },
             {
@@ -236,7 +236,7 @@ export async function pairingRoutes(app: FastifyInstance) {
               role: 'STEWARD',
               isAI: false,
               userId: user.userId,
-              metadata: { relationshipToCompanionee: '照管者' },
+              metadata: { relationshipToCompanionee: relationship },
             },
             {
               name: '小暖',

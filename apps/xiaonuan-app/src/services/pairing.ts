@@ -7,6 +7,12 @@ export interface Pairing {
   lastActive?: string;
 }
 
+export interface CreatePairingInput {
+  name: string;
+  relationship: string;
+  notes?: string;
+}
+
 export interface BindInput {
   code: string;
   deviceId: string;
@@ -14,6 +20,14 @@ export interface BindInput {
 
 export async function listPairings(token: string) {
   return api('/api/pairings', { token }) as Promise<Pairing[]>;
+}
+
+export async function createPairing(token: string, input: CreatePairingInput) {
+  return api('/api/pairings', {
+    method: 'POST',
+    token,
+    body: JSON.stringify(input),
+  }) as Promise<{ id: string; inviteCode: string; inviteCodeExpiresAt: string }>;
 }
 
 export async function bindPairing(input: BindInput) {
