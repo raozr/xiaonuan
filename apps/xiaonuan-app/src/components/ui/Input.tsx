@@ -35,7 +35,7 @@ export function Input({
       {/* Label row */}
       {label && (
         <View className="flex-row justify-between items-center mb-1">
-          <Text className="uppercase font-bold text-outline-variant tracking-wide" style={typography.labelCaps}>
+          <Text className="font-bold text-outline-variant" style={typography.labelCaps}>
             {label}
           </Text>
           {linkLabel && (

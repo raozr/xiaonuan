@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, Alert } from 'react-native';
+import { View, Text, ScrollView, Alert, StatusBar } from 'react-native';
 import { router } from 'expo-router';
 import { Plus } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopAppBar } from '../../src/components/shared/TopAppBar';
 import { PairingCard } from '../../src/components/steward/PairingCard';
 import { EmptyStateIllustration } from '../../src/components/steward/EmptyStateIllustration';
@@ -14,6 +15,7 @@ export default function PairingListScreen() {
   const [pairings, setPairings] = useState<Pairing[]>([]);
   const [loading, setLoading] = useState(true);
   const { token } = useAuthStore();
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     fetchPairings();
@@ -33,29 +35,33 @@ export default function PairingListScreen() {
 
   return (
     <View className="flex-1 bg-surface-bright">
-      {/* Top AppBar */}
-      <TopAppBar
-        title="My Steward Team"
-        showSettings
-      />
+      <StatusBar barStyle="dark-content" translucent={false} />
+
+      {/* Top AppBar with top inset padding */}
+      <View style={{ paddingTop: insets.top / 2 }}>
+        <TopAppBar
+          title="我的陪伴"
+          showSettings
+        />
+      </View>
 
       {/* Content */}
-      <ScrollView className="flex-1 px-margin-mobile" contentContainerStyle={{ paddingTop: 24, paddingBottom: 80 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: insets.bottom + 80 }}>
         {pairings.length > 0 ? (
           pairings.map((p) => (
             <PairingCard
               key={p.id}
               pairingId={p.id}
-              name={p.companioneeName}
-              online={p.online}
-              lastActive={p.lastActive}
+              name={p.companionee?.name ?? '未知'}
+              online={p.isOnline}
+              lastActive={p.lastActive ?? undefined}
             />
           ))
         ) : (
           <EmptyStateIllustration
-            title="No pairings yet"
-            description="Add your first family member to start caring for them with Xiao Nuan."
-            actionLabel="Add New Pairing"
+            title="还没有陪伴对象"
+            description="添加第一个家人，开始用小暖陪伴他们吧。"
+            actionLabel="添加新陪伴"
             onAction={() => router.push('/(steward)/onboarding')}
           />
         )}
@@ -63,10 +69,10 @@ export default function PairingListScreen() {
 
       {/* Add New Pairing button (fixed bottom) */}
       {pairings.length > 0 && (
-        <View className="absolute bottom-0 left-0 right-0 px-margin-mobile pb-gutter pt-stack-md bg-surface-bright/90">
+        <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingBottom: insets.bottom + 20, paddingTop: 12, backgroundColor: colors.surfaceBright + 'E6', paddingLeft: 20, paddingRight: 20 }}>
           <Button
-            label="Add New Pairing"
-            variant="primary"
+            label="添加新陪伴"
+            variant="secondary"
             icon={<Plus size={20} color={colors.onPrimary} />}
             onPress={() => router.push('/(steward)/onboarding')}
           />

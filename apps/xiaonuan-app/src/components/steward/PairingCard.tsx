@@ -7,13 +7,14 @@ import { colors, typography } from '../../utils/theme';
 
 interface PairingCardProps {
   pairingId: string;
-  name: string;
+  name: string | undefined;
   online: boolean;
   lastActive?: string;
   avatar?: number;
 }
 
 export function PairingCard({ pairingId, name, online, lastActive, avatar }: PairingCardProps) {
+  const displayName = name ?? '未知';
   return (
     <TouchableOpacity
       className="flex-row items-center bg-surfaceLowest rounded-xl p-stack-md mb-stack-sm shadow-sm"
@@ -40,7 +41,7 @@ export function PairingCard({ pairingId, name, online, lastActive, avatar }: Pai
             <Image source={avatar} className="w-full h-full" resizeMode="cover" />
           ) : (
             <Text className="text-2xl font-bold" style={{ color: online ? colors.primary : colors.onSurfaceVariant }}>
-              {name.charAt(0)}
+              {displayName.charAt(0)}
             </Text>
           )}
         </View>
@@ -50,7 +51,7 @@ export function PairingCard({ pairingId, name, online, lastActive, avatar }: Pai
       {/* Info */}
       <View className="flex-1">
         <Text className="text-on-surface font-semibold" style={typography.bodyLgElderly}>
-          {name}
+          {displayName}
         </Text>
         <View className="flex-row items-center gap-stack-sm">
           {online ? (
@@ -59,7 +60,7 @@ export function PairingCard({ pairingId, name, online, lastActive, avatar }: Pai
             <Clock size={14} color={colors.onSurfaceVariant} />
           )}
           <Text className="text-on-surface-variant" style={typography.bodyMd}>
-            {online ? 'Talking to Xiao Nuan' : `Last seen ${lastActive ?? '2h ago'}`}
+            {online ? '正在对话' : `${lastActive ?? '2小时前'}在线`}
           </Text>
         </View>
       </View>

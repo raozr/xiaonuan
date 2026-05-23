@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, Alert, StatusBar } from 'react-native';
 import { router } from 'expo-router';
 import { ChevronRight, Pencil, ExternalLink, Users, UserPlus, LogOut } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopAppBar } from '../../src/components/shared/TopAppBar';
 import { Card } from '../../src/components/ui/Card';
 import { Input } from '../../src/components/ui/Input';
@@ -20,12 +21,13 @@ export default function SettingsScreen() {
   const [dailySummaries, setDailySummaries] = useState(true);
   const [abnormalAlerts, setAbnormalAlerts] = useState(true);
   const [voiceFeed, setVoiceFeed] = useState(false);
+  const insets = useSafeAreaInsets();
 
   async function handleLogout() {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert('退出登录', '确定要退出登录吗？', [
+      { text: '取消', style: 'cancel' },
       {
-        text: 'Log Out',
+        text: '退出',
         style: 'destructive',
         onPress: async () => {
           await clearAuth();
@@ -38,18 +40,20 @@ export default function SettingsScreen() {
 
   async function handleSaveName() {
     setEditingName(false);
-    // TODO: call PUT /api/me to update name
   }
 
   return (
     <View className="flex-1 bg-surface-bright">
-      <TopAppBar title="Settings" showBack />
+      <StatusBar barStyle="dark-content" translucent={false} />
+      <View style={{ paddingTop: insets.top / 2 }}>
+        <TopAppBar title="设置" showBack />
+      </View>
 
-      <ScrollView className="flex-1 px-margin-mobile" contentContainerStyle={{ paddingTop: 24, paddingBottom: 32 }}>
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: insets.bottom + 32 }}>
         {/* Account Settings */}
         <View className="mb-gutter">
-          <Text className="text-on-surface-variant mb-stack-sm uppercase font-bold" style={typography.labelCaps}>
-            ACCOUNT SETTINGS
+          <Text className="text-on-surface-variant mb-stack-sm font-bold" style={typography.labelCaps}>
+            账户设置
           </Text>
           <Card className="p-0 overflow-hidden">
             {/* Profile row */}
@@ -78,11 +82,11 @@ export default function SettingsScreen() {
             {editingName && (
               <View className="px-stack-md pb-stack-md">
                 <Input
-                  label="Name"
+                  label="姓名"
                   value={name}
                   onChangeText={setName}
                 />
-                <Button label="Save" onPress={handleSaveName} fullWidth={false} />
+                <Button label="保存" onPress={handleSaveName} fullWidth={false} />
               </View>
             )}
 
@@ -91,7 +95,7 @@ export default function SettingsScreen() {
 
             {/* Change Password */}
             <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7}>
-              <Text className="text-on-surface" style={typography.bodyMd}>Change Password</Text>
+              <Text className="text-on-surface" style={typography.bodyMd}>修改密码</Text>
               <ChevronRight size={20} color={colors.outline} />
             </TouchableOpacity>
           </Card>
@@ -99,27 +103,27 @@ export default function SettingsScreen() {
 
         {/* Notifications */}
         <View className="mb-gutter">
-          <Text className="text-on-surface-variant mb-stack-sm uppercase font-bold" style={typography.labelCaps}>
-            NOTIFICATIONS
+          <Text className="text-on-surface-variant mb-stack-sm font-bold" style={typography.labelCaps}>
+            通知
           </Text>
           <Card>
             <NotificationToggle
-              label="Daily Summaries"
-              description="Morning health and activity digest"
+              label="每日摘要"
+              description="早晨健康和活动摘要"
               value={dailySummaries}
               onChange={setDailySummaries}
             />
             <View className="h-[1px] bg-surfaceContainer" />
             <NotificationToggle
-              label="Abnormal Habit Alerts"
-              description="Immediate alerts for routine deviations"
+              label="异常提醒"
+              description="日常习惯偏离时立即提醒"
               value={abnormalAlerts}
               onChange={setAbnormalAlerts}
             />
             <View className="h-[1px] bg-surfaceContainer" />
             <NotificationToggle
-              label="Voice Feed Updates"
-              description="New voice messages from Companionee"
+              label="语音消息"
+              description="陪伴者的新语音消息"
               value={voiceFeed}
               onChange={setVoiceFeed}
             />
@@ -128,8 +132,8 @@ export default function SettingsScreen() {
 
         {/* Family Management */}
         <View className="mb-gutter">
-          <Text className="text-on-surface-variant mb-stack-sm uppercase font-bold" style={typography.labelCaps}>
-            FAMILY MANAGEMENT
+          <Text className="text-on-surface-variant mb-stack-sm font-bold" style={typography.labelCaps}>
+            家庭管理
           </Text>
           <Card className="p-0 overflow-hidden">
             <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7}>
@@ -137,7 +141,7 @@ export default function SettingsScreen() {
                 <View className="w-10 h-10 rounded-full bg-surfaceContainer items-center justify-center">
                   <Users size={20} color={colors.onSurfaceVariant} />
                 </View>
-                <Text className="text-on-surface" style={typography.bodyMd}>Manage Connected Accounts</Text>
+                <Text className="text-on-surface" style={typography.bodyMd}>管理已绑定账号</Text>
               </View>
               <ChevronRight size={20} color={colors.outline} />
             </TouchableOpacity>
@@ -147,7 +151,7 @@ export default function SettingsScreen() {
                 <View className="w-10 h-10 rounded-full bg-surfaceContainer items-center justify-center">
                   <UserPlus size={20} color={colors.onSurfaceVariant} />
                 </View>
-                <Text className="text-on-surface" style={typography.bodyMd}>Invite Family Member</Text>
+                <Text className="text-on-surface" style={typography.bodyMd}>邀请家人</Text>
               </View>
               <ChevronRight size={20} color={colors.outline} />
             </TouchableOpacity>
@@ -156,22 +160,22 @@ export default function SettingsScreen() {
 
         {/* Support & About */}
         <View className="mb-gutter">
-          <Text className="text-on-surface-variant mb-stack-sm uppercase font-bold" style={typography.labelCaps}>
-            SUPPORT & ABOUT
+          <Text className="text-on-surface-variant mb-stack-sm font-bold" style={typography.labelCaps}>
+            帮助
           </Text>
           <Card className="p-0 overflow-hidden">
             <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7}>
-              <Text className="text-on-surface" style={typography.bodyMd}>Help Center</Text>
+              <Text className="text-on-surface" style={typography.bodyMd}>帮助中心</Text>
               <ExternalLink size={18} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
             <View className="h-[1px] bg-surfaceContainer mx-stack-md" />
             <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7}>
-              <Text className="text-on-surface" style={typography.bodyMd}>Privacy Policy</Text>
+              <Text className="text-on-surface" style={typography.bodyMd}>隐私政策</Text>
               <ExternalLink size={18} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
             <View className="h-[1px] bg-surfaceContainer mx-stack-md" />
             <View className="p-stack-md">
-              <Text className="text-on-surface-variant" style={typography.bodyMd}>Version: v2.4.1</Text>
+              <Text className="text-on-surface-variant" style={typography.bodyMd}>版本：v2.4.1</Text>
             </View>
           </Card>
         </View>
@@ -179,7 +183,7 @@ export default function SettingsScreen() {
         {/* Log Out */}
         <View className="mb-gutter">
           <Button
-            label="Log Out"
+            label="退出登录"
             variant="danger"
             icon={<LogOut size={18} color={colors.error} />}
             onPress={handleLogout}

@@ -1,4 +1,5 @@
 import { Tabs, Redirect, useLocalSearchParams } from 'expo-router';
+import { BarChart3, History, MessageSquare, Mic } from 'lucide-react-native';
 import { useAuthStore } from '../../../src/store/auth-store';
 import { colors, typography } from '../../../src/utils/theme';
 
@@ -34,28 +35,36 @@ export default function PairingDetailLayout() {
         name="index"
         options={{
           title: '概览',
-          tabBarIcon: ({ color: _color }: { color: string }) => null,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <BarChart3 size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="logs"
         options={{
           title: '日志',
-          tabBarIcon: ({ color: _color }: { color: string }) => null,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <History size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="feed"
         options={{
           title: '留言',
-          tabBarIcon: ({ color: _color }: { color: string }) => null,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <MessageSquare size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="voice"
         options={{
           title: '声音',
-          tabBarIcon: ({ color: _color }: { color: string }) => null,
+          tabBarIcon: ({ color, size }: { color: string; size: number }) => (
+            <Mic size={size} color={color} />
+          ),
         }}
       />
     </Tabs>

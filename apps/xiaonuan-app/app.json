@@ -2,6 +2,7 @@
   "expo": {
     "name": "小暖",
     "slug": "xiaonuan-app",
+    "scheme": "xiaonuan",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -28,7 +29,8 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-smalll.jpg",
         "backgroundColor": "#FFF8F3"
-      }
+      },
+      "softwareKeyboardLayoutMode": "resize"
     },
     "extra": {
       "eas": {

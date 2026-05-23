@@ -79,16 +79,16 @@ export default function RegisterScreen() {
 
           {/* Brand */}
           <Text className="text-primaryContainer mb-1 font-bold" style={typography.headlineLg}>
-            Xiao Nuan
+            小暖
           </Text>
           <Text className="text-on-surface-variant mb-gutter text-center" style={typography.bodyMd}>
-            Create a caregiver account to support your loved ones.
+            创建照护者账号，守护您的家人。
           </Text>
 
           {/* Full Name */}
           <Input
-            label="Full Name"
-            placeholder="e.g. Jane Doe"
+            label="姓名"
+            placeholder="请输入姓名"
             value={name}
             onChangeText={setName}
             leftIcon={<User size={20} color={colors.onSurfaceVariant} />}
@@ -96,8 +96,8 @@ export default function RegisterScreen() {
 
           {/* Mobile Number */}
           <Input
-            label="Mobile Number"
-            placeholder="e.g. +1 234 567 8900"
+            label="手机号"
+            placeholder="请输入手机号"
             value={phone}
             onChangeText={setPhone}
             keyboardType="phone-pad"
@@ -106,8 +106,8 @@ export default function RegisterScreen() {
 
           {/* Password */}
           <Input
-            label="Password"
-            placeholder="Enter your password"
+            label="密码"
+            placeholder="请设置密码"
             value={password}
             onChangeText={setPassword}
             secureTextEntry={!showPassword}
@@ -124,8 +124,8 @@ export default function RegisterScreen() {
 
           {/* Confirm Password */}
           <Input
-            label="Confirm Password"
-            placeholder="Re-enter your password"
+            label="确认密码"
+            placeholder="请再次输入密码"
             value={confirmPassword}
             onChangeText={setConfirmPassword}
             secureTextEntry={!showConfirm}
@@ -143,7 +143,7 @@ export default function RegisterScreen() {
           {/* Register button */}
           <View className="w-full mt-stack-md">
             <Button
-              label="Register"
+              label="注册"
               onPress={handleRegister}
               loading={loading}
               icon={<ArrowRight size={20} color={colors.onPrimary} />}
@@ -153,8 +153,8 @@ export default function RegisterScreen() {
           {/* Login link */}
           <TouchableOpacity className="mt-stack-lg" activeOpacity={0.7} onPress={() => router.push('/(auth)/login')}>
             <Text className="text-on-surface-variant text-center">
-              Already have an account?{' '}
-              <Text className="text-primaryContainer font-bold">Login</Text>
+              已有账号？
+              <Text className="text-primaryContainer font-bold"> 去登录</Text>
             </Text>
           </TouchableOpacity>
         </Card>

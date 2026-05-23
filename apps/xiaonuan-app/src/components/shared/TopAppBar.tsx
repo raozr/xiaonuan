@@ -16,39 +16,37 @@ export function TopAppBar({ title, subtitle, showBack, showSettings, rightAction
   const router = useRouter();
 
   return (
-    <View className="flex-row items-center justify-between w-full h-touch-target-min px-margin-mobile bg-surface-bright">
-      {/* Left */}
-      <View className="w-16">
+    <View className="flex-row items-center w-full h-touch-target-min px-margin-mobile bg-surface-bright">
+      {/* Left: back + title */}
+      <View className="flex-1 flex-row items-center gap-2">
         {showBack && (
           <TouchableOpacity activeOpacity={0.7} onPress={() => router.back()}>
             <ChevronLeft size={28} color={colors.secondary} />
           </TouchableOpacity>
         )}
+        <View>
+          <Text className="text-primary font-bold" style={typography.headlineLg}>
+            {title}
+          </Text>
+          {subtitle && (
+            <Text className="text-on-surface-variant" style={typography.bodyMd}>
+              {subtitle}
+            </Text>
+          )}
+        </View>
+      </View>
+
+      {/* Right: settings */}
+      <View className="flex-row items-center gap-2">
         {showSettings && (
           <TouchableOpacity
-            className="w-16 h-16 rounded-full items-center justify-center border border-outlineVariant"
+            className="w-10 h-10 rounded-full items-center justify-center border border-outlineVariant"
             activeOpacity={0.7}
             onPress={() => router.push('/(steward)/settings')}
           >
-            <Settings size={24} color={colors.secondary} />
+            <Settings size={20} color={colors.secondary} />
           </TouchableOpacity>
         )}
-      </View>
-
-      {/* Center */}
-      <View className="flex-1 items-center">
-        <Text className="text-primary font-bold" style={typography.headlineLg}>
-          {title}
-        </Text>
-        {subtitle && (
-          <Text className="text-on-surface-variant" style={typography.bodyMd}>
-            {subtitle}
-          </Text>
-        )}
-      </View>
-
-      {/* Right */}
-      <View className="w-16 items-end">
         {rightAction && (
           <TouchableOpacity activeOpacity={0.7} onPress={rightAction.onPress}>
             {rightAction.icon}

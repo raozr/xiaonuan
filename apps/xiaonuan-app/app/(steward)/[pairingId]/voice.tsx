@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Mic, Check, RefreshCw, RotateCcw } from 'lucide-react-native';
+import { TopAppBar } from '../../../src/components/shared/TopAppBar';
 import { Card } from '../../../src/components/ui/Card';
 import { colors, typography } from '../../../src/utils/theme';
 
@@ -13,25 +15,9 @@ interface VoiceSample {
 }
 
 const mockSamples: VoiceSample[] = [
-  {
-    id: 1,
-    label: 'Sample 1',
-    phrase: '"Good morning! Did you sleep well? I hope you have a wonderful day today."',
-    status: 'completed',
-    duration: '00:15',
-  },
-  {
-    id: 2,
-    label: 'Sample 2',
-    phrase: '"Good morning! Did you sleep well? I hope you have a wonderful day today."',
-    status: 'active',
-  },
-  {
-    id: 3,
-    label: 'Sample 3',
-    phrase: '"Time for your afternoon walk. The weather is lovely today, shall we go?"',
-    status: 'pending',
-  },
+  { id: 1, label: '第一段', phrase: '"早上好！昨晚睡得好吗？今天天气真不错。"', status: 'completed', duration: '00:15' },
+  { id: 2, label: '第二段', phrase: '"该吃午饭了，今天有你最喜欢的红烧鱼。"', status: 'active' },
+  { id: 3, label: '第三段', phrase: '"下午要不要一起去公园散步？"', status: 'pending' },
 ];
 
 function SampleStep({ sample }: { sample: VoiceSample }) {
@@ -41,7 +27,6 @@ function SampleStep({ sample }: { sample: VoiceSample }) {
 
   return (
     <View className="flex-row items-start gap-stack-md relative z-10">
-      {/* Icon Circle */}
       <View
         className="w-12 h-12 rounded-full items-center justify-center flex-shrink-0"
         style={{
@@ -61,8 +46,6 @@ function SampleStep({ sample }: { sample: VoiceSample }) {
           </Text>
         )}
       </View>
-
-      {/* Content */}
       <View className="flex-1 pt-stack-sm">
         <Text
           className="font-semibold"
@@ -73,11 +56,10 @@ function SampleStep({ sample }: { sample: VoiceSample }) {
         >
           {sample.label}
         </Text>
-
         {isActive && (
           <>
             <Text className="text-on-surface-variant mt-1 mb-stack-sm" style={typography.bodyMd}>
-              Please read the following phrase clearly:
+              请清晰朗读以下内容：
             </Text>
             <View
               className="p-stack-md rounded-lg mb-stack-md"
@@ -87,10 +69,7 @@ function SampleStep({ sample }: { sample: VoiceSample }) {
                 borderColor: colors.outlineVariant,
               }}
             >
-              <Text
-                className="italic"
-                style={{ ...typography.bodyLgElderly, color: colors.onSurface }}
-              >
+              <Text className="italic" style={{ ...typography.bodyLgElderly, color: colors.onSurface }}>
                 {sample.phrase}
               </Text>
             </View>
@@ -103,29 +82,27 @@ function SampleStep({ sample }: { sample: VoiceSample }) {
                 <Mic size={28} color={colors.onError} fill={colors.onError} />
               </TouchableOpacity>
               <Text className="text-error font-semibold" style={typography.bodyMd}>
-                Tap to record
+                点击录音
               </Text>
             </View>
           </>
         )}
-
         {isCompleted && (
           <View className="flex-row items-center gap-stack-sm mt-1">
             <Text className="text-on-surface-variant" style={typography.bodyMd}>
-              Completed ({sample.duration})
+              已完成 ({sample.duration})
             </Text>
             <TouchableOpacity className="flex-row items-center gap-1" activeOpacity={0.7}>
               <RefreshCw size={16} color={colors.primary} />
               <Text className="text-primary font-semibold" style={typography.bodyMd}>
-                Re-record
+                重新录制
               </Text>
             </TouchableOpacity>
           </View>
         )}
-
         {isPending && (
           <Text className="text-on-surface-variant mt-1" style={typography.bodyMd}>
-            Pending
+            等待中
           </Text>
         )}
       </View>
@@ -135,30 +112,29 @@ function SampleStep({ sample }: { sample: VoiceSample }) {
 
 export default function VoiceTab() {
   const [samples] = useState<VoiceSample[]>(mockSamples);
+  const insets = useSafeAreaInsets();
 
   return (
     <View className="flex-1 bg-surface-bright">
-      <ScrollView className="flex-1 px-margin-mobile" contentContainerStyle={{ paddingTop: 16, paddingBottom: 32 }}>
+      <StatusBar barStyle="dark-content" translucent={false} />
+      <View style={{ paddingTop: insets.top / 2 }}>
+        <TopAppBar title="声音克隆" showBack />
+      </View>
+      <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 16, paddingBottom: insets.bottom + 32 }}>
         {/* Header */}
         <View className="mb-stack-lg">
-          <Text className="text-on-surface mb-stack-sm" style={typography.headlineLg}>
-            Clone Your Voice
-          </Text>
           <Text className="text-on-surface-variant" style={typography.bodyMd}>
-            Record a few short phrases so Xiao Nuan can speak with your voice. This helps create a more familiar and comforting experience.
+            录制几段简短的语音，让小暖用你的声音说话。这能创造更熟悉、温暖的陪伴体验。
           </Text>
         </View>
 
         {/* Voice Cloning Steps Card */}
         <Card className="p-stack-lg">
           <View className="flex-col gap-stack-lg mb-2 relative" style={{ minHeight: 340 }}>
-            {/* Connecting Line */}
             <View
               className="absolute w-0.5 bg-surfaceContainerHighest z-0"
               style={{ left: 24, top: 24, bottom: 48 }}
             />
-
-            {/* Steps */}
             {samples.map((sample) => (
               <SampleStep key={sample.id} sample={sample} />
             ))}

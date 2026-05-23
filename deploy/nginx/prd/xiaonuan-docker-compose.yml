@@ -1,0 +1,107 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: xiaonuan-postgres
+    environment:
+      POSTGRES_USER: xiaonuan
+      POSTGRES_PASSWORD: xiaonuan
+      POSTGRES_DB: xiaonuan
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U xiaonuan']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.0
+    container_name: xiaonuan-qdrant
+    volumes:
+      - ./data/qdrant:/qdrant/storage
+    networks:
+      - app-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: xiaonuan-redis
+    volumes:
+      - ./data/redis:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  voice-service:
+    build:
+      context: ./apps/voice-service
+      dockerfile: Dockerfile
+    container_name: xiaonuan-voice-service
+    restart: always
+    environment:
+      - BAILIAN_API_KEY=${DASHSCOPE_API_KEY}
+      - AUDIO_STORAGE_PATH=/app/data/audio
+      - PORT=8000
+    volumes:
+      - ./data/voice-audio:/app/data/audio
+    networks:
+      - app-network
+
+  gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: xiaonuan-gateway
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      voice-service:
+        condition: service_started
+    environment:
+      - NODE_ENV=production
+      - PORT=${PORT:-3000}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - DATABASE_URL=postgresql://xiaonuan:xiaonuan@xiaonuan-postgres:5432/xiaonuan
+      - QDRANT_URL=http://xiaonuan-qdrant:6333
+      - REDIS_URL=redis://xiaonuan-redis:6379
+      - JWT_SECRET=${JWT_SECRET:-xiaonuan-prod-secret}
+      - WECHAT_APPID=${WECHAT_APPID}
+      - WECHAT_SECRET=${WECHAT_SECRET}
+      - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
+      - NLS_APP_KEY=${NLS_APP_KEY}
+      - NLS_ACCESS_KEY_ID=${NLS_ACCESS_KEY_ID}
+      - NLS_ACCESS_KEY_SECRET=${NLS_ACCESS_KEY_SECRET}
+      - VOICE_SERVICE_URL=http://xiaonuan-voice-service:8000
+      - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
+    networks:
+      - app-network
+
+  child-pc:
+    build:
+      context: .
+      dockerfile: apps/child-pc/Dockerfile
+    container_name: xiaonuan-child-pc
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://xiaonuan-gateway:3000}
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    external: true

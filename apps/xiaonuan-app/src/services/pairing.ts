@@ -2,9 +2,20 @@ import { api } from './api';
 
 export interface Pairing {
   id: string;
-  companioneeName: string;
-  online: boolean;
-  lastActive?: string;
+  companionee: {
+    id: string;
+    pairingId: string;
+    name: string;
+    gender?: string;
+    age?: number;
+    dialect?: string;
+    hobbies?: string;
+    healthNotes?: string;
+    topicsToAvoid?: string;
+    greetingPreference?: string;
+  } | undefined;
+  isOnline: boolean;
+  lastActive: string | null;
 }
 
 export interface CreatePairingInput {
@@ -35,6 +46,21 @@ export async function bindPairing(input: BindInput) {
     method: 'POST',
     body: JSON.stringify(input),
   }) as Promise<{ token: string; pairingId: string; stewardName: string; companioneeName: string }>;
+}
+
+export interface DailySummary {
+  mood: string;
+  duration: number;
+  topics: number;
+  highlights: string[];
+  concerns: string | null;
+}
+
+export async function getDailySummary(token: string, pairingId: string) {
+  return api(`/api/pairings/${pairingId}/daily-summary`, { token }) as Promise<{
+    success: boolean;
+    data: DailySummary | null;
+  }>;
 }
 
 export async function refreshPairingCode(token: string, pairingId: string) {

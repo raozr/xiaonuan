@@ -19,8 +19,6 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { token } = useAuthStore();
 
-  const mockCode = '582914';
-
   async function handleNext() {
     if (!name.trim()) {
       Alert.alert('提示', '请输入姓名');
@@ -45,7 +43,8 @@ export default function OnboardingScreen() {
       setGeneratedCode(result.inviteCode);
       setStep(2);
     } catch (err: any) {
-      Alert.alert('创建失败', err.message || '请稍后重试');
+      const details = err.responseBody ? JSON.stringify(err.responseBody, null, 2) : '';
+      Alert.alert('创建失败', `${err.message || '请稍后重试'}\n\n${details}`);
     } finally {
       setLoading(false);
     }

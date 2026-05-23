@@ -178,8 +178,9 @@ Strict mode enabled in root `tsconfig.json`:
 
 - **child-pc** app uses Next.js 16 with breaking API changes from training data; see its own CLAUDE.md
 - V0.4 migrated from Family-based to Pairing-based data model; all routes use `/api/pairings/*`
+- **POST /api/pairings** request body: `{ name: string, relationship: string, notes?: string }` (was `companioneeName`, `companioneeAge`, etc.)
+- Participant roles: `COMPANIONEE` (elder) and `STEWARD` (caregiver) (was `ELDER`/`CHILD`)
 - Gateway requires external Docker network `app-network` for production
 - Voice service uses Python 3.11+ with `requirements.txt`
 - Mini-program is native WeChat framework (not Taro/uni-app)
-- Elder-app uses Expo SDK 55 with React Native 0.83
-- Elder-app includes `expo-updates` for OTA updates; configure `updates.url` in `app.json`
+- XiaoNuan App (`apps/xiaonuan-app`): Unified React Native app built with Expo SDK 55 + React Native 0.83 + NativeWind v4 (was `elder-app`), includes `expo-updates` for OTA updates

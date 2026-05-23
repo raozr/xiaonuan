@@ -15,7 +15,7 @@ interface ButtonProps {
 
 const variantStyles: Record<'primary' | 'secondary' | 'outline' | 'danger', { bg: string; text: string }> = {
   primary: { bg: colors.primaryContainer, text: colors.onPrimary },
-  secondary: { bg: colors.secondaryContainer, text: colors.onSecondaryContainer },
+  secondary: { bg: colors.primary, text: colors.onPrimary },
   outline: { bg: 'transparent', text: colors.primary },
   danger: { bg: colors.errorContainer, text: colors.error },
 };
