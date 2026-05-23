@@ -2,30 +2,37 @@ import { api } from './api';
 
 export interface EventItem {
   id: string;
-  time: string;
-  title: string;
+  pairingId: string;
+  actorId: string | null;
+  type: string;
   content: string;
-  icon: string;
-  variant: 'action' | 'normal' | 'weather';
+  tags: string[];
+  payload: Record<string, unknown> | null;
+  eventTime: string;
+  createdAt: string;
 }
 
-export interface DailySummary {
-  emotion: string;
-  conversationTime: string;
-  topicCount: number;
-  highlights: string[];
-  importantNote: string;
+export interface EventListResponse {
+  data: EventItem[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+  };
 }
 
-export async function getDailySummary(token: string, pairingId: string) {
-  return api(`/api/pairings/${pairingId}/summary`, { token }) as Promise<DailySummary>;
-}
-
-export async function getEvents(token: string, pairingId: string, date?: string) {
-  const params = date ? `?date=${date}` : '';
-  return api(`/api/pairings/${pairingId}/events${params}`, { token }) as Promise<EventItem[]>;
-}
-
-export async function getTodayEvents(token: string, pairingId: string) {
-  return api(`/api/pairings/${pairingId}/events/today`, { token }) as Promise<EventItem[]>;
+export async function listEvents(
+  token: string,
+  pairingId: string,
+  params?: { type?: string; page?: number; limit?: number }
+) {
+  const searchParams = new URLSearchParams();
+  if (params?.type) searchParams.append('type', params.type);
+  if (params?.page) searchParams.append('page', String(params.page));
+  if (params?.limit) searchParams.append('limit', String(params.limit));
+  const query = searchParams.toString();
+  return api<EventListResponse>(
+    `/api/pairings/${pairingId}/events${query ? `?${query}` : ''}`,
+    { token }
+  );
 }

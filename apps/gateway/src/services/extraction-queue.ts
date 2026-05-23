@@ -7,7 +7,7 @@ import { addProfiles } from '../memory/persona-service.js';
 const QUEUE_NAME = 'extraction';
 
 export interface ExtractionJob {
-  source: 'feed' | 'checkpoint';
+  source: 'feed' | 'checkpoint' | 'conversation';
   pairingId: string;
   content: string;
   senderRole?: string;    // 'STEWARD' | 'COMPANIONEE' | 'AI' — 谁说的
