@@ -61,7 +61,7 @@ export default function HelpCenterScreen() {
         ))}
 
         <Text className="text-on-surface-variant mt-stack-lg" style={typography.bodyMd}>
-          如有其他问题，请联系 support@xiaonuan.ai
+          如有其他问题，请联系客服团队
         </Text>
       </ScrollView>
     </View>

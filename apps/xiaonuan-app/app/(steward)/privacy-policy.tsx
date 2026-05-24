@@ -72,7 +72,7 @@ export default function PrivacyPolicyScreen() {
         ))}
 
         <Text className="text-on-surface-variant mt-stack-lg" style={typography.bodyMd}>
-          如有疑问，请联系 privacy@xiaonuan.ai
+          如有疑问，请联系客服团队
         </Text>
       </ScrollView>
     </View>
