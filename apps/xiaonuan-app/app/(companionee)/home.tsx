@@ -7,6 +7,7 @@ import {
   ToastAndroid,
   Platform,
   Image,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -42,6 +43,10 @@ export default function CompanioneeHome() {
   const breatheScale = useSharedValue(1);
   const pulseScale = useSharedValue(0.8);
   const pulseOpacity = useSharedValue(0.8);
+  const speakHaloScale = useSharedValue(1);
+  const speakHaloOpacity = useSharedValue(0);
+  const processingHaloScale = useSharedValue(1);
+  const processingHaloOpacity = useSharedValue(0);
 
   const { isRecording, isPlaying, playError, hasPermission, requestPermission, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
 
@@ -51,7 +56,7 @@ export default function CompanioneeHome() {
 
   // Breathing animation
   useEffect(() => {
-    if (state === 'LISTENING' || state === 'SPEAKING') {
+    if (state === 'LISTENING' || state === 'SPEAKING' || state === 'PROCESSING') {
       cancelAnimation(breatheScale);
       breatheScale.value = withRepeat(
         withSequence(
@@ -64,7 +69,55 @@ export default function CompanioneeHome() {
       cancelAnimation(breatheScale);
       breatheScale.value = withTiming(1, { duration: 300 });
     }
-  }, [state, breatheScale]);
+
+    if (state === 'SPEAKING') {
+      cancelAnimation(speakHaloScale);
+      cancelAnimation(speakHaloOpacity);
+      speakHaloScale.value = withRepeat(
+        withSequence(
+          withTiming(1.2, { duration: 1500 }),
+          withTiming(1.0, { duration: 1500 })
+        ),
+        -1
+      );
+      speakHaloOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.8, { duration: 1500 }),
+          withTiming(0.2, { duration: 1500 })
+        ),
+        -1
+      );
+    } else {
+      cancelAnimation(speakHaloScale);
+      cancelAnimation(speakHaloOpacity);
+      speakHaloScale.value = withTiming(1, { duration: 300 });
+      speakHaloOpacity.value = withTiming(0, { duration: 300 });
+    }
+
+    if (state === 'PROCESSING') {
+      cancelAnimation(processingHaloScale);
+      cancelAnimation(processingHaloOpacity);
+      processingHaloScale.value = withRepeat(
+        withSequence(
+          withTiming(1.15, { duration: 800 }),
+          withTiming(1.0, { duration: 800 })
+        ),
+        -1
+      );
+      processingHaloOpacity.value = withRepeat(
+        withSequence(
+          withTiming(0.6, { duration: 800 }),
+          withTiming(0.1, { duration: 800 })
+        ),
+        -1
+      );
+    } else {
+      cancelAnimation(processingHaloScale);
+      cancelAnimation(processingHaloOpacity);
+      processingHaloScale.value = withTiming(1, { duration: 300 });
+      processingHaloOpacity.value = withTiming(0, { duration: 300 });
+    }
+  }, [state, breatheScale, speakHaloScale, speakHaloOpacity, processingHaloScale, processingHaloOpacity]);
 
   // Pulse animation for voice button
   useEffect(() => {
@@ -290,6 +343,16 @@ export default function CompanioneeHome() {
     transform: [{ scale: breatheScale.value }],
   }));
 
+  const speakHaloStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: speakHaloScale.value }],
+    opacity: speakHaloOpacity.value,
+  }));
+
+  const processingHaloStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: processingHaloScale.value }],
+    opacity: processingHaloOpacity.value,
+  }));
+
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
     opacity: pulseOpacity.value,
@@ -313,89 +376,134 @@ export default function CompanioneeHome() {
       </View>
 
       {/* Main Content */}
-      <View className="flex-1 items-center justify-center px-gutter relative">
+      <View className="flex-1 px-gutter pt-4 pb-8 justify-between items-center relative">
         {/* Ambient glow */}
         <View className="absolute inset-0" style={{ backgroundColor: 'transparent' }} />
 
-        {/* Mascot */}
-        <View className="items-center justify-center mb-8 relative">
-          <Animated.View className="w-[280px] h-[280px] rounded-full overflow-hidden" style={breatheStyle}>
+        {/* Top: Mascot */}
+        <View className="w-full items-center justify-center my-6 relative">
+          {/* Listening Halo */}
+          {state === 'LISTENING' && (
+            <Animated.View
+              style={[
+                { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: colors.primaryContainer },
+                pulseStyle
+              ]}
+            />
+          )}
+          {/* Speaking Halo */}
+          {state === 'SPEAKING' && (
+            <Animated.View
+              style={[
+                { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: colors.primaryFixed },
+                speakHaloStyle
+              ]}
+            />
+          )}
+          {/* Processing Halo */}
+          {state === 'PROCESSING' && (
+            <Animated.View
+              style={[
+                { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: colors.secondaryContainer },
+                processingHaloStyle
+              ]}
+            />
+          )}
+          <Animated.View
+            style={[
+              { width: 140, height: 140, borderRadius: 70, overflow: 'hidden', zIndex: 10 },
+              breatheStyle
+            ]}
+          >
             <Image
-              source={require('../../assets/logo.png')}
+              source={require('../../assets/logo-smalll.jpg')}
               className="w-full h-full"
-              resizeMode="contain"
+              resizeMode="cover"
             />
           </Animated.View>
         </View>
 
-        {/* AI Text Bubble */}
-        <View className="w-full max-w-[320px] bg-surfaceContainer rounded-2xl p-5 shadow-sm" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 }}>
-          <Text className="text-center text-on-surface" style={typography.bodyLgElderly}>
-            {aiText}
-          </Text>
+        {/* Middle: AI Text Bubble (Scrollable) */}
+        <View className="flex-1 w-full items-center justify-center mb-6 mt-4">
+          <View className="w-full max-w-[340px] flex-1 max-h-[100%] bg-white rounded-[32px] p-6 border border-surfaceContainerHigh" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}>
+            <ScrollView 
+              contentContainerStyle={{ flexGrow: 1, paddingVertical: 4 }} 
+              showsVerticalScrollIndicator={true} 
+              bounces={true}
+              indicatorStyle="black"
+            >
+              <Text className="text-on-surface" style={[typography.bodyLgElderly, { textAlign: aiText.length > 20 ? 'left' : 'center', lineHeight: 32 }]}>
+                {aiText}
+              </Text>
+            </ScrollView>
+          </View>
         </View>
 
-        {/* Voice Button */}
-        <View className="absolute bottom-[10vh] items-center gap-stack-md">
-          <View className="relative items-center justify-center">
-            {/* Pulse ring */}
-            <Animated.View
-              className="absolute w-[120px] h-[120px] rounded-full border-4 border-primaryContainer"
-              style={pulseStyle}
-            />
-            <TouchableOpacity
-              className="w-[120px] h-[120px] rounded-full items-center justify-center shadow-lg border-4 border-surface-bright"
-              style={{
-                backgroundColor: state === 'LISTENING' ? colors.onPrimaryFixedVariant : colors.primary,
-                shadowColor: colors.primary,
-                shadowOffset: { width: 0, height: 8 },
-                shadowOpacity: 0.25,
-                shadowRadius: 16,
-                elevation: 10,
-              }}
-              activeOpacity={0.8}
-              onLongPress={handleLongPress}
-              onPressOut={handlePressOut}
-              delayLongPress={100}
-            >
-              <Mic size={40} color={colors.onPrimary} />
-            </TouchableOpacity>
-          </View>
-          <Text className="font-bold text-on-surface-variant tracking-wide" style={typography.bodyLgElderly}>
-            {micLabel}
-          </Text>
+        {/* Bottom: Actions Container */}
+        <View className="w-full h-[160px] items-center justify-center relative">
+          {(state === 'PROCESSING' || state === 'SPEAKING') ? (
+            <View className="items-center">
+              {state === 'SPEAKING' ? (
+                <TouchableOpacity
+                  className="w-[120px] h-[120px] rounded-full items-center justify-center border-4 border-surface-bright"
+                  style={{ backgroundColor: '#c0392b' }}
+                  activeOpacity={0.8}
+                  onPress={handleStop}
+                >
+                  <Square size={32} color={colors.onPrimary} fill={colors.onPrimary} />
+                  <Text className="text-on-primary font-bold mt-1" style={{ fontSize: 16 }}>停止</Text>
+                </TouchableOpacity>
+              ) : (
+                <View className="w-[120px] h-[120px] rounded-full items-center justify-center border-4 border-surface-bright opacity-70" style={{ backgroundColor: colors.primary }}>
+                  <Text className="text-on-primary font-bold" style={{ fontSize: 16 }}>处理中</Text>
+                </View>
+              )}
+            </View>
+          ) : (
+            <View className="items-center gap-stack-md">
+              <View className="relative items-center justify-center">
+                {/* Pulse ring */}
+                <Animated.View
+                  style={[
+                    { position: 'absolute', width: 120, height: 120, borderRadius: 60, borderWidth: 4, borderColor: colors.primaryContainer },
+                    pulseStyle
+                  ]}
+                />
+                <TouchableOpacity
+                  className="w-[120px] h-[120px] rounded-full items-center justify-center border-4 border-surface-bright"
+                  style={{
+                    backgroundColor: state === 'LISTENING' ? colors.onPrimaryFixedVariant : colors.primary,
+                    shadowColor: colors.primary,
+                    shadowOffset: { width: 0, height: 8 },
+                    shadowOpacity: 0.25,
+                    shadowRadius: 16,
+                    elevation: 10,
+                  }}
+                  activeOpacity={0.8}
+                  onLongPress={handleLongPress}
+                  onPressOut={handlePressOut}
+                  delayLongPress={100}
+                >
+                  <Mic size={40} color={colors.onPrimary} />
+                </TouchableOpacity>
+              </View>
+              <Text className="font-bold text-on-surface-variant tracking-wide" style={typography.bodyLgElderly}>
+                {micLabel}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Unbind button */}
         <TouchableOpacity
-          className="absolute bottom-margin-mobile right-margin-mobile w-touch-target-min h-touch-target-min bg-secondaryContainer rounded-full items-center justify-center shadow-md"
+          className="absolute bottom-8 right-0 w-touch-target-min h-touch-target-min bg-surfaceContainerHigh rounded-full items-center justify-center"
+          style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.1, shadowRadius: 2, elevation: 2 }}
           activeOpacity={0.7}
           onPress={handleUnbind}
         >
-          <LogOut size={24} color={colors.onSecondaryContainer} />
+          <LogOut size={20} color={colors.onSurfaceVariant} />
         </TouchableOpacity>
       </View>
-
-      {/* Processing / Speaking overlay */}
-      {(state === 'PROCESSING' || state === 'SPEAKING') && (
-        <View className="absolute bottom-[10vh] left-1/2 items-center" style={{ transform: [{ translateX: -60 }] }}>
-          {state === 'SPEAKING' ? (
-            <TouchableOpacity
-              className="w-[120px] h-[120px] rounded-full items-center justify-center shadow-lg border-4 border-surface-bright"
-              style={{ backgroundColor: '#c0392b' }}
-              activeOpacity={0.8}
-              onPress={handleStop}
-            >
-              <Square size={32} color={colors.onPrimary} fill={colors.onPrimary} />
-              <Text className="text-on-primary font-bold mt-1" style={{ fontSize: 15 }}>停止</Text>
-            </TouchableOpacity>
-          ) : (
-            <View className="w-[120px] h-[120px] rounded-full items-center justify-center shadow-lg border-4 border-surface-bright opacity-70" style={{ backgroundColor: colors.primary }}>
-              <Text className="text-on-primary font-bold" style={{ fontSize: 15 }}>处理中</Text>
-            </View>
-          )}
-        </View>
-      )}
     </SafeAreaView>
   );
 }
