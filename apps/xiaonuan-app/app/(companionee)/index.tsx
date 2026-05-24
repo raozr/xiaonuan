@@ -43,7 +43,7 @@ export default function CompanioneeBinding() {
     const deviceId = await ensureDeviceId();
     setLoading(true);
     try {
-      const data = await bindPairing({ code, deviceId });
+      const data = await bindPairing({ inviteCode: code, deviceId });
       await setAuth({
         token: data.token,
         pairingId: data.pairingId,

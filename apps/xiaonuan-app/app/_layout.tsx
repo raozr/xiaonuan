@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 import { Stack } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { View, ActivityIndicator } from 'react-native';

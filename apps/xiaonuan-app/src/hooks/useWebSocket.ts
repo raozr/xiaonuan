@@ -27,6 +27,12 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
   }, []);
 
   const connect = useCallback(() => {
+    // Don't connect if token is missing — avoids 1008 "Missing token" on startup
+    // before AsyncStorage has finished loading.
+    if (!token) {
+      return;
+    }
+
     if (
       ws.current?.readyState === WebSocket.OPEN ||
       ws.current?.readyState === WebSocket.CONNECTING
@@ -47,7 +53,11 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
     socket.onmessage = (event) => {
       try {
         const message: WebSocketMessage = JSON.parse(event.data);
-        console.log('[WS] Received:', message.type, JSON.stringify(message.payload).slice(0, 120));
+        if (message.type === 'error') {
+          console.error('[WS] Received error:', JSON.stringify(message.payload));
+        } else {
+          console.log('[WS] Received:', message.type, JSON.stringify(message.payload).slice(0, 120));
+        }
         if (message.type === 'ping') {
           if (ws.current?.readyState === WebSocket.OPEN) {
             ws.current.send(JSON.stringify({ type: 'pong', payload: {}, timestamp: Date.now() }));

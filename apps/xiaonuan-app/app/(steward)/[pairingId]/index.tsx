@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StatusBar } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StatusBar, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
 import {
@@ -19,7 +19,7 @@ import {
 import { TopAppBar } from '../../../src/components/shared/TopAppBar';
 import { colors, typography } from '../../../src/utils/theme';
 import { useAuthStore } from '../../../src/store/auth-store';
-import { getPairingDetail, getDailySummary, type DailySummary } from '../../../src/services/pairing';
+import { getPairingDetail, getDailySummary, type DailySummary, refreshPairingCode } from '../../../src/services/pairing';
 import { formatTimeAgo } from '../../../src/utils/time';
 
 type EmotionCategory = 'positive' | 'neutral' | 'negative';
@@ -156,6 +156,20 @@ export default function StatusTab() {
       });
   }, [pairingId, token]);
 
+  const handleRefreshCode = async () => {
+    if (!pairingId || !token) return;
+    try {
+      const data = await refreshPairingCode(token, pairingId);
+      if (data?.inviteCode) {
+        setPairingCode(data.inviteCode);
+        Alert.alert('刷新成功', '配对码已更新，24小时内有效');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : '刷新配对码失败，请稍后再试';
+      Alert.alert('刷新失败', message);
+    }
+  };
+
   const formatCode = (code: string) =>
     code.length === 6 ? `${code.slice(0, 3)} ${code.slice(3)}` : code;
 
@@ -185,7 +199,7 @@ export default function StatusTab() {
                 {pairingCode ? formatCode(pairingCode) : '--- ---'}
               </Text>
             </View>
-            <TouchableOpacity className="w-10 h-10 rounded-full items-center justify-center" activeOpacity={0.7}>
+            <TouchableOpacity className="w-10 h-10 rounded-full items-center justify-center" activeOpacity={0.7} onPress={handleRefreshCode}>
               <RefreshCw size={20} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
           </View>

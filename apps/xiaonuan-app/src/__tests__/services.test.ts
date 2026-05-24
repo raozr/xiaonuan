@@ -127,7 +127,7 @@ describe('API Service Layer', () => {
       });
 
       const { bindPairing } = await import('../services/pairing');
-      const result = await bindPairing({ code: '123456', deviceId: 'device-1' });
+      const result = await bindPairing({ inviteCode: '123456', deviceId: 'device-1' });
 
       expect(result.token).toBe('bind-token');
       expect(result.pairingId).toBe('pair-123');

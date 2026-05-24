@@ -25,7 +25,7 @@ export interface CreatePairingInput {
 }
 
 export interface BindInput {
-  code: string;
+  inviteCode: string;
   deviceId: string;
 }
 
@@ -67,7 +67,7 @@ export async function refreshPairingCode(token: string, pairingId: string) {
   return api(`/api/pairings/${pairingId}/refresh-code`, {
     method: 'POST',
     token,
-  }) as Promise<{ code: string }>;
+  }) as Promise<{ inviteCode: string; inviteCodeExpiresAt: string }>;
 }
 
 export async function getPairingDetail(token: string, pairingId: string) {
