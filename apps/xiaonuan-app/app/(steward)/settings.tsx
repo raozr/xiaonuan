@@ -11,7 +11,7 @@ import { useAuthStore } from '../../src/store/auth-store';
 import { useRoleStore } from '../../src/store/role-store';
 import { COMPANIONEE_ROLE } from '../../src/utils/constants';
 import { colors, typography } from '../../src/utils/theme';
-import { getMe, updatePassword } from '../../src/services/me';
+import { getMe, updatePassword } from '../../src/services/auth';
 
 export default function SettingsScreen() {
   const { token, stewardName, clearAuth } = useAuthStore();
@@ -208,12 +208,12 @@ export default function SettingsScreen() {
             帮助
           </Text>
           <Card className="p-0 overflow-hidden">
-            <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7}>
+            <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7} onPress={() => router.push('/(steward)/help-center')}>
               <Text className="text-on-surface" style={typography.bodyMd}>帮助中心</Text>
               <ExternalLink size={18} color={colors.onSurfaceVariant} />
             </TouchableOpacity>
             <View className="h-[1px] bg-surfaceContainer mx-stack-md" />
-            <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7}>
+            <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7} onPress={() => router.push('/(steward)/privacy-policy')}>
               <Text className="text-on-surface" style={typography.bodyMd}>隐私政策</Text>
               <ExternalLink size={18} color={colors.onSurfaceVariant} />
             </TouchableOpacity>

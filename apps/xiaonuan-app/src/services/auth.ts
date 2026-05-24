@@ -36,16 +36,17 @@ export async function register(input: RegisterInput) {
 
 export async function getMe(token: string) {
   return api('/api/me', { token }) as Promise<{
-    id: string;
+    role: string;
     name: string;
     phone: string;
+    pairingCount?: number;
   }>;
 }
 
-export async function updateMe(token: string, data: { name: string }) {
-  return api('/api/me', {
+export async function updatePassword(token: string, data: { oldPassword: string; newPassword: string }): Promise<{ success: boolean; message: string }> {
+  return api('/api/me/password', {
     method: 'PUT',
     token,
     body: JSON.stringify(data),
-  });
+  }) as Promise<{ success: boolean; message: string }>;
 }
