@@ -69,6 +69,55 @@ ${conversation}
 
   const flatKeyFacts = checkpointData.keyFacts.map((k) => k.fact);
 
+  // Daily Summary upsert
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const negativeMoods = ['难过', '伤心', '沮丧', '焦虑', '担忧', '不安', '生气', '烦躁', '忧郁', '低落', '孤独', '寂寞', '抑郁'];
+  const hasNegativeMood = negativeMoods.some((m) => checkpointData.moodSnapshot.includes(m));
+
+  const dailySummaryPromise = (async () => {
+    try {
+      const existing = await prisma.dailySummary.findUnique({
+        where: { pairingId_date: { pairingId, date: today } },
+      });
+
+      if (existing) {
+        // Update: append highlight, update mood, increment counters
+        const newHighlights = [...existing.highlights];
+        if (!newHighlights.includes(checkpointData.topicSummary)) {
+          newHighlights.push(checkpointData.topicSummary);
+          if (newHighlights.length > 5) newHighlights.shift(); // Keep last 5
+        }
+
+        await prisma.dailySummary.update({
+          where: { id: existing.id },
+          data: {
+            moodLabel: checkpointData.moodSnapshot,
+            duration: existing.duration + 1,
+            topicCount: existing.topicCount + 1,
+            highlights: newHighlights,
+            concerns: hasNegativeMood ? (existing.concerns || '') + checkpointData.moodSnapshot + '; ' : existing.concerns,
+          },
+        });
+      } else {
+        // Create new daily summary
+        await prisma.dailySummary.create({
+          data: {
+            pairingId,
+            date: today,
+            moodLabel: checkpointData.moodSnapshot,
+            duration: 1,
+            topicCount: 1,
+            highlights: [checkpointData.topicSummary],
+            concerns: hasNegativeMood ? checkpointData.moodSnapshot : null,
+          },
+        });
+      }
+    } catch (err) {
+      console.error('[Checkpoint] DailySummary upsert failed:', err);
+    }
+  })();
+
   // Prisma upsert
   const prismaPromise = prisma.checkpoint.upsert({
     where: { checkpointId: sessionId },
@@ -142,6 +191,6 @@ ${conversation}
     }
   })();
 
-  await Promise.allSettled([prismaPromise, qdrantPromise, eventPromise, extractionPromise]);
+  await Promise.allSettled([prismaPromise, qdrantPromise, eventPromise, extractionPromise, dailySummaryPromise]);
   await clearCheckpointPending(sessionId);
 }

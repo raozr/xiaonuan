@@ -192,7 +192,7 @@ export default function FeedTab() {
     <View className="flex-1 bg-surface-bright">
       <StatusBar barStyle="dark-content" translucent={false} />
       <View style={{ paddingTop: insets.top / 2 }}>
-        <TopAppBar title="动态" showBack />
+        <TopAppBar title="留言" showBack />
       </View>
 
       {/* ScrollView 内容区域 */}

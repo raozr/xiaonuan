@@ -151,7 +151,7 @@ export default function VoiceTab() {
     <View className="flex-1 bg-surface-bright">
       <StatusBar barStyle="dark-content" translucent={false} />
       <View style={{ paddingTop: insets.top / 2 }}>
-        <TopAppBar title="声音克隆" showBack />
+        <TopAppBar title="声音" showBack />
       </View>
 
       <ScrollView

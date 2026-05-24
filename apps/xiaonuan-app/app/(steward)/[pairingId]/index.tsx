@@ -163,7 +163,7 @@ export default function StatusTab() {
     <View className="flex-1 bg-surface-bright">
       <StatusBar barStyle="dark-content" translucent={false} />
       <View style={{ paddingTop: insets.top / 2 }}>
-        <TopAppBar title="状态" showBack />
+        <TopAppBar title="概览" showBack />
       </View>
 
       {/* Fixed: Pairing Code */}
