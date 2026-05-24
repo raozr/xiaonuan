@@ -249,35 +249,53 @@ cmd_db_reset() {
     fi
 
     echo ""
-    echo -e "${BLUE}步骤 1/4: 停止相关服务...${NC}"
+    echo -e "${BLUE}步骤 1/5: 停止所有服务...${NC}"
     ${COMPOSE_CMD} stop gateway voice-service child-pc || true
+    ${COMPOSE_CMD} stop postgres || true
 
-    echo -e "${BLUE}步骤 2/4: 重置 PostgreSQL 数据库...${NC}"
-    if ${COMPOSE_CMD} ps | grep -q xiaonuan-postgres; then
-        ${COMPOSE_CMD} exec -T postgres psql -U xiaonuan -d xiaonuan -c "
-            DROP SCHEMA public CASCADE;
-            CREATE SCHEMA public;
-            GRANT ALL ON SCHEMA public TO xiaonuan;
-            GRANT ALL ON SCHEMA public TO public;
-        "
-        echo -e "${GREEN}数据库已清空${NC}"
-    else
-        echo -e "${RED}错误: postgres 容器未运行${NC}"
+    echo -e "${BLUE}步骤 2/5: 清理本地数据目录...${NC}"
+    rm -rf data/postgres/* data/qdrant/* data/redis/* data/voice-audio/*
+    echo -e "${GREEN}数据目录已清空${NC}"
+
+    echo -e "${BLUE}步骤 3/5: 重新启动 PostgreSQL...${NC}"
+    ${COMPOSE_CMD} up -d postgres
+    echo -n "等待 PostgreSQL 启动"
+    local waited=0
+    while [ $waited -lt 30 ]; do
+        if ${COMPOSE_CMD} ps --format json 2>/dev/null | grep -q '"Health": "healthy"' 2>/dev/null || \
+           ${COMPOSE_CMD} exec -T postgres pg_isready -U xiaonuan &>/dev/null; then
+            echo ""
+            echo -e "${GREEN}PostgreSQL 已就绪${NC}"
+            break
+        fi
+        sleep 2
+        waited=$((waited + 2))
+        echo -n "."
+    done
+    if [ $waited -ge 30 ]; then
+        echo ""
+        echo -e "${RED}错误: PostgreSQL 启动超时，请检查日志${NC}"
+        ${COMPOSE_CMD} logs postgres
         exit 1
     fi
 
-    echo -e "${BLUE}步骤 3/4: 清理本地数据目录...${NC}"
-    rm -rf data/qdrant/* data/redis/* data/voice-audio/*
-    echo -e "${GREEN}数据目录已清空${NC}"
+    echo -e "${BLUE}步骤 4/5: 重置数据库 Schema...${NC}"
+    ${COMPOSE_CMD} exec -T postgres psql -U xiaonuan -d xiaonuan -c "
+        DROP SCHEMA public CASCADE;
+        CREATE SCHEMA public;
+        GRANT ALL ON SCHEMA public TO xiaonuan;
+        GRANT ALL ON SCHEMA public TO public;
+    "
+    echo -e "${GREEN}数据库已重置${NC}"
 
-    echo -e "${BLUE}步骤 4/4: 重新生成 Prisma Client...${NC}"
+    echo -e "${BLUE}步骤 5/5: 重新生成 Prisma Client...${NC}"
     pnpm db:generate
     echo -e "${GREEN}Prisma Client 已重新生成${NC}"
 
     echo ""
     echo -e "${GREEN}========== 数据库重置完成 ==========${NC}"
-    echo -e "${YELLOW}下一步: 执行 ./manager.sh start 启动服务${NC}"
-    echo -e "${YELLOW}Prisma 将在首次启动时自动创建数据库表${NC}"
+    echo -e "${YELLOW}下一步: 执行 ./manager.sh start 启动所有服务${NC}"
+    echo -e "${YELLOW}Prisma 将在首次启动时通过 migrate deploy 创建数据库表${NC}"
 }
 
 cmd_nginx_reload() {
