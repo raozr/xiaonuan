@@ -1,7 +1,7 @@
 # XiaoNuan (小暖) - AI Home-Based Elderly Companion
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
+![Version](https://img.shields.io/badge/version-0.5.0-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)
 
 **XiaoNuan** is an AI elderly companion platform designed specifically for senior citizens and their families. It is not just a chatbot, but an intelligent partner with emotional depth, layered memory, proactive care, and safety monitoring features.
@@ -166,27 +166,30 @@ The backend runs as a set of Docker containers orchestrated by `docker-compose.y
 
 1. **Prepare Server**
    - Install Docker & Docker Compose
-   - Clone the repository
+   - Clone the repository to `main` branch
    - Copy and edit `.env` with production secrets
 
-2. **Start Services**
+2. **Create Docker Network**
+   ```bash
+   docker network create app-network
+   ```
+
+3. **First-time Deploy: Reset Database**
+   ```bash
+   ./manager.sh db-reset
+   ```
+   This drops all existing tables and data, then creates fresh empty tables. Only needed for the first deployment.
+
+4. **Start Services**
    ```bash
    ./manager.sh start
    ```
    This builds images and starts all containers on the shared `app-network`.
 
-3. **Reverse Proxy (Nginx)**
-   A separate Nginx container configuration is provided in `deploy/nginx/`:
-   ```bash
-   cd deploy/nginx
-   docker compose up -d
-   ```
-   - Nginx listens on `80` and `443`
-   - SSL certificates should be mounted at `./certs/`
-   - API requests to `/xiaonuan/` are proxied to the gateway container
-   - Static files (landing page, APK) are served from `./www/`
+5. **Nginx Reverse Proxy**
+   Nginx should be configured to proxy `/xiaonuan/` to the gateway container at port 3000. The configuration template is in `deploy/nginx/prd/`.
 
-4. **Update & Maintenance**
+6. **Update & Maintenance**
    ```bash
    ./manager.sh update    # Pull code, rebuild, and restart
    ./manager.sh backup    # Backup PostgreSQL and data directories

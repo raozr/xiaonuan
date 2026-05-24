@@ -208,11 +208,16 @@ Strict mode enabled in root `tsconfig.json`:
 ## Important Notes
 
 - **child-pc** app uses Next.js 16 with breaking API changes from training data; see its own CLAUDE.md
+- **V0.5 Unified App**: V0.5 merged `elder-app` into `xiaonuan-app` as a unified React Native app with role-based routing via Expo Router. The app auto-directs users based on auth token + role:
+  - `(companionee)/` — Elder user: binding page + voice conversation home
+  - `(steward)/` — Caregiver: auth → pairing list → detail with 4 tabs + settings/help/privacy
+  - Entry `index.tsx` checks auth state and navigates to the correct role screen
+- **Auth Store Fields**: `auth-store.ts` stores `stewardName` and `companioneeName` alongside `token` and `pairingId`. These are returned by the bind API and persisted to AsyncStorage.
+- **Bind API Response**: `POST /api/pairings/bind` returns `{ success, token, role, pairingId, stewardName, companioneeName }`. The `stewardName` is used in the companionee home header to show the caregiver's name.
 - V0.4 migrated from Family-based to Pairing-based data model; all routes use `/api/pairings/*`
 - **POST /api/pairings** request body: `{ name: string, relationship: string, notes?: string }` (was `companioneeName`, `companioneeAge`, etc.)
 - Participant roles: `COMPANIONEE` (elder) and `STEWARD` (caregiver) (was `ELDER`/`CHILD`)
 - Gateway requires external Docker network `app-network` for production
 - Voice service uses Python 3.11+ with `requirements.txt`
 - Mini-program is native WeChat framework (not Taro/uni-app)
-- XiaoNuan App (`apps/xiaonuan-app`): Unified React Native app built with Expo SDK 55 + React Native 0.83 + NativeWind v4 + Reanimated 4 + Zustand, includes `expo-updates` for OTA updates
-- V0.5 merged elder-app and child-pc into a single unified app with role-based routing via Expo Router
+- **Production Database Reset**: For first-time production deployment, use `./manager.sh db-reset` to drop all tables and recreate fresh. This is safe when no production data exists yet.

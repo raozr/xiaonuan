@@ -48,6 +48,7 @@ function show_usage() {
     echo "  restart          重启容器 (不重建镜像，仅重启)"
     echo "  update           完整更新部署 (拉代码→重建→启动)"
     echo "  build            重新构建服务镜像"
+    echo "  db-reset         首次部署：重置数据库和数据目录 (危险操作！)"
     echo ""
     echo -e "${BLUE}运维命令:${NC}"
     echo "  status           查看服务运行状态"
@@ -61,6 +62,7 @@ function show_usage() {
     echo "  dev              启动本地开发模式 (pnpm run dev)"
     echo ""
     echo -e "${YELLOW}提示: update 是最常用的命令，用于发布新版本${NC}"
+    echo -e "${RED}警告: db-reset 会删除所有数据，仅在首次部署时使用${NC}"
 }
 
 function check_env() {
@@ -236,6 +238,48 @@ cmd_clean() {
     do_clean
 }
 
+cmd_db_reset() {
+    echo -e "${RED}警告: 此操作将删除所有数据库表和数据，以及本地数据目录！${NC}"
+    echo -e "${YELLOW}此命令仅用于首次生产部署，生产环境有数据后绝不应使用${NC}"
+    echo ""
+    read -r -p "确定要继续吗？输入 yes 确认: " confirm
+    if [[ "$confirm" != "yes" ]]; then
+        echo "已取消"
+        exit 0
+    fi
+
+    echo ""
+    echo -e "${BLUE}步骤 1/4: 停止相关服务...${NC}"
+    ${COMPOSE_CMD} stop gateway voice-service child-pc || true
+
+    echo -e "${BLUE}步骤 2/4: 重置 PostgreSQL 数据库...${NC}"
+    if ${COMPOSE_CMD} ps | grep -q xiaonuan-postgres; then
+        ${COMPOSE_CMD} exec -T postgres psql -U xiaonuan -d xiaonuan -c "
+            DROP SCHEMA public CASCADE;
+            CREATE SCHEMA public;
+            GRANT ALL ON SCHEMA public TO xiaonuan;
+            GRANT ALL ON SCHEMA public TO public;
+        "
+        echo -e "${GREEN}数据库已清空${NC}"
+    else
+        echo -e "${RED}错误: postgres 容器未运行${NC}"
+        exit 1
+    fi
+
+    echo -e "${BLUE}步骤 3/4: 清理本地数据目录...${NC}"
+    rm -rf data/qdrant/* data/redis/* data/voice-audio/*
+    echo -e "${GREEN}数据目录已清空${NC}"
+
+    echo -e "${BLUE}步骤 4/4: 重新生成 Prisma Client...${NC}"
+    pnpm db:generate
+    echo -e "${GREEN}Prisma Client 已重新生成${NC}"
+
+    echo ""
+    echo -e "${GREEN}========== 数据库重置完成 ==========${NC}"
+    echo -e "${YELLOW}下一步: 执行 ./manager.sh start 启动服务${NC}"
+    echo -e "${YELLOW}Prisma 将在首次启动时自动创建数据库表${NC}"
+}
+
 cmd_nginx_reload() {
     echo -e "${BLUE}重载宿主机 nginx...${NC}"
     if docker ps | grep -q "gateway"; then
@@ -271,6 +315,7 @@ case "${1:-}" in
     restart)    cmd_restart ;;
     update)     cmd_update ;;
     build)      cmd_build ;;
+    db-reset)   cmd_db_reset ;;
     status)     cmd_status ;;
     logs)       cmd_logs "$@" ;;
     health)     cmd_health ;;
