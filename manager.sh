@@ -289,8 +289,12 @@ cmd_db_reset() {
     echo -e "${GREEN}数据库已重置${NC}"
 
     echo -e "${BLUE}步骤 5/5: 重新生成 Prisma Client...${NC}"
-    pnpm db:generate
-    echo -e "${GREEN}Prisma Client 已重新生成${NC}"
+    if command -v pnpm &>/dev/null; then
+        pnpm db:generate
+        echo -e "${GREEN}Prisma Client 已重新生成${NC}"
+    else
+        echo -e "${YELLOW}跳过: 本地未安装 pnpm（Prisma Client 已打包在 Docker 镜像中，不影响生产部署）${NC}"
+    fi
 
     echo ""
     echo -e "${GREEN}========== 数据库重置完成 ==========${NC}"
