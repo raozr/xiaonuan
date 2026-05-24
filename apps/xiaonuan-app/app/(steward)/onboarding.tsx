@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, TextInput, Alert, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import * as Clipboard from 'expo-clipboard';
 import { QrCode, Copy, Check, ArrowRight, Home, User, Heart, MessageCircle } from 'lucide-react-native';
 import { TopAppBar } from '../../src/components/shared/TopAppBar';
 import { createPairing } from '../../src/services/pairing';
@@ -51,6 +52,7 @@ export default function OnboardingScreen() {
   }
 
   async function handleCopy() {
+    await Clipboard.setStringAsync(generatedCode);
     Alert.alert('提示', '配对码已复制到剪贴板');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);

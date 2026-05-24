@@ -140,8 +140,8 @@ export default function StatusTab() {
         setIsOnline(data?.isOnline ?? false);
         setLastActive(data?.lastActive ?? null);
       })
-      .catch(() => {
-        // silently ignore
+      .catch((err) => {
+        console.error('[StatusTab] Failed to fetch pairing detail:', err);
       });
 
     // Fetch daily summary
@@ -151,8 +151,8 @@ export default function StatusTab() {
           setDailySummary(result.data);
         }
       })
-      .catch(() => {
-        // silently ignore
+      .catch((err) => {
+        console.error('[StatusTab] Failed to fetch daily summary:', err);
       });
   }, [pairingId, token]);
 

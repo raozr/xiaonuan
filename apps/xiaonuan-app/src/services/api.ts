@@ -32,9 +32,14 @@ export async function api<T = unknown>(path: string, options: ApiRequestOptions 
     throw new ApiError(response.status, (body?.message as string) || (body?.error as string) || `HTTP ${response.status}`, body);
   }
 
-    // Handle 204 No Content
-    const text = await response.text();
-    if (!text) return null as T;
+  if (response.status === 204) return null as T;
 
+  const text = await response.text();
+  if (!text) return null as T;
+
+  try {
     return JSON.parse(text) as T;
+  } catch {
+    throw new ApiError(response.status, 'Invalid JSON response', { raw: text });
+  }
 }

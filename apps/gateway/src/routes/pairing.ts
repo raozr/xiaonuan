@@ -254,11 +254,11 @@ export async function pairingRoutes(app: FastifyInstance) {
               },
             },
             {
-              name: userData.phone ?? '照管者',
+              name: userData.name ?? '照管者',
               role: 'STEWARD',
               isAI: false,
               userId: user.userId,
-              metadata: { relationshipToCompanionee: relationship },
+              metadata: { relationshipToCompanionee: relationship, isPrimary: true },
             },
             {
               name: '小暖',
@@ -420,11 +420,17 @@ export async function pairingRoutes(app: FastifyInstance) {
         { expiresIn: '365d' }
       );
 
+      const steward = await prisma.participant.findFirst({
+        where: { pairingId: pairing.id, role: 'STEWARD' },
+      });
+
       return reply.send({
         success: true,
         token,
         role: 'COMPANIONEE',
         pairingId: pairing.id,
+        stewardName: steward?.name ?? null,
+        companioneeName: companionee.name,
       });
     } catch (error) {
       request.log.error(error);

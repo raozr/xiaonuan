@@ -49,7 +49,13 @@ export async function pcAuthRoutes(app: FastifyInstance) {
         { expiresIn: '7d' }
       );
 
-      return reply.send({ success: true, token, role: 'STEWARD', expiresIn: 604800 });
+      return reply.send({
+        success: true,
+        token,
+        role: 'STEWARD',
+        expiresIn: 604800,
+        user: { id: user.id, name: user.name, phone: user.phone },
+      });
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ success: false, message: '注册失败，请稍后再试' });
@@ -85,7 +91,13 @@ export async function pcAuthRoutes(app: FastifyInstance) {
         { expiresIn: '7d' }
       );
 
-      return reply.send({ success: true, token, role: 'STEWARD', expiresIn: 604800 });
+      return reply.send({
+        success: true,
+        token,
+        role: 'STEWARD',
+        expiresIn: 604800,
+        user: { id: user.id, name: user.name, phone: user.phone },
+      });
     } catch (err) {
       request.log.error(err);
       return reply.status(500).send({ success: false, message: '登录失败，请稍后再试' });

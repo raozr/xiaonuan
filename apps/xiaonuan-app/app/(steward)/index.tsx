@@ -14,6 +14,7 @@ import { useAuthStore } from '../../src/store/auth-store';
 export default function PairingListScreen() {
   const [pairings, setPairings] = useState<Pairing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { token } = useAuthStore();
   const insets = useSafeAreaInsets();
 
@@ -24,10 +25,12 @@ export default function PairingListScreen() {
   async function fetchPairings() {
     if (!token) return;
     try {
+      setError(null);
       const data = await listPairings(token);
       setPairings(data || []);
-    } catch (e) {
+    } catch (e: any) {
       console.error('Failed to fetch pairings:', e);
+      setError(e.message ?? '加载失败');
     } finally {
       setLoading(false);
     }
@@ -47,7 +50,13 @@ export default function PairingListScreen() {
 
       {/* Content */}
       <ScrollView className="flex-1" contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 24, paddingBottom: insets.bottom + 80 }}>
-        {pairings.length > 0 ? (
+        {loading ? null : error ? (
+          <View style={{ alignItems: 'center', paddingTop: 60 }}>
+            <Text style={{ fontSize: 16, color: colors.onSurface, marginBottom: 8 }}>加载失败</Text>
+            <Text style={{ fontSize: 13, color: colors.onSurfaceVariant, textAlign: 'center', marginBottom: 16 }}>{error}</Text>
+            <Button label="重试" variant="primary" onPress={fetchPairings} />
+          </View>
+        ) : pairings.length > 0 ? (
           pairings.map((p) => (
             <PairingCard
               key={p.id}

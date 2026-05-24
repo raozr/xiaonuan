@@ -1,21 +1,18 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, Alert, StatusBar, Modal } from 'react-native';
 import { router } from 'expo-router';
-import { ChevronRight, Pencil, ExternalLink, Users, UserPlus, LogOut, X } from 'lucide-react-native';
+import { ChevronRight, Pencil, ExternalLink, LogOut, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopAppBar } from '../../src/components/shared/TopAppBar';
 import { Card } from '../../src/components/ui/Card';
 import { Input } from '../../src/components/ui/Input';
 import { Button } from '../../src/components/ui/Button';
 import { useAuthStore } from '../../src/store/auth-store';
-import { useRoleStore } from '../../src/store/role-store';
-import { COMPANIONEE_ROLE } from '../../src/utils/constants';
 import { colors, typography } from '../../src/utils/theme';
 import { getMe, updatePassword } from '../../src/services/auth';
 
 export default function SettingsScreen() {
   const { token, stewardName, clearAuth } = useAuthStore();
-  const { setRole } = useRoleStore();
   const [name, setName] = useState(stewardName ?? '');
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(true);
@@ -52,8 +49,7 @@ export default function SettingsScreen() {
         style: 'destructive',
         onPress: async () => {
           await clearAuth();
-          await setRole(COMPANIONEE_ROLE);
-          router.replace('/(companionee)');
+          router.replace('/(auth)/login');
         },
       },
     ]);
@@ -142,63 +138,6 @@ export default function SettingsScreen() {
               <Text className="text-on-surface" style={typography.bodyMd}>修改密码</Text>
               <ChevronRight size={20} color={colors.outline} />
             </TouchableOpacity>
-          </Card>
-        </View>
-
-        {/* Notifications */}
-        <View className="mb-gutter">
-          <Text className="text-on-surface-variant mb-stack-sm font-bold" style={typography.labelCaps}>
-            通知
-          </Text>
-          <Card>
-            <View className="flex-row items-center justify-between py-3">
-              <View className="flex-1">
-                <Text className="text-on-surface-variant" style={typography.bodyMd}>每日摘要</Text>
-              </View>
-              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
-            </View>
-            <View className="h-[1px] bg-surfaceContainer" />
-            <View className="flex-row items-center justify-between py-3">
-              <View className="flex-1">
-                <Text className="text-on-surface-variant" style={typography.bodyMd}>异常提醒</Text>
-              </View>
-              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
-            </View>
-            <View className="h-[1px] bg-surfaceContainer" />
-            <View className="flex-row items-center justify-between py-3">
-              <View className="flex-1">
-                <Text className="text-on-surface-variant" style={typography.bodyMd}>语音消息</Text>
-              </View>
-              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
-            </View>
-          </Card>
-        </View>
-
-        {/* Family Management */}
-        <View className="mb-gutter">
-          <Text className="text-on-surface-variant mb-stack-sm font-bold" style={typography.labelCaps}>
-            家庭管理
-          </Text>
-          <Card className="p-0 overflow-hidden">
-            <View className="flex-row items-center justify-between p-stack-md">
-              <View className="flex-row items-center gap-stack-md">
-                <View className="w-10 h-10 rounded-full bg-surfaceContainer items-center justify-center">
-                  <Users size={20} color={colors.onSurfaceVariant} />
-                </View>
-                <Text className="text-on-surface-variant" style={typography.bodyMd}>管理已绑定账号</Text>
-              </View>
-              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
-            </View>
-            <View className="h-[1px] bg-surfaceContainer mx-stack-md" />
-            <View className="flex-row items-center justify-between p-stack-md">
-              <View className="flex-row items-center gap-stack-md">
-                <View className="w-10 h-10 rounded-full bg-surfaceContainer items-center justify-center">
-                  <UserPlus size={20} color={colors.onSurfaceVariant} />
-                </View>
-                <Text className="text-on-surface-variant" style={typography.bodyMd}>邀请家人</Text>
-              </View>
-              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
-            </View>
           </Card>
         </View>
 
