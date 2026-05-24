@@ -1,0 +1,96 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// Mock AsyncStorage
+const mockStorage: Record<string, string> = {};
+vi.mock('@react-native-async-storage/async-storage', () => ({
+  default: {
+    getItem: vi.fn((key: string) => Promise.resolve(mockStorage[key] ?? null)),
+    setItem: vi.fn((key: string, value: string) => { mockStorage[key] = value; return Promise.resolve(); }),
+    multiSet: vi.fn((pairs: [string, string][]) => { pairs.forEach(([k, v]) => { mockStorage[k] = v; }); return Promise.resolve(); }),
+    multiGet: vi.fn((keys: string[]) => Promise.resolve(keys.map(k => [k, mockStorage[k] ?? null]))),
+    multiRemove: vi.fn((keys: string[]) => { keys.forEach(k => { delete mockStorage[k]; }); return Promise.resolve(); }),
+    removeItem: vi.fn((key: string) => { delete mockStorage[key]; return Promise.resolve(); }),
+  },
+}));
+
+describe('auth-store', () => {
+  beforeEach(() => {
+    Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    vi.resetModules();
+  });
+
+  it('should set auth and persist to storage', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    const { setAuth } = useAuthStore.getState();
+
+    await setAuth({
+      token: 'test-token',
+      pairingId: 'pair-1',
+      stewardName: 'Alice',
+      companioneeName: 'Bob',
+    });
+
+    const state = useAuthStore.getState();
+    expect(state.token).toBe('test-token');
+    expect(state.pairingId).toBe('pair-1');
+    expect(state.stewardName).toBe('Alice');
+    expect(state.companioneeName).toBe('Bob');
+  });
+
+  it('should clear auth and remove from storage', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    const { setAuth, clearAuth } = useAuthStore.getState();
+
+    await setAuth({ token: 'test-token', pairingId: 'pair-1' });
+    await clearAuth();
+
+    const state = useAuthStore.getState();
+    expect(state.token).toBeNull();
+    expect(state.pairingId).toBeNull();
+  });
+
+  it('should load auth from storage', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    const { setAuth, loadFromStorage } = useAuthStore.getState();
+
+    await setAuth({ token: 'persisted-token', pairingId: 'pair-2' });
+    useAuthStore.setState({ token: null, pairingId: null });
+
+    await loadFromStorage();
+
+    const state = useAuthStore.getState();
+    expect(state.token).toBe('persisted-token');
+    expect(state.pairingId).toBe('pair-2');
+  });
+});
+
+describe('role-store', () => {
+  beforeEach(() => {
+    Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    vi.resetModules();
+  });
+
+  it('should default to COMPANIONEE role', async () => {
+    const { useRoleStore } = await import('../store/role-store');
+    expect(useRoleStore.getState().role).toBe('COMPANIONEE');
+  });
+
+  it('should set role and persist to storage', async () => {
+    const { useRoleStore } = await import('../store/role-store');
+    const { setRole } = useRoleStore.getState();
+
+    await setRole('STEWARD');
+    expect(useRoleStore.getState().role).toBe('STEWARD');
+  });
+
+  it('should load role from storage', async () => {
+    const { useRoleStore } = await import('../store/role-store');
+    const { setRole, loadFromStorage } = useRoleStore.getState();
+
+    await setRole('STEWARD');
+    useRoleStore.setState({ role: 'COMPANIONEE' });
+
+    await loadFromStorage();
+    expect(useRoleStore.getState().role).toBe('STEWARD');
+  });
+});

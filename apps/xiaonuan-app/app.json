@@ -1,0 +1,42 @@
+{
+  "expo": {
+    "name": "小暖",
+    "slug": "xiaonuan-app",
+    "scheme": "xiaonuan",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "icon": "./assets/logo-smalll.jpg",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "enabled": true,
+      "url": "https://u.expo.dev/10700253-bfa8-45f3-a7ba-3539e0272885"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.xiaonuan.elderapp"
+    },
+    "android": {
+      "package": "com.xiaonuan.elderapp",
+      "enableProguardInReleaseBuilds": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/logo-smalll.jpg",
+        "backgroundColor": "#FFF8F3"
+      },
+      "softwareKeyboardLayoutMode": "resize"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "10700253-bfa8-45f3-a7ba-3539e0272885"
+      }
+    },
+    "runtimeVersion": "1.0.0"
+  }
+}

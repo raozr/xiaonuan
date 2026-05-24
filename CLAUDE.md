@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **XiaoNuan (小暖)** is an AI elderly companion platform with a monorepo structure organized by PNPM workspaces. It consists of:
 - **AI Gateway** (`apps/gateway`): Fastify-based Node.js backend with WebSocket support
-- **Elder App** (`apps/elder-app`): React Native mobile app (Expo) for elderly users
+- **XiaoNuan App** (`apps/xiaonuan-app`): Unified React Native mobile app (Expo SDK 55 + RN 0.83 + NativeWind v4 + Reanimated 4 + Zustand) serving both elderly users (COMPANIONEE) and caregivers (STEWART)
 - **Family Mini-Program** (`apps/mini-program`): WeChat mini-program for family members
 - **Child PC** (`apps/child-pc`): Next.js 16+ web application (see its own CLAUDE.md)
 - **Voice Service** (`apps/voice-service`): Python FastAPI service for speech processing
@@ -98,11 +98,34 @@ Session states: `greeting` → `active-chat` → `closing` → `ended`
 - Emergency alert tool for safety monitoring
 - WebSocket handler for real-time voice streaming
 
+**Routes** (`src/routes/`)
+- `auth.ts` — WeChat OAuth, silent login, register
+- `pc-auth.ts` — PC-side auth (login/register for STEWARD web)
+- `pairing.ts` — Pairing CRUD, binding, unbinding, refresh code
+- `events.ts` — Event listing (paginated, filterable)
+- `feed-event.ts` — Feed creation and management
+- `session.ts` — WebSocket handler (`/ws`) for real-time voice
+- `asr.ts` / `tts.ts` — Speech recognition and synthesis
+- `voice-clone.ts` — Voice cloning CRUD + activation
+- `me.ts` — Current user profile
+- `health.ts` — Health check
+
+### XiaoNuan App (`apps/xiaonuan-app`)
+Unified React Native app built with Expo Router file-based routing:
+
+**Role-based routing:**
+- `(companionee)/` — Elder user: binding page + voice conversation home
+- `(steward)/` — Caregiver: auth → pairing list → detail with 4 tabs (概览/日志/留言/声音) + settings/help/privacy
+- Entry `index.tsx` auto-redirects based on auth token + role
+
+**Tech stack:** Expo SDK 55, React Native 0.83, NativeWind v4, Reanimated 4, Zustand, Lucide icons, expo-updates for OTA
+
+**Key stores:** `auth-store.ts` (token/pairingId/names), `role-store.ts` (companionee/steward)
+
 ### Database Schema (`packages/prisma`)
-Key entities (V0.4 uses Pairing model, replacing the old Family model):
+Key entities (V0.4+ uses Pairing model, replacing the old Family model):
 - `Pairing`: Core entity linking elder, child, and AI persona
-- `Participant`: Members of a pairing (ELDER role, CHILD role, AI companion)
-- `Elder`: Elderly user profile (embedded as Participant with role=ELDER)
+- `Participant`: Members of a pairing (COMPANIONEE role, STEWARD role, AI companion)
 - `PersonaProfile`: Structured persona facts with categories and confidence
 - `Session`: Conversation session with state tracking
 - `EventStream`: Unified event log (feed_message, conversation_turn, conversation_extracted, info_extracted, mood_change, relationship_shift, proactive_outreach, persona_updated)
@@ -145,6 +168,13 @@ Tools extend AI capabilities in `apps/gateway/src/tools/`:
 2. Implement handler in `tool-handlers.ts`
 3. Tool is automatically available to the PI agent
 
+### Adding a Mobile Page (XiaoNuan App)
+Pages use Expo Router file-based routing under `apps/xiaonuan-app/app/`:
+1. Create page file in appropriate group: `(companionee)/`, `(steward)/`, or `(auth)/`
+2. Use NativeWind utility classes for styling
+3. API calls go through `src/services/` layer, not bare fetch
+4. Global state via `src/store/` (auth-store, role-store)
+
 ### Database Changes
 1. Edit `packages/prisma/prisma/schema.prisma`
 2. Run `pnpm db:migrate` to create migration
@@ -156,6 +186,7 @@ Uses Vitest. Test files co-located with source (`.test.ts` suffix):
 ```bash
 pnpm --filter @xiaonuan/gateway test       # Run once
 pnpm --filter @xiaonuan/gateway test:watch  # Watch mode
+pnpm --filter @xiaonuan/xiaonuan-app test  # Mobile app tests
 ```
 
 ## Environment Setup
@@ -178,8 +209,10 @@ Strict mode enabled in root `tsconfig.json`:
 
 - **child-pc** app uses Next.js 16 with breaking API changes from training data; see its own CLAUDE.md
 - V0.4 migrated from Family-based to Pairing-based data model; all routes use `/api/pairings/*`
+- **POST /api/pairings** request body: `{ name: string, relationship: string, notes?: string }` (was `companioneeName`, `companioneeAge`, etc.)
+- Participant roles: `COMPANIONEE` (elder) and `STEWARD` (caregiver) (was `ELDER`/`CHILD`)
 - Gateway requires external Docker network `app-network` for production
 - Voice service uses Python 3.11+ with `requirements.txt`
 - Mini-program is native WeChat framework (not Taro/uni-app)
-- Elder-app uses Expo SDK 55 with React Native 0.83
-- Elder-app includes `expo-updates` for OTA updates; configure `updates.url` in `app.json`
+- XiaoNuan App (`apps/xiaonuan-app`): Unified React Native app built with Expo SDK 55 + React Native 0.83 + NativeWind v4 + Reanimated 4 + Zustand, includes `expo-updates` for OTA updates
+- V0.5 merged elder-app and child-pc into a single unified app with role-based routing via Expo Router

@@ -135,9 +135,9 @@ describe('POST /api/pairings', () => {
       method: 'POST',
       url: '/api/pairings',
       payload: {
-        companioneeName: '王爷爷',
-        companioneeAge: 78,
-        companioneeDialect: '上海话',
+        name: '王爷爷',
+        relationship: '爷爷',
+        notes: '喜欢听京剧',
       },
       headers: { authorization: `Bearer ${token}` },
     });
@@ -170,7 +170,7 @@ describe('POST /api/pairings', () => {
     const response = await app.inject({
       method: 'POST',
       url: '/api/pairings',
-      payload: { companioneeAge: 78 },
+      payload: { relationship: '爷爷' },
       headers: { authorization: `Bearer ${token}` },
     });
 

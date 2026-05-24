@@ -1,23 +1,24 @@
 # XiaoNuan (小暖) - AI Home-Based Elderly Companion
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Version](https://img.shields.io/badge/version-0.4.0-green.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)
 
 **XiaoNuan** is an AI elderly companion platform designed specifically for senior citizens and their families. It is not just a chatbot, but an intelligent partner with emotional depth, layered memory, proactive care, and safety monitoring features.
 
 ## 🌟 Key Features
 
-- **Layered Memory System**: Simulates human memory logic with four layers — session (current context), daily (recap summaries), short-term (recent conversations), and mid-term (vector-based semantic search via Qdrant). The AI "remembers" the elder's preferences, health status, and family anecdotes.
+- **Layered Memory System**: Simulates human memory logic with five layers — session (current context), daily (recap summaries), short-term (recent conversations), mid-term (vector-based semantic search via Qdrant), and relationship layer (top persona facts). The AI "remembers" the elder's preferences, health status, and family anecdotes.
+- **Emotional Intelligence**: Tracks mood signals from conversations, surfaces current mood context with a 40+ emotion label map, and adapts conversation tone accordingly. Supports dialect styles, emotional resonance, and gentle guidance.
 - **Relationship Profiles**: Maintains structured persona profiles across categories (hobbies, health, preferences, relationships, habits) with confidence scoring and automatic extraction from conversations.
-- **Emotional Intelligence**: Tracks mood signals from conversations, surfaces current mood context, and adapts conversation tone accordingly. Supports dialect styles, emotional resonance, and gentle guidance.
 - **Proactive Outreach**: Automatically identifies inactive pairings (72h no conversation) and generates proactive care messages at 10:00 AM daily with 24h cooldown.
 - **Event Stream Architecture**: All interactions flow through a unified event bus (Feed, Conversation, Extraction, Mood Change, Relationship Shift, Outreach, Persona Update), replacing the previous family-based feed model.
 - **Token Budget Control**: Memory context injection capped at ~2700 tokens (4096 chars) with priority-based truncation to prevent context overflow.
 - **Session State Machine**: Intelligently identifies conversational phases (Greeting → Active Chat → Closing → Ended) to dynamically adjust AI behavior and context retrieval strategies.
 - **Safety Guardrails**: Integrated emergency alerting tools that recognize potential health risks or distress signals and respond promptly.
 - **Voice Interaction**: Full-duplex voice conversation powered by Alibaba Cloud speech synthesis and recognition, enabling natural hands-free interaction for elders.
-- **Multi-Client Support**: Family members connect via WeChat Mini-program or Child PC Web; elders use a dedicated React Native app with large fonts and simplified UI.
+- **Unified Mobile App**: A single React Native app (Expo SDK 55) serving both elderly users (COMPANIONEE — large fonts, voice-first UI) and caregivers (STEWART — pairing management, daily summaries, feed, voice cloning). Role-based routing via Expo Router.
+- **Multi-Client Support**: Family members connect via WeChat Mini-program or Child PC Web; elders and caregivers use the unified XiaoNuan App.
 - **Localized Integration**: Deeply integrated with Alibaba's DashScope (Qwen-Plus) LLM for superior performance in Chinese linguistic contexts.
 
 ## 🏗️ Project Architecture
@@ -30,7 +31,7 @@ xiaonuan/
 │   ├── gateway/          # AI Agent Gateway (Fastify + WebSocket)
 │   ├── child-pc/         # Next.js 16+ Web App (Family Member PC Client)
 │   ├── mini-program/     # WeChat Mini-program (Family Member Mobile Client)
-│   ├── elder-app/        # React Native Mobile App (Elder Client, Expo)
+│   ├── xiaonuan-app/     # Unified React Native Mobile App (COMPANIONEE + STEWARD, Expo SDK 55)
 │   └── voice-service/    # Python FastAPI Voice Processing Service
 ├── packages/
 │   ├── prisma/           # DB Schema & Persistence Layer (PostgreSQL)
@@ -53,7 +54,7 @@ xiaonuan/
 - **Speech**: Alibaba Cloud NLS (TTS / ASR)
 - **Frontend**:
   - Family: WeChat Mini-program (mobile), Child PC Web (desktop, Next.js 16)
-  - Elder: React Native (Expo)
+  - Elder + Caregiver: React Native (Expo SDK 55, NativeWind v4, Reanimated 4, Zustand)
 
 ## 🚀 Quick Start
 
@@ -114,25 +115,38 @@ A Next.js 16+ web application for family members managing elders from PC.
 - **Build**: `pnpm build` (Next.js App Router, static export)
 - **Features**: Pairing management, event timeline, feed posting, voice cloning, elder settings.
 
-### Elder App (Elder Client)
+### XiaoNuan App (Elder + Caregiver Unified Client)
 
-The elder app is a React Native application built with **Expo**.
+The XiaoNuan app is a unified React Native application built with **Expo SDK 55**, serving both elderly users (COMPANIONEE) and caregivers (STEWART) through role-based routing.
 
 - **Development**:
   ```bash
-  cd apps/elder-app
-  pnpm install
+  cd apps/xiaonuan-app
   pnpm start        # Expo dev server
   pnpm android      # or pnpm ios
   ```
 - **Build & Deploy via EAS**:
   ```bash
-  cd apps/elder-app
+  cd apps/xiaonuan-app
   eas build --profile preview    # Build APK for internal testing
   eas build --profile production # Build AAB for Play Store
   ```
 - **Environment Variables**: The `EXPO_PUBLIC_API_URL` is configured in `eas.json` for each build profile.
-- **Download Page**: A static landing page for APK download is served from `apps/gateway/public/` (e.g., `https://your-domain/downloads/xiaonuan-elder.apk`).
+- **Download Page**: A static landing page for APK download is served from `apps/gateway/public/index.html` (e.g., `https://your-domain/`).
+
+#### COMPANIONEE (Elder) Features
+- **Voice-first interface**: Large mic button, press-to-talk, AI responds with voice + text
+- **Simple binding**: 6-digit invite code keypad for quick pairing
+- **Dynamic title**: Shows caregiver's name for personalization
+- **Breathing mascot**: Animated companion avatar with warm, friendly design
+
+#### STEWARD (Caregiver) Features
+- **Pairing management**: List view with online status, create new pairings
+- **Overview tab**: Real-time status + daily summary (emotion, duration, highlights, concerns)
+- **Logs tab**: Date-grouped conversation history with mood snapshots
+- **Feed tab**: Social timeline with text/voice input, pagination, delete confirmation
+- **Voice tab**: Single-recording voice cloning with guided sample text
+- **Settings page**: Account management, password change, notification toggles, help center, privacy policy
 
 ## ☁️ Backend Deployment
 

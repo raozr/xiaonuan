@@ -11,9 +11,9 @@ import { emitEvent } from '../events/event-bus.js';
 import { enqueueExtraction } from '../services/extraction-service.js';
 
 const createPairingSchema = z.object({
-  companioneeName: z.string().min(1),
-  companioneeAge: z.number().min(50).max(120).optional(),
-  companioneeDialect: z.string().optional(),
+  name: z.string().min(1),
+  relationship: z.string().min(1),
+  notes: z.string().optional(),
 });
 
 export async function requireAuth(request: FastifyRequest, reply: FastifyReply) {
@@ -173,6 +173,27 @@ export async function pairingRoutes(app: FastifyInstance) {
 
     const companionee = mapCompanionee(pairing.participants);
 
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+    const [activeSessions, lastSessions] = await Promise.all([
+      prisma.session.findMany({
+        where: {
+          pairingId,
+          endedAt: null,
+          updatedAt: { gte: thirtyMinutesAgo },
+        },
+        select: { pairingId: true, updatedAt: true },
+      }),
+      prisma.session.findMany({
+        where: { pairingId },
+        orderBy: { updatedAt: 'desc' },
+        take: 1,
+        select: { pairingId: true, updatedAt: true },
+      }),
+    ]);
+
+    const isOnline = activeSessions.some(s => s.pairingId === pairingId);
+    const lastActive = lastSessions[0]?.updatedAt ?? null;
+
     return reply.send({
       id: pairing.id,
       inviteCode: pairing.inviteCode,
@@ -189,8 +210,8 @@ export async function pairingRoutes(app: FastifyInstance) {
         topicsToAvoid: companionee.metadata?.topicsToAvoid,
         greetingPreference: companionee.metadata?.greetingPreference,
       } : undefined,
-      isOnline: undefined,
-      lastActive: null,
+      isOnline,
+      lastActive: lastActive?.toISOString() ?? null,
     });
   });
 
@@ -202,13 +223,14 @@ export async function pairingRoutes(app: FastifyInstance) {
     }
 
     const body = request.body as Record<string, unknown>;
+    request.log.info({ body, headers: request.headers }, 'POST /api/pairings request body');
     const parsed = createPairingSchema.safeParse(body);
 
     if (!parsed.success) {
       return reply.status(400).send({ success: false, message: '参数错误', errors: parsed.error.errors });
     }
 
-    const { companioneeName, companioneeAge, companioneeDialect } = parsed.data;
+    const { name, relationship, notes } = parsed.data;
 
     const userData = await prisma.user.findUnique({ where: { id: user.userId } });
     if (!userData) {
@@ -217,18 +239,18 @@ export async function pairingRoutes(app: FastifyInstance) {
 
     const pairing = await prisma.pairing.create({
       data: {
-        name: companioneeName,
+        name: name,
         inviteCode: generateInviteCode(),
         inviteCodeExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
         participants: {
           create: [
             {
-              name: companioneeName,
+              name: name,
               role: 'COMPANIONEE',
               isAI: false,
               metadata: {
-                ...(companioneeAge ? { age: String(companioneeAge) } : {}),
-                ...(companioneeDialect ? { dialect: companioneeDialect } : {}),
+                relationship: relationship,
+                ...(notes ? { notes } : {}),
               },
             },
             {
@@ -236,7 +258,7 @@ export async function pairingRoutes(app: FastifyInstance) {
               role: 'STEWARD',
               isAI: false,
               userId: user.userId,
-              metadata: { relationshipToCompanionee: '照管者' },
+              metadata: { relationshipToCompanionee: relationship },
             },
             {
               name: '小暖',
@@ -598,6 +620,8 @@ export async function pairingRoutes(app: FastifyInstance) {
   app.get('/:pairingId/feeds', { preHandler: [requireAuth] }, async (request, reply) => {
     const { pairingId } = request.params as { pairingId: string };
     const user = request.user;
+    const { cursor, limit = '10' } = request.query as { cursor?: string; limit?: string };
+    const take = Math.min(parseInt(limit, 10) || 10, 50);
 
     if (!user || !user.userId) {
       return reply.status(401).send({ success: false, message: '未认证' });
@@ -607,32 +631,49 @@ export async function pairingRoutes(app: FastifyInstance) {
     if (!member) return;
 
     const feeds = await prisma.feedMessage.findMany({
-      where: { pairingId },
+      where: {
+        pairingId,
+        ...(cursor ? { createdAt: { lt: new Date(cursor) } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
-      take: 20,
+      take: take + 1,
     });
 
-    return reply.send({ success: true, data: feeds });
+    const hasMore = feeds.length > take;
+    if (hasMore) feeds.pop();
+
+    return reply.send({
+      success: true,
+      data: feeds,
+      nextCursor: hasMore ? feeds[feeds.length - 1]?.createdAt.toISOString() : null,
+    });
   });
 
   app.delete('/:pairingId/feeds/:feedId', { preHandler: [requireAuth] }, async (request, reply) => {
-    const { pairingId, feedId } = request.params as { pairingId: string; feedId: string };
-    const user = request.user;
+    try {
+      const { pairingId, feedId } = request.params as { pairingId: string; feedId: string };
+      const user = request.user;
 
-    if (!user || !user.userId) {
-      return reply.status(401).send({ success: false, message: '未认证' });
+      request.log.info({ pairingId, feedId, userId: user?.userId }, 'DELETE feed request');
+
+      if (!user || !user.userId) {
+        return reply.status(401).send({ success: false, message: '未认证' });
+      }
+
+      const member = await assertPairingMember(user.userId, pairingId, reply);
+      if (!member) return;
+
+      const feed = await prisma.feedMessage.findUnique({ where: { id: feedId } });
+      if (!feed || feed.pairingId !== pairingId) {
+        return reply.status(404).send({ success: false, message: '记录不存在' });
+      }
+
+      await prisma.feedMessage.delete({ where: { id: feedId } });
+
+      return reply.send({ success: true });
+    } catch (err: any) {
+      request.log.error(err, 'DELETE feed error');
+      return reply.status(500).send({ success: false, message: '删除失败', error: err.message });
     }
-
-    const member = await assertPairingMember(user.userId, pairingId, reply);
-    if (!member) return;
-
-    const feed = await prisma.feedMessage.findUnique({ where: { id: feedId } });
-    if (!feed || feed.pairingId !== pairingId) {
-      return reply.status(404).send({ success: false, message: '记录不存在' });
-    }
-
-    await prisma.feedMessage.delete({ where: { id: feedId } });
-
-    return reply.send({ success: true });
   });
 }

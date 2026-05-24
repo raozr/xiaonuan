@@ -22,3 +22,6 @@ apps/gateway/diag-api.ts
 apps/gateway/public/tts/
 apps/gateway/public/feeds/
 apps/elder-app/.expo/
+
+# Local Data Files
+data/

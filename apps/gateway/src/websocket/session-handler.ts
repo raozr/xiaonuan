@@ -241,8 +241,11 @@ export function createWebSocketHandler(app: FastifyInstance) {
               const fs = await import('fs/promises');
               await fs.appendFile('/tmp/gateway-asr.log', `[${new Date().toISOString()}] ASR failed: ${rawMsg}\n`, 'utf-8');
             } catch {}
-            // Never expose raw technical errors to the companionee — always return a user-friendly message
-            sendMessage('error', { message: '语音识别失败，请稍后再试' });
+            // In dev, include raw error so it shows up in the RN log for debugging
+            sendMessage('error', {
+              message: '语音识别失败，请稍后再试',
+              debug: rawMsg,
+            });
             return;
           }
 

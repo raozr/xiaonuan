@@ -4,8 +4,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="description" content="小暖长辈端 — 用声音陪伴，让关爱触手可及。专为长辈设计的语音陪伴应用。">
-  <title>小暖长辈端 — 下载</title>
+  <meta name="description" content="小暖 — 用声音陪伴，让关爱触手可及。AI 智慧养老平台，为陪伴用户和管理员提供语音陪伴、情感记忆、家庭动态同步等贴心功能。">
+  <title>小暖 — 下载</title>
   <link rel="icon" href="landing/logo.png" type="image/png">
   <style>
     :root {
@@ -220,6 +220,394 @@
       line-height: 1.5;
     }
 
+    /* Roles */
+    .roles {
+      display: grid;
+      gap: 16px;
+    }
+
+    /* Preview (multi-screen) */
+    .preview-tabs {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+
+    .preview-tab {
+      padding: 8px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .preview-tab.active {
+      background: var(--primary);
+      color: #fff;
+      border-color: var(--primary);
+    }
+
+    .preview-screen {
+      display: none;
+      margin: 0 auto;
+    }
+
+    .preview-screen.active {
+      display: block;
+    }
+
+    /* Steward overview screen */
+    .steward-screen {
+      background: var(--bg);
+      border-radius: 32px;
+      overflow: hidden;
+      aspect-ratio: 9/19;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    .st-header {
+      background: var(--surface);
+      padding: 48px 16px 12px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .st-header h4 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .st-header p {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .st-body {
+      padding: 12px;
+    }
+
+    .st-card {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 8px;
+      box-shadow: 0 2px 8px rgba(143, 78, 0, 0.06);
+    }
+
+    .st-card-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .st-pairing-code {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      color: var(--primary);
+      text-align: center;
+    }
+
+    .st-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .st-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+
+    .st-dot.online {
+      background: #34C759;
+    }
+
+    .st-dot.offline {
+      background: #D1D1D6;
+    }
+
+    .st-status-text {
+      font-size: 12px;
+      color: var(--text);
+    }
+
+    .st-emotion {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .st-emotion-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #FFF0E5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .st-emotion-info {
+      flex: 1;
+    }
+
+    .st-emotion-label {
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+
+    .st-emotion-value {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .st-highlights {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .st-highlights li {
+      font-size: 11px;
+      color: var(--text-secondary);
+      padding: 3px 0;
+      padding-left: 16px;
+      position: relative;
+    }
+
+    .st-highlights li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 7px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary);
+    }
+
+    /* Feed screen */
+    .feed-screen {
+      background: var(--bg);
+      border-radius: 32px;
+      overflow: hidden;
+      aspect-ratio: 9/19;
+      max-width: 280px;
+      margin: 0 auto;
+    }
+
+    .feed-header {
+      background: var(--surface);
+      padding: 48px 16px 12px;
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .feed-header h4 {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .feed-body {
+      padding: 12px;
+      height: calc(100% - 100px);
+    }
+
+    .feed-item {
+      background: var(--surface);
+      border-radius: 12px;
+      padding: 10px;
+      margin-bottom: 8px;
+    }
+
+    .feed-meta {
+      font-size: 9px;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .feed-type {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 600;
+      margin-right: 4px;
+    }
+
+    .feed-type.voice {
+      background: #E8F0FE;
+      color: #4A6FA5;
+    }
+
+    .feed-type.text {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .feed-text {
+      font-size: 11px;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+
+    .feed-input-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      background: var(--surface);
+      padding: 8px 12px 16px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .fake-input {
+      flex: 1;
+      height: 28px;
+      background: var(--surfaceContainer, #f0ede9);
+      border-radius: 14px;
+      padding: 0 12px;
+      font-size: 10px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+    }
+
+    .fake-send {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fake-send svg {
+      width: 14px;
+      height: 14px;
+      color: #fff;
+    }
+
+    .fake-mic-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fake-mic-btn svg {
+      width: 14px;
+      height: 14px;
+      color: var(--primary);
+    }
+
+    .fake-plus-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .fake-plus-btn svg {
+      width: 14px;
+      height: 14px;
+      color: var(--primary);
+    }
+
+    .role-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 24px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+    }
+
+    .role-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .role-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: var(--radius-sm);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .role-icon.elder {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .role-icon.caregiver {
+      background: #E8F0FE;
+      color: #4A6FA5;
+    }
+
+    .role-icon svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .role-card h3 {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .role-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .role-list li {
+      font-size: 14px;
+      color: var(--text-secondary);
+      padding: 6px 0;
+      padding-left: 20px;
+      position: relative;
+    }
+
+    .role-list li::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 12px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--primary-light);
+      border: 2px solid var(--primary);
+    }
+
     /* Preview (Phone mockup) */
     .preview-section {
       background: linear-gradient(180deg, var(--surface) 0%, var(--bg) 100%);
@@ -409,6 +797,10 @@
         grid-template-columns: repeat(3, 1fr);
       }
 
+      .roles {
+        grid-template-columns: repeat(2, 1fr);
+      }
+
       .section {
         padding: 56px 0;
       }
@@ -436,18 +828,18 @@
   <section class="hero">
     <div class="container">
       <div class="logo">
-        <img src="landing/logo.png" alt="小暖长辈端">
+        <img src="landing/logo.png" alt="小暖">
       </div>
-      <h1>小暖长辈端</h1>
+      <h1>小暖</h1>
       <p class="tagline">用声音陪伴，让关爱触手可及</p>
-      <a class="btn" href="downloads/xiaonuan-v0.2.apk" download>
+      <a class="btn" href="downloads/xiaonuan-v1.0.0.apk" download>
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
           <path stroke-linecap="round" stroke-linejoin="round"
             d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
         </svg>
         下载 Android 版
       </a>
-      <p class="download-meta">APK 文件 · 适用于 Android 8.0 及以上</p>
+      <p class="download-meta">APK 文件 · 适用于 Android 8.0 及以上 · 陪伴端 + 管理端</p>
 
       <div class="stats">
         <div class="stat">
@@ -455,12 +847,16 @@
           <div class="stat-label">一键对话</div>
         </div>
         <div class="stat">
-          <div class="stat-value">家人</div>
-          <div class="stat-label">声音克隆</div>
+          <div class="stat-value">情感</div>
+          <div class="stat-label">分层记忆</div>
         </div>
         <div class="stat">
-          <div class="stat-value">实时</div>
+          <div class="stat-value">家人</div>
           <div class="stat-label">动态同步</div>
+        </div>
+        <div class="stat">
+          <div class="stat-value">克隆</div>
+          <div class="stat-label">亲人声音</div>
         </div>
       </div>
     </div>
@@ -469,7 +865,7 @@
   <section class="section">
     <div class="container">
       <h2 class="section-title">核心功能</h2>
-      <p class="section-subtitle">专为长辈设计的智能陪伴体验</p>
+      <p class="section-subtitle">为陪伴与管理场景设计的智能体验</p>
       <div class="features">
         <div class="feature-card">
           <div class="feature-icon">
@@ -487,11 +883,22 @@
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
               stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round"
+                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+            </svg>
+          </div>
+          <h3>情感记忆</h3>
+          <p>五层记忆系统模拟人类记忆逻辑，AI 记住用户的喜好、健康与家庭点滴，回应更贴心。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
                 d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
             </svg>
           </div>
           <h3>家庭动态</h3>
-          <p>子女分享的生活点滴，自动转为语音播报。让老人随时感受家人关怀。</p>
+          <p>家人分享的生活点滴自动转为语音播报，让被陪伴者随时感受关怀。</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -501,8 +908,73 @@
                 d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
             </svg>
           </div>
-          <h3>语音克隆</h3>
-          <p>录制家人声音，让 AI 用熟悉的声音陪伴老人，温暖更亲近。</p>
+          <h3>声音克隆</h3>
+          <p>录制家人声音，让 AI 用熟悉的声音陪伴，温暖更亲近。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+            </svg>
+          </div>
+          <h3>每日总结</h3>
+          <p>AI 自动生成情绪分析、对话亮点与注意事项，管理者随时掌握陪伴状态。</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />
+            </svg>
+          </div>
+          <h3>安全守护</h3>
+          <p>智能识别健康风险与异常信号，及时发出安全提醒，让照护更安心。</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <h2 class="section-title">一个应用，两端体验</h2>
+      <p class="section-subtitle">陪伴端与管理端，各取所需，下载即用</p>
+      <div class="roles">
+        <div class="role-card">
+          <div class="role-header">
+            <div class="role-icon elder">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+              </svg>
+            </div>
+            <h3>陪伴端</h3>
+          </div>
+          <ul class="role-list">
+            <li>超大按钮、大字体，极简操作</li>
+            <li>按住说话，松开发送，语音交互零门槛</li>
+            <li>6 位邀请码快速绑定</li>
+            <li>标题显示绑定者名字，更有亲近感</li>
+          </ul>
+        </div>
+        <div class="role-card">
+          <div class="role-header">
+            <div class="role-icon caregiver">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+              </svg>
+            </div>
+            <h3>管理端</h3>
+          </div>
+          <ul class="role-list">
+            <li>手机号注册登录，创建配对管理</li>
+            <li>概览：实时状态 + 每日情绪总结</li>
+            <li>日志：按日期分组的 AI 对话记录</li>
+            <li>留言：文字/语音发送，Feed 时间线</li>
+            <li>声音：录制家人声音，AI 声音克隆</li>
+            <li>设置：账户管理、帮助中心</li>
+          </ul>
         </div>
       </div>
     </div>
@@ -511,24 +983,125 @@
   <section class="section preview-section">
     <div class="container">
       <h2 class="section-title">界面预览</h2>
-      <p class="section-subtitle">简洁设计，老人也能轻松上手</p>
-      <div class="phone-mockup">
-        <div class="phone-screen">
-          <div class="phone-notch"></div>
-          <div class="screen-content">
-            <div class="screen-logo">
-              <img src="landing/logo.png" alt="小暖">
+      <p class="section-subtitle">陪伴端语音对话、管理端数据面板，一个应用全覆盖</p>
+
+      <div class="preview-tabs">
+        <button class="preview-tab active" data-screen="companionee">陪伴端</button>
+        <button class="preview-tab" data-screen="overview">概览</button>
+        <button class="preview-tab" data-screen="feed">留言</button>
+      </div>
+
+      <!-- 陪伴端：语音对话 -->
+      <div class="preview-screen active" id="screen-companionee">
+        <div class="phone-mockup">
+          <div class="phone-screen">
+            <div class="phone-notch"></div>
+            <div class="screen-content">
+              <div class="screen-logo">
+                <img src="landing/logo.png" alt="小暖">
+              </div>
+              <div class="screen-title">小暖</div>
+              <div class="screen-subtitle">随时陪伴您</div>
+              <div class="mic-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
+                  stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+                </svg>
+              </div>
+              <p class="screen-hint">按住说话，松开发送</p>
             </div>
-            <div class="screen-title">小暖</div>
-            <div class="screen-subtitle">随时陪伴您</div>
-            <div class="mic-button">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2"
-                stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round"
-                  d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+          </div>
+        </div>
+      </div>
+
+      <!-- 管理端：概览 -->
+      <div class="preview-screen" id="screen-overview">
+        <div class="steward-screen">
+          <div class="st-header">
+            <h4>概览</h4>
+            <p>实时状态 · 每日总结</p>
+          </div>
+          <div class="st-body">
+            <div class="st-card">
+              <div class="st-card-title">配对码</div>
+              <div class="st-pairing-code">A7K 9M2</div>
+            </div>
+            <div class="st-card">
+              <div class="st-card-title">状态</div>
+              <div class="st-status-row">
+                <div class="st-dot online"></div>
+                <span class="st-status-text">正在对话 · 刚刚</span>
+              </div>
+            </div>
+            <div class="st-card">
+              <div class="st-card-title">今日情绪</div>
+              <div class="st-emotion">
+                <div class="st-emotion-icon">😊</div>
+                <div class="st-emotion-info">
+                  <div class="st-emotion-label">情绪倾向</div>
+                  <div class="st-emotion-value">温暖、愉快</div>
+                </div>
+              </div>
+            </div>
+            <div class="st-card">
+              <div class="st-card-title">高光时刻</div>
+              <ul class="st-highlights">
+                <li>主动关心了女儿的近况</li>
+                <li>分享了年轻时教书的故事</li>
+                <li>提到天气转凉，记得添衣</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 管理端：留言 -->
+      <div class="preview-screen" id="screen-feed">
+        <div class="feed-screen" style="position: relative;">
+          <div class="feed-header">
+            <h4>留言</h4>
+          </div>
+          <div class="feed-body">
+            <div class="feed-item">
+              <div class="feed-meta">今天 10:30</div>
+              <div>
+                <span class="feed-type voice">语音</span>
+                <span class="feed-text">"妈，今天降温，记得多穿点衣服。"</span>
+              </div>
+            </div>
+            <div class="feed-item">
+              <div class="feed-meta">今天 08:15</div>
+              <div>
+                <span class="feed-type text">文字</span>
+                <span class="feed-text">"今天带了你最爱吃的红烧鱼，晚上回家吃。"</span>
+              </div>
+            </div>
+            <div class="feed-item">
+              <div class="feed-meta">昨天 20:00</div>
+              <div>
+                <span class="feed-type voice">语音</span>
+                <span class="feed-text">"周末带孙子去看您，好好想你们。"</span>
+              </div>
+            </div>
+          </div>
+          <div class="feed-input-bar">
+            <div class="fake-plus-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
               </svg>
             </div>
-            <p class="screen-hint">按住说话，松开发送</p>
+            <div class="fake-input">记录一下TA的近况...</div>
+            <div class="fake-mic-btn">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" />
+              </svg>
+            </div>
+            <div class="fake-send">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+              </svg>
+            </div>
           </div>
         </div>
       </div>
@@ -558,8 +1131,8 @@
         <div class="step">
           <div class="step-number">3</div>
           <div class="step-content">
-            <h4>完成安装并登录</h4>
-            <p>按提示完成安装，打开应用后使用子女分享的邀请码绑定家庭即可开始使用。</p>
+            <h4>打开应用，选择角色</h4>
+            <p>首次打开默认进入陪伴端绑定页，输入 6 位邀请码即可开始使用。右上角可切换到管理端完成注册与管理。</p>
           </div>
         </div>
       </div>
@@ -591,6 +1164,19 @@
           console.log('[Landing] Download clicked');
         });
       }
+
+      // Preview tab switching
+      var tabs = document.querySelectorAll('.preview-tab');
+      var screens = document.querySelectorAll('.preview-screen');
+      tabs.forEach(function (tab) {
+        tab.addEventListener('click', function () {
+          var target = this.getAttribute('data-screen');
+          tabs.forEach(function (t) { t.classList.remove('active'); });
+          screens.forEach(function (s) { s.classList.remove('active'); });
+          this.classList.add('active');
+          document.getElementById('screen-' + target).classList.add('active');
+        });
+      });
     })();
   </script>
 </body>

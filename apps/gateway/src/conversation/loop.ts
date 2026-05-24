@@ -14,6 +14,7 @@ import { randomUUID } from 'crypto';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import type { WebSocket } from '@fastify/websocket';
+import { enqueueExtraction } from '../services/extraction-service.js';
 
 export async function handleVoiceText(
   sessionId: string,
@@ -28,6 +29,12 @@ export async function handleVoiceText(
     // 1. Save companionee message
     await saveMessage(sessionId, 'COMPANIONEE', text);
     console.log('[Loop] companionee message saved');
+
+    // 1.5 Extract info from companionee message (async, non-blocking)
+    setImmediate(() => {
+      enqueueExtraction('conversation', pairingId, text, 'COMPANIONEE')
+        .catch((err) => console.error('[Loop] companionee extraction failed:', err));
+    });
 
     // 2. Increment turn count
     const session = await incrementTurnCount(sessionId);
