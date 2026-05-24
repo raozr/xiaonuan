@@ -1,27 +1,48 @@
-import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, Alert, StatusBar } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Alert, StatusBar, Modal } from 'react-native';
 import { router } from 'expo-router';
-import { ChevronRight, Pencil, ExternalLink, Users, UserPlus, LogOut } from 'lucide-react-native';
+import { ChevronRight, Pencil, ExternalLink, Users, UserPlus, LogOut, X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopAppBar } from '../../src/components/shared/TopAppBar';
 import { Card } from '../../src/components/ui/Card';
 import { Input } from '../../src/components/ui/Input';
-import { NotificationToggle } from '../../src/components/steward/NotificationToggle';
 import { Button } from '../../src/components/ui/Button';
 import { useAuthStore } from '../../src/store/auth-store';
 import { useRoleStore } from '../../src/store/role-store';
 import { COMPANIONEE_ROLE } from '../../src/utils/constants';
 import { colors, typography } from '../../src/utils/theme';
+import { getMe, updatePassword } from '../../src/services/me';
 
 export default function SettingsScreen() {
-  const { stewardName, companioneeName, clearAuth } = useAuthStore();
+  const { token, stewardName, clearAuth } = useAuthStore();
   const { setRole } = useRoleStore();
-  const [editingName, setEditingName] = useState(false);
   const [name, setName] = useState(stewardName ?? '');
-  const [dailySummaries, setDailySummaries] = useState(true);
-  const [abnormalAlerts, setAbnormalAlerts] = useState(true);
-  const [voiceFeed, setVoiceFeed] = useState(false);
+  const [phone, setPhone] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [passwordModalVisible, setPasswordModalVisible] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
   const insets = useSafeAreaInsets();
+
+  // Fetch real user data
+  useEffect(() => {
+    if (!token) return;
+    (async () => {
+      try {
+        setLoading(true);
+        const data = await getMe(token);
+        if (data.name) setName(data.name);
+        if (data.phone) setPhone(data.phone);
+      } catch (err) {
+        console.error('[Settings] fetch me failed:', err);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [token]);
 
   async function handleLogout() {
     Alert.alert('退出登录', '确定要退出登录吗？', [
@@ -38,8 +59,46 @@ export default function SettingsScreen() {
     ]);
   }
 
-  async function handleSaveName() {
-    setEditingName(false);
+  function openPasswordModal() {
+    setOldPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setPasswordError('');
+    setPasswordModalVisible(true);
+  }
+
+  async function handleChangePassword() {
+    setPasswordError('');
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setPasswordError('请填写所有字段');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的新密码不一致');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordError('新密码至少6位');
+      return;
+    }
+    if (!token) {
+      setPasswordError('未登录');
+      return;
+    }
+    try {
+      setPasswordLoading(true);
+      const result = await updatePassword(token, { oldPassword, newPassword });
+      if (result.success) {
+        setPasswordModalVisible(false);
+        Alert.alert('成功', '密码修改成功');
+      } else {
+        setPasswordError(result.message || '修改失败');
+      }
+    } catch (err: any) {
+      setPasswordError(err?.message || '修改失败，请检查旧密码是否正确');
+    } finally {
+      setPasswordLoading(false);
+    }
   }
 
   return (
@@ -61,40 +120,25 @@ export default function SettingsScreen() {
               {/* Avatar */}
               <View className="w-16 h-16 rounded-full bg-primaryContainer items-center justify-center mr-stack-md">
                 <Text className="text-on-primary text-2xl font-bold">
-                  {(name || 'JL').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                  {(name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                 </Text>
               </View>
               {/* Name + Phone */}
               <View className="flex-1">
                 <Text className="text-on-surface font-bold" style={typography.bodyLgElderly}>
-                  {name || 'Jane Lin'}
+                  {loading ? '加载中...' : (name || '未知用户')}
                 </Text>
                 <Text className="text-on-surface-variant" style={typography.bodyMd}>
-                  +1 (555) 123-4567
+                  {loading ? '' : (phone || '')}
                 </Text>
               </View>
-              {/* Edit */}
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setEditingName(!editingName)}>
-                <Pencil size={20} color={colors.onSurfaceVariant} />
-              </TouchableOpacity>
             </View>
-
-            {editingName && (
-              <View className="px-stack-md pb-stack-md">
-                <Input
-                  label="姓名"
-                  value={name}
-                  onChangeText={setName}
-                />
-                <Button label="保存" onPress={handleSaveName} fullWidth={false} />
-              </View>
-            )}
 
             {/* Divider */}
             <View className="h-[1px] bg-surfaceContainer mx-stack-md" />
 
             {/* Change Password */}
-            <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7}>
+            <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7} onPress={openPasswordModal}>
               <Text className="text-on-surface" style={typography.bodyMd}>修改密码</Text>
               <ChevronRight size={20} color={colors.outline} />
             </TouchableOpacity>
@@ -107,26 +151,26 @@ export default function SettingsScreen() {
             通知
           </Text>
           <Card>
-            <NotificationToggle
-              label="每日摘要"
-              description="早晨健康和活动摘要"
-              value={dailySummaries}
-              onChange={setDailySummaries}
-            />
+            <View className="flex-row items-center justify-between py-3">
+              <View className="flex-1">
+                <Text className="text-on-surface-variant" style={typography.bodyMd}>每日摘要</Text>
+              </View>
+              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
+            </View>
             <View className="h-[1px] bg-surfaceContainer" />
-            <NotificationToggle
-              label="异常提醒"
-              description="日常习惯偏离时立即提醒"
-              value={abnormalAlerts}
-              onChange={setAbnormalAlerts}
-            />
+            <View className="flex-row items-center justify-between py-3">
+              <View className="flex-1">
+                <Text className="text-on-surface-variant" style={typography.bodyMd}>异常提醒</Text>
+              </View>
+              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
+            </View>
             <View className="h-[1px] bg-surfaceContainer" />
-            <NotificationToggle
-              label="语音消息"
-              description="陪伴者的新语音消息"
-              value={voiceFeed}
-              onChange={setVoiceFeed}
-            />
+            <View className="flex-row items-center justify-between py-3">
+              <View className="flex-1">
+                <Text className="text-on-surface-variant" style={typography.bodyMd}>语音消息</Text>
+              </View>
+              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
+            </View>
           </Card>
         </View>
 
@@ -136,25 +180,25 @@ export default function SettingsScreen() {
             家庭管理
           </Text>
           <Card className="p-0 overflow-hidden">
-            <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7}>
+            <View className="flex-row items-center justify-between p-stack-md">
               <View className="flex-row items-center gap-stack-md">
                 <View className="w-10 h-10 rounded-full bg-surfaceContainer items-center justify-center">
                   <Users size={20} color={colors.onSurfaceVariant} />
                 </View>
-                <Text className="text-on-surface" style={typography.bodyMd}>管理已绑定账号</Text>
+                <Text className="text-on-surface-variant" style={typography.bodyMd}>管理已绑定账号</Text>
               </View>
-              <ChevronRight size={20} color={colors.outline} />
-            </TouchableOpacity>
+              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
+            </View>
             <View className="h-[1px] bg-surfaceContainer mx-stack-md" />
-            <TouchableOpacity className="flex-row items-center justify-between p-stack-md" activeOpacity={0.7}>
+            <View className="flex-row items-center justify-between p-stack-md">
               <View className="flex-row items-center gap-stack-md">
                 <View className="w-10 h-10 rounded-full bg-surfaceContainer items-center justify-center">
                   <UserPlus size={20} color={colors.onSurfaceVariant} />
                 </View>
-                <Text className="text-on-surface" style={typography.bodyMd}>邀请家人</Text>
+                <Text className="text-on-surface-variant" style={typography.bodyMd}>邀请家人</Text>
               </View>
-              <ChevronRight size={20} color={colors.outline} />
-            </TouchableOpacity>
+              <Text className="text-on-surface-variant" style={typography.bodyMd}>暂不实现</Text>
+            </View>
           </Card>
         </View>
 
@@ -175,7 +219,7 @@ export default function SettingsScreen() {
             </TouchableOpacity>
             <View className="h-[1px] bg-surfaceContainer mx-stack-md" />
             <View className="p-stack-md">
-              <Text className="text-on-surface-variant" style={typography.bodyMd}>版本：v2.4.1</Text>
+              <Text className="text-on-surface-variant" style={typography.bodyMd}>版本：V1.0.0</Text>
             </View>
           </Card>
         </View>
@@ -190,6 +234,57 @@ export default function SettingsScreen() {
           />
         </View>
       </ScrollView>
+
+      {/* Change Password Modal */}
+      <Modal
+        visible={passwordModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setPasswordModalVisible(false)}
+      >
+        <View className="flex-1 justify-end" style={{ backgroundColor: 'rgba(0,0,0,0.3)' }}>
+          <View className="bg-surface-bright rounded-t-3xl p-stack-lg" style={{ paddingBottom: insets.bottom + 24 }}>
+            <View className="flex-row items-center justify-between mb-stack-lg">
+              <Text className="text-on-surface font-bold" style={typography.headlineLg}>修改密码</Text>
+              <TouchableOpacity onPress={() => setPasswordModalVisible(false)} activeOpacity={0.7}>
+                <X size={24} color={colors.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+
+            <Input
+              label="旧密码"
+              placeholder="请输入旧密码"
+              secureTextEntry
+              value={oldPassword}
+              onChangeText={setOldPassword}
+            />
+            <Input
+              label="新密码"
+              placeholder="至少6位"
+              secureTextEntry
+              value={newPassword}
+              onChangeText={setNewPassword}
+            />
+            <Input
+              label="确认新密码"
+              placeholder="再次输入新密码"
+              secureTextEntry
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+            />
+
+            {passwordError ? (
+              <Text className="text-error mb-stack-md" style={typography.bodyMd}>{passwordError}</Text>
+            ) : null}
+
+            <Button
+              label="确认修改"
+              onPress={handleChangePassword}
+              loading={passwordLoading}
+            />
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
