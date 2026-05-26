@@ -1,5 +1,5 @@
 # ==================================================
-# AI Face Analysis Gateway Configuration
+# Xiaonuan Gateway Configuration
 # ==================================================
 
 # --------------------------------------------------
@@ -12,28 +12,17 @@ server {
 
     client_max_body_size 50M;
 
-    # Global Root for Static Files (Verification)
     root /usr/share/nginx/html;
 
-    # 1. Health Check / Root Status
+    # Health Check
     location / {
         try_files $uri @status;
     }
 
     location @status {
         add_header Content-Type text/plain;
-        return 200 "AI Face Analysis Gateway is Running (HTTP)";
+        return 200 "Xiaonuan Gateway is Running (HTTP)";
     }
-
-    # 2. Face Analysis Service Proxy
-    #location /face/ {
-    #    proxy_pass http://face-backend:8000/;
-        
-    #    proxy_set_header Host $host;
-    #    proxy_set_header X-Real-IP $remote_addr;
-    #    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    #    proxy_set_header X-Forwarded-Proto $scheme;
-    #}
 }
 
 # --------------------------------------------------
@@ -49,107 +38,32 @@ server {
     # SSL Certificates
     ssl_certificate /etc/nginx/certs/server.crt;
     ssl_certificate_key /etc/nginx/certs/server.key;
-    
-    # SSL Optimization
+
     ssl_session_timeout 1d;
     ssl_session_cache shared:SSL:50m;
     ssl_session_tickets off;
 
-    # Global Root for Static Files
     root /usr/share/nginx/html;
 
-    # 1. Domain Verification (.well-known)
-    # Priority matching for SSL validation files
+    # Domain Verification (.well-known)
     location ^~ /.well-known/ {
         allow all;
         try_files $uri =404;
     }
 
-    # 2. Health Check / Root Status
+    # Health Check
     location / {
-        proxy_pass http://derper:12345; # 确保指向你的 derper 容器名和端口
-    
-        # 核心：必须强制指定 1.1 协议
-        proxy_http_version 1.1;
-    
-        # 核心：透传 WebSocket 升级头部
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-    
-         # 核心：必须传递真实的 Host，否则 DERP 会因为校验域名不匹配而拒绝连接
-        proxy_set_header Host $host;
-    
-        # 传递真实 IP（辅助打洞）
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-
-        # 架构师调优：禁用所有缓存和缓冲，DERP 需要实时流
-        proxy_buffering off;
-        proxy_cache off;
-    
-        # 防止长连接超时
-        proxy_read_timeout 86400s;
-        proxy_send_timeout 86400s;
+        return 200 "Xiaonuan Gateway is Running (HTTPS)";
     }
 
-    location @status {
-        add_header Content-Type text/plain;
-        return 200 "AI Face Analysis Gateway is Running (HTTPS)";
-    }
-
-    # 3. Face Analysis Service Proxy
-    #location /face/ {
-    #    proxy_pass http://face-backend:8000/;
-        
-    #    proxy_set_header Host $host;
-    #    proxy_set_header X-Real-IP $remote_addr;
-    #    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    #    proxy_set_header X-Forwarded-Proto $scheme;
-    #}
-
-    #location /xiaonuan/ {
-    #
-    #   resolver 127.0.0.11 valid=30s;
-    #   set $target_service http://xiaonuan-gateway:3000;
-    #   proxy_pass $target_service/;
-
-
-    #    proxy_set_header Host $host;
-    #    proxy_set_header X-Real-IP $remote_addr;
-    #    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    #    proxy_set_header X-Forwarded-Proto $scheme;
-    #}
-
-    #location /nexis/ {
-
-    #   proxy_pass http://nexis_web_ui:5173; # 指向 Nexis UI 容器
-    #   proxy_set_header Host $host;
-    #   proxy_http_version 1.1;
-    #   proxy_set_header Upgrade $http_upgrade;
-    #   proxy_set_header Connection "upgrade";
-    #   proxy_set_header X-Real-IP $remote_addr;
-    #    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    #    proxy_set_header X-Forwarded-Proto $scheme;
-    #}
-    #
+    # Xiaonuan Gateway API Proxy
     location /xiaonuan/ {
         proxy_pass http://xiaonuan-gateway:3000/;
 
-        # 必须加上这三行，否则 WebSocket 会 404
-      proxy_http_version 1.1;
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_set_header Connection "upgrade";
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
 
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-    # 4. Child PC Web App
-    location /xiaonuan/child {
-        #proxy_pass http://xiaonuan-child-pc:3000/;
-        proxy_pass http://xiaonuan-child-pc:3000/xiaonuan/child;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

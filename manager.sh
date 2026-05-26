@@ -48,7 +48,7 @@ function show_usage() {
     echo "  restart          重启容器 (不重建镜像，仅重启)"
     echo "  update           完整更新部署 (拉代码→重建→启动)"
     echo "  build            重新构建服务镜像"
-    echo "  db-reset         首次部署：重置数据库和数据目录 (危险操作！)"
+    echo "  db-reset         首次部署：重置数据库和数据 (危险操作！)"
     echo ""
     echo -e "${BLUE}运维命令:${NC}"
     echo "  status           查看服务运行状态"
@@ -56,10 +56,10 @@ function show_usage() {
     echo "  health           检查各服务健康状态"
     echo "  backup           备份数据库到 ./backups/"
     echo "  clean            清理旧日志和未使用镜像"
-    echo "  nginx-reload     重载宿主机 nginx 配置"
     echo ""
     echo -e "${BLUE}开发命令 (仅本地):${NC}"
-    echo "  dev              启动本地开发模式 (pnpm run dev)"
+    echo "  dev              启动本地开发环境 (Docker + 语音 + 网关)"
+    echo "  stop-dev         停止本地开发服务 (语音、网关等)"
     echo ""
     echo -e "${YELLOW}提示: update 是最常用的命令，用于发布新版本${NC}"
     echo -e "${RED}警告: db-reset 会删除所有数据，仅在首次部署时使用${NC}"
@@ -155,7 +155,7 @@ cmd_start() {
     check_env
     ${COMPOSE_CMD} up -d --build
     wait_for_health
-    echo -e "${GREEN}服务已启动。访问: https://your-domain/xiaonuan/${NC}"
+    echo -e "${GREEN}服务已启动 (端口: 3000)${NC}"
 }
 
 cmd_stop() {
@@ -186,19 +186,25 @@ cmd_update() {
     echo -e "${BLUE}拉取最新代码...${NC}"
     git pull origin main
 
-    # 3. 检查环境
+    # 3. 更新依赖
+    echo -e "${BLUE}更新依赖...${NC}"
+    if command -v pnpm &>/dev/null; then
+        pnpm install
+    fi
+
+    # 4. 检查环境
     check_env
 
-    # 4. 构建并启动
+    # 5. 构建并启动
     echo -e "${BLUE}重新构建并启动服务...${NC}"
     ${COMPOSE_CMD} down
     ${COMPOSE_CMD} build
     ${COMPOSE_CMD} up -d
 
-    # 5. 健康检查
+    # 6. 健康检查
     wait_for_health
 
-    # 6. 清理旧镜像
+    # 7. 清理旧镜像
     do_clean
 
     echo -e "${GREEN}========== 更新部署完成 ==========${NC}"
@@ -239,25 +245,21 @@ cmd_clean() {
 }
 
 cmd_db_reset() {
-    echo -e "${RED}警告: 此操作将删除所有数据库表和数据，以及本地数据目录！${NC}"
+    echo -e "${RED}警告: 此操作将删除所有数据库表和数据，以及 Docker 数据卷！${NC}"
     echo -e "${YELLOW}此命令仅用于首次生产部署，生产环境有数据后绝不应使用${NC}"
     echo ""
     read -r -p "确定要继续吗？输入 yes 确认: " confirm
-    if [[ "$confirm" != "yes" ]]; then
+    if [[ "${confirm,,}" != "yes" && "${confirm,,}" != "y" ]]; then
         echo "已取消"
         exit 0
     fi
 
     echo ""
-    echo -e "${BLUE}步骤 1/5: 停止所有服务...${NC}"
-    ${COMPOSE_CMD} stop gateway voice-service child-pc || true
-    ${COMPOSE_CMD} stop postgres || true
+    echo -e "${BLUE}步骤 1/5: 停止所有服务并移除数据卷...${NC}"
+    ${COMPOSE_CMD} down -v
+    echo -e "${GREEN}容器和数据卷已移除${NC}"
 
-    echo -e "${BLUE}步骤 2/5: 清理本地数据目录...${NC}"
-    rm -rf data/postgres/* data/qdrant/* data/redis/* data/voice-audio/*
-    echo -e "${GREEN}数据目录已清空${NC}"
-
-    echo -e "${BLUE}步骤 3/5: 重新启动 PostgreSQL...${NC}"
+    echo -e "${BLUE}步骤 2/5: 重新启动 PostgreSQL...${NC}"
     ${COMPOSE_CMD} up -d postgres
     echo -n "等待 PostgreSQL 启动"
     local waited=0
@@ -279,7 +281,7 @@ cmd_db_reset() {
         exit 1
     fi
 
-    echo -e "${BLUE}步骤 4/5: 重置数据库 Schema...${NC}"
+    echo -e "${BLUE}步骤 3/5: 重置数据库 Schema...${NC}"
     ${COMPOSE_CMD} exec -T postgres psql -U xiaonuan -d xiaonuan -c "
         DROP SCHEMA public CASCADE;
         CREATE SCHEMA public;
@@ -288,7 +290,7 @@ cmd_db_reset() {
     "
     echo -e "${GREEN}数据库已重置${NC}"
 
-    echo -e "${BLUE}步骤 5/5: 重新生成 Prisma Client...${NC}"
+    echo -e "${BLUE}步骤 4/5: 重新生成 Prisma Client...${NC}"
     if command -v pnpm &>/dev/null; then
         pnpm db:generate
         echo -e "${GREEN}Prisma Client 已重新生成${NC}"
@@ -302,28 +304,87 @@ cmd_db_reset() {
     echo -e "${YELLOW}Prisma 将在首次启动时通过 migrate deploy 创建数据库表${NC}"
 }
 
-cmd_nginx_reload() {
-    echo -e "${BLUE}重载宿主机 nginx...${NC}"
-    if docker ps | grep -q "gateway"; then
-        docker exec gateway nginx -s reload
-        echo -e "${GREEN}nginx 已重载${NC}"
+cmd_dev() {
+    echo -e "${CYAN}========== 启动本地开发环境 ==========${NC}"
+
+    # 1. Docker 基础设施
+    echo -e "${BLUE}[1/4] 检查 Docker 基础设施...${NC}"
+    if ${COMPOSE_CMD} ps 2>/dev/null | grep -q "postgres"; then
+        echo -e "${GREEN}  Docker 基础设施已就绪${NC}"
     else
-        echo -e "${RED}错误: nginx 容器 (gateway) 未运行${NC}"
-        exit 1
+        echo -e "${YELLOW}  启动 postgres, qdrant, redis...${NC}"
+        ${COMPOSE_CMD} up -d postgres qdrant redis
+        echo -e "${GREEN}  Docker 基础设施已启动${NC}"
     fi
+
+    # 2. 语音服务
+    echo -e "${BLUE}[2/4] 检查语音服务...${NC}"
+    if curl -s --connect-timeout 2 http://localhost:8000/health &>/dev/null; then
+        echo -e "${GREEN}  语音服务已就绪${NC}"
+    else
+        echo -e "${YELLOW}  启动语音服务 (端口 8000)...${NC}"
+        local api_key
+        api_key=$(grep '^DASHSCOPE_API_KEY=' .env 2>/dev/null | head -1 | cut -d= -f2-)
+        if [ -z "$api_key" ]; then
+            echo -e "${RED}  错误: .env 中未找到 DASHSCOPE_API_KEY${NC}"
+            exit 1
+        fi
+        cd apps/voice-service
+        BAILIAN_API_KEY="$api_key" nohup python3 -m uvicorn main:app \
+            --host 0.0.0.0 --port 8000 > /tmp/voice-service.log 2>&1 &
+        cd - > /dev/null
+        sleep 2
+        if curl -s --connect-timeout 2 http://localhost:8000/health &>/dev/null; then
+            echo -e "${GREEN}  语音服务已启动${NC}"
+        else
+            echo -e "${RED}  语音服务启动失败，查看日志: cat /tmp/voice-service.log${NC}"
+            exit 1
+        fi
+    fi
+
+    # 3. 生成 Prisma Client（如需要）
+    echo -e "${BLUE}[3/4] 检查 Prisma Client...${NC}"
+    pnpm db:generate &>/dev/null && echo -e "${GREEN}  Prisma Client 已就绪${NC}" \
+        || echo -e "${YELLOW}  Prisma Client 生成失败，可稍后手动运行 pnpm db:generate${NC}"
+
+    # 4. 启动开发服务器
+    echo -e "${BLUE}[4/4] 启动开发服务器...${NC}"
+    echo -e "${YELLOW}  Expo 请另开终端手动启动:${NC}"
+    echo -e "${YELLOW}    cd apps/xiaonuan-app && npx expo start${NC}"
+    echo ""
+    echo -e "${GREEN}========== 开发环境就绪 ==========${NC}"
+    echo -e "${YELLOW}按 Ctrl+C 停止开发服务器${NC}"
+    echo ""
+    NODE_EXTRA_CA_CERTS="${NODE_EXTRA_CA_CERTS:-/opt/homebrew/share/ca-certificates/cacert.pem}" pnpm run dev
 }
 
-cmd_dev() {
-    echo -e "${YELLOW}警告: dev 模式仅在本地开发环境使用${NC}"
-    echo -e "${YELLOW}云主机部署请使用: ./manager.sh start${NC}"
-    echo ""
-    read -r -p "仍要继续吗? [y/N] " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        check_env
-        pnpm run dev
-    else
-        echo "已取消"
-    fi
+cmd_stop_dev() {
+    echo -e "${RED}正在停止本地开发环境...${NC}"
+
+    # 停止当前项目下的开发进程（仅限本项目的 tsx/next 进程）
+    local my_pid
+    my_pid=$$
+    for pid in $(ps aux | grep -E "tsx watch.*src/server|pnpm.*--parallel" | grep -v grep | awk '{print $2}'); do
+        if [ "$pid" != "$my_pid" ]; then
+            echo -e "${BLUE}  停止开发进程 (PID $pid)...${NC}"
+            kill "$pid" 2>/dev/null || true
+        fi
+    done
+
+    # 按端口停止（先 SIGTERM，1 秒后 SIGKILL）
+    for port in 3000 8000; do
+        local pid
+        pid=$(lsof -ti:"$port" 2>/dev/null || true)
+        if [ -n "$pid" ]; then
+            echo -e "${BLUE}  停止端口 $port 上的进程 (PID $pid)...${NC}"
+            kill "$pid" 2>/dev/null || true
+            sleep 1
+            kill -9 "$pid" 2>/dev/null || true
+        fi
+    done
+
+    echo -e "${GREEN}本地开发服务已停止${NC}"
+    echo -e "${YELLOW}Docker 基础设施仍运行中，如需停止: ${COMPOSE_CMD} down${NC}"
 }
 
 # ==================================================
@@ -343,7 +404,7 @@ case "${1:-}" in
     health)     cmd_health ;;
     backup)     cmd_backup ;;
     clean)      cmd_clean ;;
-    nginx-reload) cmd_nginx_reload ;;
     dev)        cmd_dev ;;
+    stop-dev)   cmd_stop_dev ;;
     *)          show_usage ;;
 esac

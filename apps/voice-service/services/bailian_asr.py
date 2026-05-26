@@ -84,6 +84,11 @@ def transcribe(file_path: str) -> str:
         task_status = output.get("task_status") if isinstance(output, dict) else None
 
         if task_status != "SUCCEEDED":
+            code = (output or {}).get("code", "")
+            # No speech detected — return empty string, not an error
+            if code == "SUCCESS_WITH_NO_VALID_FRAGMENT":
+                logger.info("ASR: no valid speech fragment detected")
+                return ""
             raise RuntimeError(f"ASR task failed: {output}")
 
         results = output.get("results", [])

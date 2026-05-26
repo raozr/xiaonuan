@@ -1,90 +1,85 @@
-# XiaoNuan (小暖) - AI Home-Based Elderly Companion
+# 小暖 (XiaoNuan) - AI 居家养老陪伴
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Version](https://img.shields.io/badge/version-0.5.0-green.svg)
 ![Node](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen.svg)
 
-**XiaoNuan** is an AI elderly companion platform designed specifically for senior citizens and their families. It is not just a chatbot, but an intelligent partner with emotional depth, layered memory, proactive care, and safety monitoring features.
+**小暖**是一个 AI 养老陪伴平台，专为老年人和他们的家庭设计。它不仅仅是一个聊天机器人，更是一个具备情感深度、分层记忆、主动关怀和安全监控能力的智能伙伴。
 
-## 🌟 Key Features
+## 🌟 核心特性
 
-- **Layered Memory System**: Simulates human memory logic with five layers — session (current context), daily (recap summaries), short-term (recent conversations), mid-term (vector-based semantic search via Qdrant), and relationship layer (top persona facts). The AI "remembers" the elder's preferences, health status, and family anecdotes.
-- **Emotional Intelligence**: Tracks mood signals from conversations, surfaces current mood context with a 40+ emotion label map, and adapts conversation tone accordingly. Supports dialect styles, emotional resonance, and gentle guidance.
-- **Relationship Profiles**: Maintains structured persona profiles across categories (hobbies, health, preferences, relationships, habits) with confidence scoring and automatic extraction from conversations.
-- **Proactive Outreach**: Automatically identifies inactive pairings (72h no conversation) and generates proactive care messages at 10:00 AM daily with 24h cooldown.
-- **Event Stream Architecture**: All interactions flow through a unified event bus (Feed, Conversation, Extraction, Mood Change, Relationship Shift, Outreach, Persona Update), replacing the previous family-based feed model.
-- **Token Budget Control**: Memory context injection capped at ~2700 tokens (4096 chars) with priority-based truncation to prevent context overflow.
-- **Session State Machine**: Intelligently identifies conversational phases (Greeting → Active Chat → Closing → Ended) to dynamically adjust AI behavior and context retrieval strategies.
-- **Safety Guardrails**: Integrated emergency alerting tools that recognize potential health risks or distress signals and respond promptly.
-- **Voice Interaction**: Full-duplex voice conversation powered by Alibaba Cloud speech synthesis and recognition, enabling natural hands-free interaction for elders.
-- **Unified Mobile App**: A single React Native app (Expo SDK 55) serving both elderly users (COMPANIONEE — large fonts, voice-first UI) and caregivers (STEWART — pairing management, daily summaries, feed, voice cloning). Role-based routing via Expo Router.
-- **Multi-Client Support**: Family members connect via WeChat Mini-program or Child PC Web; elders and caregivers use the unified XiaoNuan App.
-- **Localized Integration**: Deeply integrated with Alibaba's DashScope (Qwen-Plus) LLM for superior performance in Chinese linguistic contexts.
+- **分层记忆系统**：模拟人类记忆逻辑，共五层——会话（当前上下文）、日记忆（每日回顾摘要）、短期（最近对话）、中期（基于 Qdrant 向量的语义搜索）、关系层（Top 人格画像）。AI 能"记住"老人的偏好、健康状况和家庭轶事。
+- **情绪智能**：从对话中追踪情绪信号，使用 40+ 情绪标签映射呈现当前情绪上下文，并根据情绪调整对话语气。支持方言风格、情感共鸣和温和引导。
+- **关系画像**：跨分类（爱好、健康、偏好、关系、习惯）维护结构化人格画像，含置信度评分，并支持从对话中自动提取。
+- **主动外呼**：自动识别超过 72 小时无互动的配对，于每日上午 10:00 生成主动关怀消息，24 小时冷却。
+- **事件流架构**：所有交互通过统一事件总线流转（Feed、对话、提取、情绪变化、关系转变、外呼、人格更新），替代了原先的基于家庭的 feed 模型。
+- **Token 预算控制**：记忆上下文注入上限约 2700 token（4096 字符），按优先级截断以防止上下文溢出。
+- **会话状态机**：智能识别对话阶段（问候 → 活跃聊天 → 结束 → 已结束），动态调整 AI 行为和上下文检索策略。
+- **安全护栏**：集成紧急告警工具，能识别潜在的健康风险或求救信号并及时响应。
+- **语音交互**：基于阿里云语音合成与识别实现全双工语音对话，让老人能够自然地进行免提交互。
+- **统一移动端**：单个 React Native 应用（Expo SDK 55），同时服务老人（COMPANIONEE——大字体、语音优先 UI）和监护人（STEWARD——配对管理、每日摘要、Feed、声音克隆）。基于 Expo Router 的角色路由。
+- **本地化集成**：深度集成阿里云 DashScope (Qwen-Plus) LLM，在中文语境下性能卓越。
 
-## 🏗️ Project Architecture
+## 🏗️ 项目架构
 
-This project uses a PNPM Workspace-organized Monorepo structure:
+本项目采用 PNPM Workspace 组织的 Monorepo 结构：
 
 ```text
 xiaonuan/
 ├── apps/
-│   ├── gateway/          # AI Agent Gateway (Fastify + WebSocket)
-│   ├── child-pc/         # Next.js 16+ Web App (Family Member PC Client)
-│   ├── mini-program/     # WeChat Mini-program (Family Member Mobile Client)
-│   ├── xiaonuan-app/     # Unified React Native Mobile App (COMPANIONEE + STEWARD, Expo SDK 55)
-│   └── voice-service/    # Python FastAPI Voice Processing Service
+│   ├── gateway/          # AI Agent 网关 (Fastify + WebSocket)
+│   ├── xiaonuan-app/     # 统一 React Native 移动端（COMPANIONEE + STEWARD，Expo SDK 55）
+│   └── voice-service/    # Python FastAPI 语音处理服务
 ├── packages/
-│   ├── prisma/           # DB Schema & Persistence Layer (PostgreSQL)
-│   └── skills/           # Modular AI Skill Definitions (Prompt Engineering)
+│   ├── prisma/           # 数据库 Schema 与持久化层（PostgreSQL）
+│   └── skills/           # 模块化 AI 技能定义（Prompt 工程）
 ├── deploy/
-│   └── nginx/            # Production Nginx Reverse Proxy Config
-├── docker-compose.yml    # Backend services orchestration
-├── Dockerfile            # Gateway service image
-└── manager.sh            # Production deployment management script
+│   └── nginx/            # 生产 Nginx 反向代理配置
+├── docker-compose.yml    # 后端服务编排
+├── Dockerfile            # 网关服务镜像
+└── manager.sh            # 生产部署管理脚本
 ```
 
-## 🛠️ Tech Stack
+## 🛠️ 技术栈
 
-- **Language**: TypeScript, Python
-- **Backend**: Node.js, Fastify, FastAPI
-- **Database**: PostgreSQL, Prisma
-- **Vector DB**: Qdrant (for semantic memory retrieval)
-- **LLM**: DashScope (Qwen-Plus)
-- **Cache**: Redis
-- **Speech**: Alibaba Cloud NLS (TTS / ASR)
-- **Frontend**:
-  - Family: WeChat Mini-program (mobile), Child PC Web (desktop, Next.js 16)
-  - Elder + Caregiver: React Native (Expo SDK 55, NativeWind v4, Reanimated 4, Zustand)
+- **语言**：TypeScript, Python
+- **后端**：Node.js, Fastify, FastAPI
+- **数据库**：PostgreSQL, Prisma
+- **向量数据库**：Qdrant（语义记忆检索）
+- **LLM**：DashScope (Qwen-Plus)
+- **缓存**：Redis
+- **语音**：阿里云 NLS (TTS / ASR)
+- **移动端**：React Native（Expo SDK 55, NativeWind v4, Reanimated 4, Zustand）
 
-## 🚀 Quick Start
+## 🚀 快速开始
 
-### Prerequisites
+### 前置条件
 
 - Node.js >= 22
 - PNPM >= 9
-- Docker (to run PostgreSQL, Qdrant, Redis)
-- Python 3.11+ (for voice-service local development)
+- Docker（运行 PostgreSQL、Qdrant、Redis）
+- Python 3.11+（如需本地开发语音服务）
 
-### Installation & Execution
+### 安装与运行
 
-1. **Clone the Repository**
+1. **克隆仓库**
    ```bash
    git clone <repository-url>
    cd xiaonuan
    ```
 
-2. **Configure Environment**
-   Copy `.env.example` in the root to `.env` and fill in necessary API Keys (e.g., `DASHSCOPE_API_KEY`, `WECHAT_APPID`, `WECHAT_SECRET`, `NLS_*` credentials).
+2. **配置环境变量**
+   复制根目录下的 `.env.example` 为 `.env`，填写必要的 API 密钥（如 `DASHSCOPE_API_KEY`、`WECHAT_APPID`、`WECHAT_SECRET`、`NLS_*` 凭据）。
 
-3. **One-Command Start (Recommended for Server Deploy)**
-   The project is fully Dockerized. Start everything with the management script:
+3. **一键启动（推荐服务器部署）**
+   项目已完全 Docker 化。使用管理脚本一键启动：
    ```bash
    ./manager.sh start
    ```
-   This script wraps `docker compose` and supports `start`, `stop`, `restart`, `update`, `status`, `logs`, `backup`, and `health`.
+   该脚本封装了 `docker compose`，支持 `start`、`stop`、`restart`、`update`、`status`、`logs`、`backup` 和 `health`。
 
-4. **Manual Development Mode**
-   If you need to develop backend code, start the infrastructure first:
+4. **手动开发模式**
+   如需开发后端代码，先启动基础设施：
    ```bash
    docker-compose up -d postgres qdrant redis
    pnpm install
@@ -92,111 +87,88 @@ xiaonuan/
    pnpm dev
    ```
 
-## 📱 Client Deployment
+## 📱 小暖 App（老人 + 监护统一客户端）
 
-### WeChat Mini-program (Family Mobile Client)
+小暖 App 是一个统一的 React Native 应用，基于 **Expo SDK 55** 构建，通过基于角色的路由同时服务于老人（COMPANIONEE）和监护人（STEWARD）。
 
-The mini-program is developed with native WeChat Mini-program framework.
-
-- **Development**: Open `apps/mini-program/` in WeChat DevTools.
-- **Build**: Use WeChat DevTools to upload and publish.
-- **Backend**: Ensure the gateway is deployed and the domain is whitelisted in WeChat MP Admin.
-
-### Child PC Web (Family Desktop Client)
-
-A Next.js 16+ web application for family members managing elders from PC.
-
-- **Development**:
-  ```bash
-  cd apps/child-pc
-  pnpm install
-  pnpm dev
-  ```
-- **Build**: `pnpm build` (Next.js App Router, static export)
-- **Features**: Pairing management, event timeline, feed posting, voice cloning, elder settings.
-
-### XiaoNuan App (Elder + Caregiver Unified Client)
-
-The XiaoNuan app is a unified React Native application built with **Expo SDK 55**, serving both elderly users (COMPANIONEE) and caregivers (STEWART) through role-based routing.
-
-- **Development**:
+- **开发**：
   ```bash
   cd apps/xiaonuan-app
-  pnpm start        # Expo dev server
-  pnpm android      # or pnpm ios
+  pnpm start        # Expo 开发服务器
+  pnpm android      # 或 pnpm ios
   ```
-- **Build & Deploy via EAS**:
+- **通过 EAS 构建与发布**：
   ```bash
   cd apps/xiaonuan-app
-  eas build --profile preview    # Build APK for internal testing
-  eas build --profile production # Build AAB for Play Store
+  eas build --profile preview    # 构建 APK 用于内部测试
+  eas build --profile production # 构建 AAB 用于 Play 商店
   ```
-- **Environment Variables**: The `EXPO_PUBLIC_API_URL` is configured in `eas.json` for each build profile.
-- **Download Page**: A static landing page for APK download is served from `apps/gateway/public/index.html` (e.g., `https://your-domain/`).
+- **环境变量**：`EXPO_PUBLIC_API_URL` 在 `eas.json` 中按构建 profile 配置。
+- **下载页面**：APK 下载的静态落地页位于 `apps/gateway/public/index.html`（如 `https://your-domain/`）。
 
-#### COMPANIONEE (Elder) Features
-- **Voice-first interface**: Large mic button, press-to-talk, AI responds with voice + text
-- **Simple binding**: 6-digit invite code keypad for quick pairing
-- **Dynamic title**: Shows caregiver's name for personalization
-- **Breathing mascot**: Animated companion avatar with warm, friendly design
+#### COMPANIONEE（老人端）功能
+- **语音优先界面**：大麦克风按钮，按住说话，AI 语音+文字回复
+- **简易绑定**：6 位邀请码键盘，快速配对
+- **动态标题**：显示监护人姓名，增加个性化
+- **呼吸吉祥物**：动画陪伴头像，温暖友好的设计
 
-#### STEWARD (Caregiver) Features
-- **Pairing management**: List view with online status, create new pairings
-- **Overview tab**: Real-time status + daily summary (emotion, duration, highlights, concerns)
-- **Logs tab**: Date-grouped conversation history with mood snapshots
-- **Feed tab**: Social timeline with text/voice input, pagination, delete confirmation
-- **Voice tab**: Single-recording voice cloning with guided sample text
-- **Settings page**: Account management, password change, notification toggles, help center, privacy policy
+#### STEWARD（监护端）功能
+- **配对管理**：列表视图展示在线状态，创建新配对
+- **概览标签页**：实时状态 + 每日摘要（情绪、时长、亮点、关注事项）
+- **日志标签页**：按日期分组的对话历史，含情绪快照
+- **消息标签页**：社交时间线，支持文字/语音输入、分页、删除确认
+- **声音标签页**：单次录音的声音克隆，含引导文本
+- **设置页面**：账号管理、密码修改、通知开关、帮助中心、隐私政策
 
-## ☁️ Backend Deployment
+## ☁️ 后端部署
 
-### Architecture
+### 架构
 
-The backend runs as a set of Docker containers orchestrated by `docker-compose.yml`:
+后端以 Docker 容器组形式运行，由 `docker-compose.yml` 编排：
 
-| Service | Image / Build | Description |
-|---------|--------------|-------------|
-| postgres | `postgres:17-alpine` | Main relational database |
-| qdrant | `qdrant/qdrant:v1.12.0` | Vector database for memory retrieval |
-| redis | `redis:7-alpine` | Cache & session store |
-| voice-service | `./apps/voice-service/Dockerfile` | Python FastAPI voice processing |
-| gateway | `./Dockerfile` | Node.js AI gateway & API server |
+| 服务 | 镜像 / 构建 | 描述 |
+|------|-------------|------|
+| postgres | `postgres:17-alpine` | 主关系数据库 |
+| qdrant | `qdrant/qdrant:v1.12.0` | 向量数据库，用于记忆检索 |
+| redis | `redis:7-alpine` | 缓存与会话存储 |
+| voice-service | `./apps/voice-service/Dockerfile` | Python FastAPI 语音处理 |
+| gateway | `./Dockerfile` | Node.js AI 网关与 API 服务器 |
 
-### Production Deployment Steps
+### 生产部署步骤
 
-1. **Prepare Server**
-   - Install Docker & Docker Compose
-   - Clone the repository to `main` branch
-   - Copy and edit `.env` with production secrets
+1. **准备服务器**
+   - 安装 Docker 和 Docker Compose
+   - 克隆仓库到 `main` 分支
+   - 复制并编辑 `.env` 填写生产环境密钥
 
-2. **Create Docker Network**
+2. **创建 Docker 网络**
    ```bash
    docker network create app-network
    ```
 
-3. **First-time Deploy: Reset Database**
+3. **首次部署：重置数据库**
    ```bash
    ./manager.sh db-reset
    ```
-   This drops all existing tables and data, then creates fresh empty tables. Only needed for the first deployment.
+   这会删除所有现有表和数据库，然后创建全新的空表。仅首次部署时需要。
 
-4. **Start Services**
+4. **启动服务**
    ```bash
    ./manager.sh start
    ```
-   This builds images and starts all containers on the shared `app-network`.
+   这会构建镜像并在共享的 `app-network` 上启动所有容器。
 
-5. **Nginx Reverse Proxy**
-   Nginx should be configured to proxy `/xiaonuan/` to the gateway container at port 3000. The configuration template is in `deploy/nginx/prd/`.
+5. **Nginx 反向代理**
+   Nginx 应配置为将 `/xiaonuan/` 代理到 3000 端口的网关容器。配置模板位于 `deploy/nginx/prd/`。
 
-6. **Update & Maintenance**
+6. **更新与维护**
    ```bash
-   ./manager.sh update    # Pull code, rebuild, and restart
-   ./manager.sh backup    # Backup PostgreSQL and data directories
-   ./manager.sh logs gateway   # Tail gateway logs
-   ./manager.sh health    # Check container health status
+   ./manager.sh update    # 拉取代码、重建、重启
+   ./manager.sh backup    # 备份 PostgreSQL 和数据目录
+   ./manager.sh logs gateway   # 查看网关日志
+   ./manager.sh health    # 检查容器健康状态
    ```
 
-## 📄 License
+## 📄 许可证
 
-This project is licensed under the [MIT License](LICENSE).
+本项目基于 [MIT 许可证](LICENSE) 发布。

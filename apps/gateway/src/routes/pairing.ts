@@ -261,7 +261,7 @@ export async function pairingRoutes(app: FastifyInstance) {
               metadata: { relationshipToCompanionee: relationship, isPrimary: true },
             },
             {
-              name: '小暖',
+              name: '我',
               role: 'COMPANIONEE',
               isAI: true,
               metadata: { template: 'caring-companion' },
@@ -270,7 +270,7 @@ export async function pairingRoutes(app: FastifyInstance) {
         },
         aiPersona: {
           create: {
-            name: '贴心小暖',
+            name: '我',
             template: 'caring-companion',
             traits: { warm: true, humorous: true, patient: true },
             tone: '口语化，多用语气助词',

@@ -286,12 +286,7 @@ apps/gateway/src/
   └── qdrant/
       └── client.ts                # Qdrant 客户端 + collection 初始化
 
-apps/mini-program/pages/
-  ├── elder-home/                  # 三态语音交互 UI
-  ├── child-home/                  # 子女首页（占位）
-  ├── child-settings/              # 家庭档案管理
-  ├── bind-family/                 # 老人绑定家庭
-  └── role-select/                 # 角色选择
+# apps/mini-program/ — 已移除，不再维护
 
 packages/
   ├── prisma/prisma/schema.prisma  # 数据模型

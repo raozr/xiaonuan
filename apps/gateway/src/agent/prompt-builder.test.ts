@@ -6,6 +6,7 @@ import type { Skill } from '../agent/skill-loader.js';
 vi.mock('@xiaonuan/prisma', () => ({
   prisma: {
     participant: { findMany: vi.fn(), findFirst: vi.fn() },
+    aIPersona: { findUnique: vi.fn() },
   },
 }));
 

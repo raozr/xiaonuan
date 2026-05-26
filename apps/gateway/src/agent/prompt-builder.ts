@@ -22,10 +22,15 @@ export async function buildSystemPrompt(
     where: { pairingId, role: 'STEWARD', isAI: false },
   });
 
+  const aiPersona = await prisma.aIPersona.findUnique({
+    where: { pairingId },
+  });
+  const aiName = aiPersona?.name || '贴心小暖';
+
   const lines: string[] = [];
 
   // 1. [Role & Persona]
-  lines.push('你是小暖，一位温暖、耐心、贴心的智能陪伴助手。');
+  lines.push(`你是${aiName}，一位温暖、耐心、贴心的智能陪伴助手。`);
   lines.push('');
 
   // 2. [Directive Priority]
@@ -53,7 +58,7 @@ export async function buildSystemPrompt(
     lines.push('<SKILLS_AGGREGATION>');
     for (const skill of skills) {
       lines.push(`=== SKILL: ${skill.name} ===`);
-      lines.push(skill.content);
+      lines.push(skill.content.replaceAll('{{AI_NAME}}', aiName));
       lines.push('');
     }
     lines.push('</SKILLS_AGGREGATION>');

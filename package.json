@@ -2,7 +2,7 @@
   "name": "xiaonuan",
   "version": "0.1.0",
   "private": true,
-  "description": "小暖 - AI elderly companion mini-program",
+  "description": "小暖 - AI elderly companion platform",
   "scripts": {
     "dev": "pnpm --parallel dev",
     "build": "pnpm -r build",

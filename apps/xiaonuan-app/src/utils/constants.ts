@@ -11,7 +11,7 @@ export const API_URL = __DEV__
   : 'https://www.quirklabs.top/xiaonuan';
 
 export const WS_URL = __DEV__
-  ? (API_URL.replace(/\/xiaonuan\/?$/, '').replace(/^http/, 'ws') + ':3000/ws')
+  ? `ws://${new URL(API_URL).hostname}:3000/ws`
   : API_URL.replace(/^https/, 'wss') + '/ws';
 
 export const STORAGE_KEYS = {

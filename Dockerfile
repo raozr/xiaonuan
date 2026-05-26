@@ -15,8 +15,6 @@ FROM base AS build
 # 复制配置文件
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
 COPY apps/gateway/package.json ./apps/gateway/
-COPY apps/child-pc/package.json ./apps/child-pc/
-COPY apps/mini-program/package.json ./apps/mini-program/
 COPY packages/prisma/package.json ./packages/prisma/
 COPY packages/skills/package.json ./packages/skills/
 

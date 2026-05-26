@@ -2,12 +2,14 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: xiaonuan-postgres
+    ports:
+      - "5432:5432"
     environment:
       POSTGRES_USER: xiaonuan
       POSTGRES_PASSWORD: xiaonuan
       POSTGRES_DB: xiaonuan
     volumes:
-      - ./data/postgres:/var/lib/postgresql/data
+      - postgres-data:/var/lib/postgresql/data
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U xiaonuan']
       interval: 5s
@@ -19,16 +21,21 @@ services:
   qdrant:
     image: qdrant/qdrant:v1.12.0
     container_name: xiaonuan-qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
     volumes:
-      - ./data/qdrant:/qdrant/storage
+      - qdrant-data:/qdrant/storage
     networks:
       - app-network
 
   redis:
     image: redis:7-alpine
     container_name: xiaonuan-redis
+    ports:
+      - "6379:6379"
     volumes:
-      - ./data/redis:/data
+      - redis-data:/data
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
@@ -48,7 +55,7 @@ services:
       - AUDIO_STORAGE_PATH=/app/data/audio
       - PORT=8000
     volumes:
-      - ./data/voice-audio:/app/data/audio
+      - voice-audio:/app/data/audio
     networks:
       - app-network
 
@@ -89,20 +96,11 @@ services:
     networks:
       - app-network
 
-  child-pc:
-    build:
-      context: .
-      dockerfile: apps/child-pc/Dockerfile
-    container_name: xiaonuan-child-pc
-    restart: always
-    ports:
-      - "3001:3000"
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - NEXT_PUBLIC_API_URL=http://xiaonuan-gateway:3000
-    networks:
-      - app-network
+volumes:
+  postgres-data:
+  qdrant-data:
+  redis-data:
+  voice-audio:
 
 networks:
   app-network:

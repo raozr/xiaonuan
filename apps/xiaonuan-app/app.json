@@ -21,10 +21,10 @@
     ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.xiaonuan.elderapp"
+      "bundleIdentifier": "com.xiaonuan.app"
     },
     "android": {
-      "package": "com.xiaonuan.elderapp",
+      "package": "com.xiaonuan.app",
       "enableProguardInReleaseBuilds": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/logo-smalll.jpg",

@@ -19,7 +19,7 @@ vi.mock('../services/dashscope.js', () => ({
 }));
 
 vi.mock('./prompt-builder.js', () => ({
-  buildSystemPrompt: vi.fn().mockResolvedValue('你是小暖，一位温暖、耐心、贴心的智能陪伴助手。'),
+  buildSystemPrompt: vi.fn().mockResolvedValue('你是贴心小暖，一位温暖、耐心、贴心的智能陪伴助手。'),
 }));
 
 vi.mock('../conversation/turn-manager.js', () => ({
