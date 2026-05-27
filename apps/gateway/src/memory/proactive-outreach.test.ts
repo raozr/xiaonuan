@@ -13,7 +13,6 @@ vi.mock('@xiaonuan/prisma', () => ({
     session: { findFirst: vi.fn() },
     eventStream: { findFirst: vi.fn() },
     participant: { findFirst: vi.fn() },
-    aIPersona: { findUnique: vi.fn() },
   },
 }));
 

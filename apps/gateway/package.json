@@ -9,7 +9,8 @@
     "start": "pnpm --filter @xiaonuan/prisma migrate:deploy && node dist/server.js",
     "lint": "eslint src --ext .ts",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "migrate:ai-names": "tsx scripts/update-ai-names.ts"
   },
   "dependencies": {
     "@alicloud/pop-core": "^1.8.0",

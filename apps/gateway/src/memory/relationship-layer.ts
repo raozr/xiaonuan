@@ -33,9 +33,20 @@ export async function getRelationshipLayer(pairingId: string): Promise<string> {
     lines.push(`- [情绪] ${currentMood}`);
   }
 
+  function timeAgo(date: Date): string {
+    const days = Math.round((Date.now() - date.getTime()) / 86400000);
+    if (days === 0) return '今天';
+    if (days === 1) return '昨天';
+    if (days <= 7) return `${days}天前`;
+    if (days <= 30) return `${Math.round(days / 7)}周前`;
+    if (days <= 365) return `${Math.round(days / 30)}个月前`;
+    return '1年前';
+  }
+
   for (const p of selected) {
     const label = CATEGORY_LABELS[p.category] || p.category;
-    lines.push(`- [${label}] ${p.content}`);
+    const age = timeAgo(p.updatedAt);
+    lines.push(`- [${label}] ${p.content}（${age}）`);
   }
 
   if (lines.length === 0) return '';

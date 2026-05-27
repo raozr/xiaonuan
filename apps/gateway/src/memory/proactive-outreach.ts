@@ -59,11 +59,6 @@ export async function generateOutreachMessage(
 
   if (!companionee) return null;
 
-  const aiPersona = await prisma.aIPersona.findUnique({
-    where: { pairingId },
-  });
-  const aiName = aiPersona?.name || '贴心小暖';
-
   // Get last session messages for context
   const lastSession = await prisma.session.findFirst({
     where: { pairingId },
@@ -89,7 +84,7 @@ export async function generateOutreachMessage(
   const messages = [
     {
       role: 'system' as const,
-      content: `${systemPrompt}\n\n${companionee.name}已经 ${IDLE_THRESHOLD_HOURS / 24} 天没有和${aiName}说话了。请生成一句简短、温暖的问候，关心${companionee.name}最近的情况。只说 1-2 句话，语气像家人一样自然。`,
+      content: `${systemPrompt}\n\n${companionee.name}已经 ${IDLE_THRESHOLD_HOURS / 24} 天没说话了。请生成一句简短、温暖的问候，关心${companionee.name}最近的情况。只说 1-2 句话，语气像家人一样自然。`,
     },
     ...recentMessages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
     { role: 'user' as const, content: `（${companionee.name}很久没说话了）` },
@@ -100,7 +95,7 @@ export async function generateOutreachMessage(
     maxTokens: 128,
   });
 
-  return cleanLLMResponse(reply.content ?? `您最近好吗？${aiName}想您了。`);
+  return cleanLLMResponse(reply.content ?? '您最近好吗？我想您了。');
 }
 
 export async function sendOutreach(pairingId: string): Promise<boolean> {

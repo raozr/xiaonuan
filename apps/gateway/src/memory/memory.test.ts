@@ -7,6 +7,7 @@ import { getCurrentMood } from './emotion-tracker.js';
 
 vi.mock('./emotion-tracker.js', () => ({
   getCurrentMood: vi.fn().mockResolvedValue(null),
+  getRecentMoods: vi.fn().mockResolvedValue([]),
 }));
 
 vi.mock('@xiaonuan/prisma', () => ({
@@ -447,11 +448,11 @@ describe('relationship-layer', () => {
 
   it('should return top 5 profiles ordered by confidence desc', async () => {
     vi.mocked(prisma.personaProfile.findMany).mockResolvedValue([
-      { category: 'health', content: '腰不好，避免久坐', confidence: 0.95 },
-      { category: 'hobby', content: '喜欢早上去公园打太极', confidence: 0.9 },
-      { category: 'preference', content: '不喜欢吃辣', confidence: 0.8 },
-      { category: 'person', content: '经常和隔壁李阿姨聊天', confidence: 0.7 },
-      { category: 'habit', content: '每晚看新闻联播', confidence: 0.6 },
+      { category: 'health', content: '腰不好，避免久坐', confidence: 0.95, updatedAt: new Date() },
+      { category: 'hobby', content: '喜欢早上去公园打太极', confidence: 0.9, updatedAt: new Date() },
+      { category: 'preference', content: '不喜欢吃辣', confidence: 0.8, updatedAt: new Date() },
+      { category: 'person', content: '经常和隔壁李阿姨聊天', confidence: 0.7, updatedAt: new Date() },
+      { category: 'habit', content: '每晚看新闻联播', confidence: 0.6, updatedAt: new Date() },
     ] as any);
 
     const result = await getRelationshipLayer('pairing-123');
@@ -466,7 +467,7 @@ describe('relationship-layer', () => {
   it('should include current mood in relationship layer', async () => {
     vi.mocked(getCurrentMood).mockResolvedValue('心情不错');
     vi.mocked(prisma.personaProfile.findMany).mockResolvedValue([
-      { category: 'health', content: '血糖偏高', confidence: 0.9 },
+      { category: 'health', content: '血糖偏高', confidence: 0.9, updatedAt: new Date() },
     ] as any);
 
     const result = await getRelationshipLayer('pairing-123');
@@ -480,7 +481,7 @@ describe('relationship-layer', () => {
     vi.mocked(prisma.checkpoint.findMany).mockResolvedValue([]);
     vi.mocked(memoryRecall).mockResolvedValue([]);
     vi.mocked(prisma.personaProfile.findMany).mockResolvedValue([
-      { category: 'health', content: '血糖偏高', confidence: 0.9 },
+      { category: 'health', content: '血糖偏高', confidence: 0.9, updatedAt: new Date() },
     ] as any);
 
     const result = await buildMemoryContext({
@@ -540,7 +541,7 @@ describe('context-builder token budget', () => {
     vi.mocked(prisma.checkpoint.findMany).mockResolvedValue([]);
     vi.mocked(memoryRecall).mockResolvedValue([]);
     vi.mocked(prisma.personaProfile.findMany).mockResolvedValue([
-      { category: 'health', content: '重要健康信息', confidence: 0.95 },
+      { category: 'health', content: '重要健康信息', confidence: 0.95, updatedAt: new Date() },
     ] as any);
 
     const result = await buildMemoryContext({

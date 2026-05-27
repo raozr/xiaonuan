@@ -6,7 +6,6 @@ import { buildSystemPrompt } from './prompt-builder.js';
 import { getRecentMessages } from '../conversation/turn-manager.js';
 import { buildMemoryContext } from '../memory/context-builder.js';
 import { cleanLLMResponse } from './response-cleaner.js';
-import { prisma } from '@xiaonuan/prisma';
 
 export interface PiAgentConfig {
   pairingId: string;
@@ -29,11 +28,6 @@ export interface PiAgent {
 
 export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
   const skills = await loadSkillsForPhase(config.phase);
-
-  const aiPersona = await prisma.aIPersona.findUnique({
-    where: { pairingId: config.pairingId },
-  });
-  const aiName = aiPersona?.name || '贴心小暖';
 
   const tools: Record<string, Function> = {
     memory_context: async (args: { pairingId: string }) => {
@@ -219,14 +213,14 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
         console.log('[PiAgent] LLM raw reply.content (after tools):', JSON.stringify(reply.content));
       }
 
-      const content = cleanLLMResponse(reply.content ?? `哎呀，${aiName}刚才走神了，您再说一遍好吗？`);
+      const content = cleanLLMResponse(reply.content ?? '哎呀，我刚才走神了，您再说一遍好吗？');
       console.log('[PiAgent] LLM cleaned content:', content);
       return content;
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
       console.error('[PiAgent] LLM 调用失败:', errMsg);
       if (errMsg.includes('超时')) {
-        return `哎呀，${aiName}刚才走神了，您再说一遍好吗？`;
+        return '哎呀，我刚才走神了，您再说一遍好吗？';
       }
       return '今天网络有点慢，您能再说一遍吗？';
     }

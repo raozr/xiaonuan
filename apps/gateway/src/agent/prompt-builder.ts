@@ -18,19 +18,23 @@ export async function buildSystemPrompt(
     where: { pairingId, role: 'COMPANIONEE', isAI: false },
   });
 
+  const aiParticipant = await prisma.participant.findFirst({
+    where: { pairingId, isAI: true },
+  });
+
   const stewards = await prisma.participant.findMany({
     where: { pairingId, role: 'STEWARD', isAI: false },
   });
 
-  const aiPersona = await prisma.aIPersona.findUnique({
-    where: { pairingId },
-  });
-  const aiName = aiPersona?.name || '贴心小暖';
-
   const lines: string[] = [];
 
   // 1. [Role & Persona]
-  lines.push(`你是${aiName}，一位温暖、耐心、贴心的智能陪伴助手。`);
+  const aiName = aiParticipant?.name;
+  if (aiName && aiName !== '我') {
+    lines.push(`你的名字是${aiName}，一位温暖的陪伴者。在对话中自称"我"，如果对方问你是谁，回答"我是${aiName}"。`);
+  } else {
+    lines.push('你是一位温暖、耐心、贴心的陪伴者。你没有固定名字，用"我"自称。如果对方问你是谁，就说"我是陪您聊天的那个人"。');
+  }
   lines.push('');
 
   // 2. [Directive Priority]
@@ -58,7 +62,7 @@ export async function buildSystemPrompt(
     lines.push('<SKILLS_AGGREGATION>');
     for (const skill of skills) {
       lines.push(`=== SKILL: ${skill.name} ===`);
-      lines.push(skill.content.replaceAll('{{AI_NAME}}', aiName));
+      lines.push(skill.content);
       lines.push('');
     }
     lines.push('</SKILLS_AGGREGATION>');

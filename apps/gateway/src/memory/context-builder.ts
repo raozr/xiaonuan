@@ -3,6 +3,7 @@ import { getShortTermMemory } from './short-term-memory.js';
 import { getMidTermMemory } from './mid-term-memory.js';
 import { getGreetingHint } from './greeting-hint.js';
 import { getRelationshipLayer } from './relationship-layer.js';
+import { getRecentMoods } from './emotion-tracker.js';
 import { deduplicateSections, type Section } from './dedup.js';
 
 const TOKEN_BUDGET_CHARS = 4096;
@@ -30,6 +31,7 @@ function truncateToBudget(sections: Section[], budget: number): Section[] {
     '【相关回忆】': 1,
     '【近日动态】': 2,
     '【今日回顾】': 3,
+    '【情感状态】': 4,
   };
 
   const sorted = [...sections].sort(
@@ -53,6 +55,19 @@ function truncateToBudget(sections: Section[], budget: number): Section[] {
   return sections.filter((s) => s.bullets.length > 0);
 }
 
+async function getEmotionSnapshot(pairingId: string): Promise<string> {
+  const moods = await getRecentMoods(pairingId, 5);
+  if (moods.length === 0) return '';
+
+  const lines = moods.map((m) => {
+    const daysAgo = Math.round((Date.now() - m.eventTime.getTime()) / 86400000);
+    const timeStr = daysAgo === 0 ? '今天' : daysAgo === 1 ? '昨天' : `${daysAgo}天前`;
+    return `- ${m.mood}（${timeStr}）`;
+  });
+
+  return `【情感状态】\n${lines.join('\n')}`;
+}
+
 export async function buildMemoryContext(params: {
   pairingId: string;
   turnCount: number;
@@ -65,6 +80,7 @@ export async function buildMemoryContext(params: {
     getMidTermMemory(params.input, params.pairingId),
     params.phase === 'GREETING' ? getGreetingHint(params.pairingId) : Promise.resolve(''),
     getRelationshipLayer(params.pairingId),
+    getEmotionSnapshot(params.pairingId),
   ]);
 
   const rawSections: string[] = [];
@@ -83,6 +99,9 @@ export async function buildMemoryContext(params: {
 
   const relationship = results[4].status === 'fulfilled' ? results[4].value : '';
   if (relationship) rawSections.push(relationship);
+
+  const emotion = results[5].status === 'fulfilled' ? results[5].value : '';
+  if (emotion) rawSections.push(emotion);
 
   const parsed = rawSections.map(parseSection);
   const deduped = deduplicateSections(parsed, 0.6);
