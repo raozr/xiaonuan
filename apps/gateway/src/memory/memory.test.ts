@@ -10,6 +10,10 @@ vi.mock('./emotion-tracker.js', () => ({
   getRecentMoods: vi.fn().mockResolvedValue([]),
 }));
 
+vi.mock('./feed-messages.js', () => ({
+  getFeedMessages: vi.fn().mockResolvedValue(''),
+}));
+
 vi.mock('@xiaonuan/prisma', () => ({
   prisma: {
     session: {
@@ -554,5 +558,81 @@ describe('context-builder token budget', () => {
     // Relationship layer should be preserved (higher priority)
     expect(result).toContain('【关系档案】');
     expect(result).toContain('重要健康信息');
+  });
+
+  describe('feed messages layer', () => {
+    beforeEach(() => {
+      vi.clearAllMocks();
+      vi.mocked(prisma.session.findMany).mockReset();
+      vi.mocked(prisma.checkpoint.findMany).mockReset();
+      vi.mocked(prisma.personaProfile.findMany).mockReset();
+      vi.mocked(memoryRecall).mockReset();
+      vi.mocked(prisma.participant.findFirst).mockResolvedValue({ metadata: { timezone: 'Asia/Shanghai' } } as any);
+    });
+
+    it('includes feed messages section when feeds exist', async () => {
+      vi.mocked(prisma.session.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.checkpoint.findMany).mockResolvedValue([]);
+      vi.mocked(memoryRecall).mockResolvedValue([]);
+      vi.mocked(prisma.personaProfile.findMany).mockResolvedValue([]);
+
+      const { getFeedMessages } = await import('./feed-messages.js');
+      vi.mocked(getFeedMessages).mockResolvedValue('【家人留言】\n- [5分钟前] 家庭地址是北京海淀XX');
+
+      const result = await buildMemoryContext({
+        pairingId: 'pairing-123',
+        turnCount: 1,
+        input: '你好',
+        phase: 'ACTIVE_CHAT',
+      });
+
+      expect(result).toContain('【家人留言】');
+      expect(result).toContain('家庭地址是北京海淀XX');
+    });
+
+    it('excludes feed messages section when no feeds exist', async () => {
+      vi.mocked(prisma.session.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.checkpoint.findMany).mockResolvedValue([]);
+      vi.mocked(memoryRecall).mockResolvedValue([]);
+      vi.mocked(prisma.personaProfile.findMany).mockResolvedValue([]);
+
+      const { getFeedMessages } = await import('./feed-messages.js');
+      vi.mocked(getFeedMessages).mockResolvedValue('');
+
+      const result = await buildMemoryContext({
+        pairingId: 'pairing-123',
+        turnCount: 1,
+        input: '你好',
+        phase: 'ACTIVE_CHAT',
+      });
+
+      expect(result).not.toContain('【家人留言】');
+    });
+
+    it('feed layer failure does not affect other layers', async () => {
+      vi.mocked(prisma.session.findMany).mockResolvedValue([
+        {
+          id: 'session-1',
+          checkpoints: [{ topicSummary: '聊到儿子周末回家', createdAt: new Date() }],
+        },
+      ] as any);
+      vi.mocked(prisma.checkpoint.findMany).mockResolvedValue([]);
+      vi.mocked(memoryRecall).mockResolvedValue([]);
+      vi.mocked(prisma.personaProfile.findMany).mockResolvedValue([]);
+
+      const { getFeedMessages } = await import('./feed-messages.js');
+      vi.mocked(getFeedMessages).mockRejectedValue(new Error('DB error'));
+
+      const result = await buildMemoryContext({
+        pairingId: 'pairing-123',
+        turnCount: 1,
+        input: '你好',
+        phase: 'ACTIVE_CHAT',
+      });
+
+      expect(result).toContain('【今日回顾】');
+      expect(result).toContain('聊到儿子周末回家');
+      expect(result).not.toContain('【家人留言】');
+    });
   });
 });

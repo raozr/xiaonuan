@@ -101,6 +101,19 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
     {
       type: 'function',
       function: {
+        name: 'memory_context',
+        description:
+          '获取家人最近给您的留言或投喂内容。当对方提到家人最近说了什么、或者您需要了解家人最近传递的任何信息时调用。',
+        parameters: {
+          type: 'object',
+          properties: {},
+          required: [],
+        },
+      },
+    },
+    {
+      type: 'function',
+      function: {
         name: 'emergency_alert',
         description:
           '当对方表现出生命威胁、严重的身体不适或极度负面的情绪（自残倾向）时，必须立刻调用此工具。',

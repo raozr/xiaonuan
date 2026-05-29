@@ -4,6 +4,7 @@ import { getMidTermMemory } from './mid-term-memory.js';
 import { getGreetingHint } from './greeting-hint.js';
 import { getRelationshipLayer } from './relationship-layer.js';
 import { getRecentMoods } from './emotion-tracker.js';
+import { getFeedMessages } from './feed-messages.js';
 import { deduplicateSections, type Section } from './dedup.js';
 
 const TOKEN_BUDGET_CHARS = 4096;
@@ -32,6 +33,7 @@ function truncateToBudget(sections: Section[], budget: number): Section[] {
     '【近日动态】': 2,
     '【今日回顾】': 3,
     '【情感状态】': 4,
+    '【家人留言】': 5,
   };
 
   const sorted = [...sections].sort(
@@ -81,6 +83,7 @@ export async function buildMemoryContext(params: {
     params.phase === 'GREETING' ? getGreetingHint(params.pairingId) : Promise.resolve(''),
     getRelationshipLayer(params.pairingId),
     getEmotionSnapshot(params.pairingId),
+    getFeedMessages(params.pairingId),
   ]);
 
   const rawSections: string[] = [];
@@ -102,6 +105,9 @@ export async function buildMemoryContext(params: {
 
   const emotion = results[5].status === 'fulfilled' ? results[5].value : '';
   if (emotion) rawSections.push(emotion);
+
+  const feedMsgs = results[6].status === 'fulfilled' ? results[6].value : '';
+  if (feedMsgs) rawSections.push(feedMsgs);
 
   const parsed = rawSections.map(parseSection);
   const deduped = deduplicateSections(parsed, 0.6);
