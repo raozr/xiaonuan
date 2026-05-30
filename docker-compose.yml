@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:17-alpine
-    container_name: xiaonuan-postgres
     ports:
       - "5432:5432"
     environment:
@@ -19,8 +18,7 @@ services:
       - app-network
 
   qdrant:
-    image: qdrant/qdrant:v1.12.0
-    container_name: xiaonuan-qdrant
+    image: qdrant/qdrant:v1.17.0
     ports:
       - "6333:6333"
       - "6334:6334"
@@ -31,7 +29,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    container_name: xiaonuan-redis
     ports:
       - "6379:6379"
     volumes:
@@ -48,7 +45,6 @@ services:
     build:
       context: ./apps/voice-service
       dockerfile: Dockerfile
-    container_name: xiaonuan-voice-service
     restart: always
     environment:
       - BAILIAN_API_KEY=${DASHSCOPE_API_KEY}
@@ -63,7 +59,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: xiaonuan-gateway
     restart: always
     ports:
       - "3000:3000"
@@ -81,17 +76,17 @@ services:
       - PORT=${PORT:-3000}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - CORS_ORIGIN=${CORS_ORIGIN:-*}
-      - DATABASE_URL=postgresql://xiaonuan:xiaonuan@xiaonuan-postgres:5432/xiaonuan
-      - QDRANT_URL=http://xiaonuan-qdrant:6333
-      - REDIS_URL=redis://xiaonuan-redis:6379
-      - JWT_SECRET=${JWT_SECRET:-xiaonuan-prod-secret}
+      - DATABASE_URL=postgresql://xiaonuan:xiaonuan@postgres:5432/xiaonuan
+      - QDRANT_URL=http://qdrant:6333
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET}
       - WECHAT_APPID=${WECHAT_APPID}
       - WECHAT_SECRET=${WECHAT_SECRET}
       - DASHSCOPE_API_KEY=${DASHSCOPE_API_KEY}
       - NLS_APP_KEY=${NLS_APP_KEY}
       - NLS_ACCESS_KEY_ID=${NLS_ACCESS_KEY_ID}
       - NLS_ACCESS_KEY_SECRET=${NLS_ACCESS_KEY_SECRET}
-      - VOICE_SERVICE_URL=http://xiaonuan-voice-service:8000
+      - VOICE_SERVICE_URL=http://voice-service:8000
       - PUBLIC_BASE_URL=${PUBLIC_BASE_URL:-}
     networks:
       - app-network

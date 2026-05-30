@@ -14,15 +14,15 @@ def test_create_clone_success():
         mock_get_url.return_value = "https://oss.example.com/test.mp3"
 
         instance = MagicMock()
-        instance.create_voice.return_value = "cosyvoice-v3-flash-xiaonuan-abc123"
+        instance.create_voice.return_value = "cosyvoice-v3-plus-xiaonuan-abc123"
         MockService.return_value = instance
 
         voice_id = bailian_clone.create_clone(["/fake/sample.mp3"])
-        assert voice_id == "cosyvoice-v3-flash-xiaonuan-abc123"
+        assert voice_id == "cosyvoice-v3-plus-xiaonuan-abc123"
 
         instance.create_voice.assert_called_once()
         call_kwargs = instance.create_voice.call_args.kwargs
-        assert call_kwargs["target_model"] == "cosyvoice-v3-flash"
+        assert call_kwargs["target_model"] == bailian_clone.settings.tts_model
         assert call_kwargs["prefix"] == "xiaonuan"
 
 

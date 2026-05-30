@@ -529,7 +529,7 @@ export async function pairingRoutes(app: FastifyInstance) {
 
   // Pairing Feeds (via EventStream)
   const createFeedSchema = z.object({
-    type: z.enum(['TEXT', 'VOICE']),
+    type: z.enum(['TEXT', 'VOICE']).default('TEXT'),
     content: z.string().optional(),
     audioBase64: z.string().optional(),
   });

@@ -19,6 +19,8 @@ const SKILL_FILES: Record<string, string> = {
   'greeting-protocol': join(SKILLS_DIR, 'greeting-protocol', 'SKILL.md'),
 };
 
+const skillCache = new Map<string, Skill | null>();
+
 function parseFrontmatter(raw: string): Record<string, string> {
   const meta: Record<string, string> = {};
   const match = raw.match(/^---\n([\s\S]*?)\n---/);
@@ -36,6 +38,10 @@ function parseFrontmatter(raw: string): Record<string, string> {
 }
 
 export async function loadSkill(name: string): Promise<Skill | null> {
+  if (skillCache.has(name)) {
+    return skillCache.get(name) ?? null;
+  }
+
   const path = SKILL_FILES[name];
   if (!path) return null;
 
@@ -44,7 +50,7 @@ export async function loadSkill(name: string): Promise<Skill | null> {
     const meta = parseFrontmatter(raw);
     const content = raw.replace(/^---\n[\s\S]*?\n---\n/, '').trim();
 
-    return {
+    const skill = {
       name,
       description: meta.description || '',
       phase: (meta.phase || 'all')
@@ -53,7 +59,10 @@ export async function loadSkill(name: string): Promise<Skill | null> {
       priority: meta.priority || '',
       content,
     };
+    skillCache.set(name, skill);
+    return skill;
   } catch {
+    skillCache.set(name, null);
     return null;
   }
 }

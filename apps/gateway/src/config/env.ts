@@ -18,6 +18,44 @@ const envSchema = z.object({
   NLS_ACCESS_KEY_SECRET: z.string().default(''),
   VOICE_SERVICE_URL: z.string().default('http://localhost:8000'),
   PUBLIC_BASE_URL: z.string().optional(),
+  ENABLE_EXTRACTION_WORKER: z.string().default('true').transform((value) => value !== 'false'),
+}).superRefine((env, ctx) => {
+  if (env.NODE_ENV !== 'production') return;
+
+  const required: Array<keyof typeof env> = [
+    'DATABASE_URL',
+    'QDRANT_URL',
+    'REDIS_URL',
+    'DASHSCOPE_API_KEY',
+    'VOICE_SERVICE_URL',
+    'PUBLIC_BASE_URL',
+  ];
+
+  for (const key of required) {
+    if (!env[key]) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [key],
+        message: `${key} is required in production`,
+      });
+    }
+  }
+
+  if (!env.JWT_SECRET || env.JWT_SECRET === 'xiaonuan-dev-secret' || env.JWT_SECRET === 'change-me-in-production') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['JWT_SECRET'],
+      message: 'JWT_SECRET must be explicitly configured in production',
+    });
+  }
+
+  if (env.CORS_ORIGIN === '*') {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['CORS_ORIGIN'],
+      message: 'CORS_ORIGIN must not be "*" in production',
+    });
+  }
 });
 
 const parsed = envSchema.safeParse(process.env);

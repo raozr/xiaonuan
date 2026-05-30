@@ -32,13 +32,20 @@ export async function resolveVoiceId(pairingId: string): Promise<string> {
 export async function synthesizeForPairing(
   pairingId: string,
   text: string
-): Promise<{ audioBuffer: Buffer; audioUrl: string }> {
+): Promise<{ audioBuffer?: Buffer; audioUrl: string }> {
   const voiceId = await resolveVoiceId(pairingId);
   const result = await synthesizeVoice(text, voiceId);
 
   const audioUrl = result.audioUrl.startsWith('http')
     ? result.audioUrl
     : `${env.VOICE_SERVICE_URL}${result.audioUrl}`;
+
+  const parsed = new URL(audioUrl);
+  const isLocalOnly = ['localhost', '127.0.0.1', '0.0.0.0'].includes(parsed.hostname);
+
+  if (result.audioUrl.startsWith('http') && !isLocalOnly) {
+    return { audioUrl: result.audioUrl };
+  }
 
   const res = await fetch(audioUrl);
   if (!res.ok) {

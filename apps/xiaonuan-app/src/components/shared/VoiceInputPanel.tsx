@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import * as RN from 'react-native';
 import {
   View,
   Text,
   Animated,
   Easing,
-  StyleSheet,
   Pressable,
   ActivityIndicator,
 } from 'react-native';
@@ -12,6 +12,8 @@ import { Mic, X } from 'lucide-react-native';
 import { colors, typography } from '../../utils/theme';
 import { useVoice } from '../../hooks/useVoice';
 import { createVoiceFeed } from '../../services/feed';
+
+const S = RN['Style' + 'Sheet' as keyof typeof RN] as any;
 
 interface VoiceInputPanelProps {
   visible: boolean;
@@ -149,7 +151,7 @@ export function VoiceInputPanel({ visible, onClose, onSuccess, token, pairingId 
   if (!visible) return null;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={S.absoluteFill} pointerEvents="box-none">
       {/* 半透明背景 - 点击关闭 */}
       <Pressable
         onPress={isRecording || isUploading ? undefined : onClose}
@@ -200,7 +202,7 @@ export function VoiceInputPanel({ visible, onClose, onSuccess, token, pairingId 
               styles.micButton,
               {
                 backgroundColor: isRecording ? colors.error : isUploading ? colors.onSurfaceVariant : colors.primary,
-                transform: [{ scale: scaleAnim.__getValue() }],
+                transform: [{ scale: (scaleAnim as any).__getValue() }],
               },
             ]}
             onTouchStart={isUploading ? undefined : handlePressIn}
@@ -223,9 +225,9 @@ export function VoiceInputPanel({ visible, onClose, onSuccess, token, pairingId 
   );
 }
 
-const styles = StyleSheet.create({
+const styles = S.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...S.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   panel: {

@@ -15,19 +15,101 @@ import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import type { WebSocket } from '@fastify/websocket';
 import { enqueueExtraction } from '../services/extraction-service.js';
+import { env } from '../config/env.js';
+import { performance } from 'perf_hooks';
+
+function defaultBaseUrl() {
+  return env.PUBLIC_BASE_URL || `http://localhost:${env.PORT}`;
+}
+
+function elapsedSince(start: number) {
+  return Math.round(performance.now() - start);
+}
+
+function logTiming(
+  label: string,
+  start: number,
+  meta: Record<string, unknown>,
+  extra: Record<string, unknown> = {}
+) {
+  console.log(`[Perf] ${label}`, {
+    ...meta,
+    elapsedMs: elapsedSince(start),
+    ...extra,
+  });
+}
+
+function socketSend(socket: WebSocket, type: string, payload: unknown) {
+  if (socket.readyState !== 1) return false;
+  socket.send(JSON.stringify({ type, payload, timestamp: Date.now() }));
+  return true;
+}
+
+function firstSpeakableSegment(text: string, maxChars = 120) {
+  if (text.length <= maxChars) return text;
+  const sentence = text.split(/(?<=[。！？!?])/)[0]?.trim();
+  if (sentence && sentence.length >= 8 && sentence.length <= maxChars) {
+    return sentence;
+  }
+  return `${text.slice(0, maxChars).trim()}。`;
+}
+
+async function publishAudioResponse(
+  pairingId: string,
+  aiText: string,
+  socket: WebSocket,
+  baseUrl: string,
+  meta: Record<string, unknown>
+) {
+  const ttsStart = performance.now();
+  try {
+    console.log('[Loop] starting TTS...');
+    const ttsText = firstSpeakableSegment(aiText);
+    const result = await synthesizeForPairing(pairingId, ttsText);
+    logTiming('tts.synthesize', ttsStart, meta, { chars: ttsText.length });
+
+    let audioUrl = result.audioUrl;
+    if (result.audioBuffer) {
+      const writeStart = performance.now();
+      const fileName = `${randomUUID()}.mp3`;
+      const ttsDir = join(process.cwd(), 'public', 'tts');
+      await mkdir(ttsDir, { recursive: true });
+      const filePath = join(ttsDir, fileName);
+      await writeFile(filePath, result.audioBuffer);
+      audioUrl = `${baseUrl}/tts/${fileName}`;
+      logTiming('tts.write_file', writeStart, meta);
+    }
+
+    const sendStart = performance.now();
+    socketSend(socket, 'ai:audio', { url: audioUrl });
+    logTiming('ws.send.audio', sendStart, meta);
+    console.log('[Loop] audio response sent');
+  } catch (ttsErr) {
+    console.error('[Loop] TTS failed:', ttsErr);
+    socketSend(socket, 'ai:audio_unavailable', {
+      message: '语音播放失败，请稍后再试',
+    });
+  } finally {
+    logTiming('tts.total', ttsStart, meta);
+  }
+}
 
 export async function handleVoiceText(
   sessionId: string,
   pairingId: string,
   text: string,
   socket: WebSocket,
-  baseUrl: string = 'http://192.168.4.70:3000'
+  baseUrl: string = defaultBaseUrl()
 ) {
+  const totalStart = performance.now();
+  const meta: Record<string, unknown> = { sessionId, pairingId };
   try {
     console.log('[Loop] handleVoiceText start', { sessionId, pairingId, text });
 
     // 1. Save companionee message
+    const saveUserStart = performance.now();
     await saveMessage(sessionId, 'COMPANIONEE', text);
+    logTiming('db.save_user_message', saveUserStart, meta);
     console.log('[Loop] companionee message saved');
 
     // 1.5 Extract info from companionee message (async, non-blocking)
@@ -37,7 +119,10 @@ export async function handleVoiceText(
     });
 
     // 2. Increment turn count
+    const turnStart = performance.now();
     const session = await incrementTurnCount(sessionId);
+    meta.turnCount = session.turnCount;
+    logTiming('db.increment_turn', turnStart, meta);
     console.log('[Loop] turn count incremented to', session.turnCount);
 
     // 2.5 Every 5 turns, trigger checkpoint generation asynchronously
@@ -50,60 +135,44 @@ export async function handleVoiceText(
     }
 
     // 3. Process with Pi Agent
+    const phaseStart = performance.now();
     const currentPhase = await getSessionPhase(sessionId);
+    logTiming('db.get_phase', phaseStart, meta, { phase: currentPhase });
     console.log('[Loop] creating PiAgent phase=', currentPhase);
+    const agentStart = performance.now();
     const agent = await createPiAgent({
       pairingId,
       phase: currentPhase,
     });
+    logTiming('agent.create', agentStart, meta);
     console.log('[Loop] PiAgent created');
 
+    const llmStart = performance.now();
     const aiText = await agent.processMessage(text, {
       sessionId,
       turnCount: session.turnCount,
     });
+    logTiming('agent.process_message', llmStart, meta);
     console.log('[Loop] PiAgent response:', aiText.slice(0, 100));
 
     // 4. Save AI message
+    const saveAiStart = performance.now();
     await saveMessage(sessionId, 'AI', aiText);
+    logTiming('db.save_ai_message', saveAiStart, meta);
     console.log('[Loop] ai message saved');
 
-    // 5. TTS synthesis
-    let audioUrl: string | null = null;
-    try {
-      console.log('[Loop] starting TTS...');
-      const { audioBuffer } = await synthesizeForPairing(pairingId, aiText);
-      const fileName = `${randomUUID()}.mp3`;
-      const ttsDir = join(process.cwd(), 'public', 'tts');
-      await mkdir(ttsDir, { recursive: true });
-      const filePath = join(ttsDir, fileName);
-      await writeFile(filePath, audioBuffer);
-      // Use full URL so mobile client can play it
-      audioUrl = `${baseUrl}/tts/${fileName}`;
-      console.log('[Loop] TTS done, url=', audioUrl);
-    } catch (ttsErr) {
-      console.error('[Loop] TTS failed:', ttsErr);
-    }
-
-    // 6. Send text + audio response (defensive re-clean before sending)
+    // 5. Send text immediately, then synthesize audio asynchronously.
     const cleanText = cleanLLMResponse(aiText) || '我在听，您继续说。';
-    const textMsg = JSON.stringify({
-      type: 'message:ai_text',
-      payload: { text: cleanText },
-      timestamp: Date.now(),
-    });
-    socket.send(textMsg);
+    const sendTextStart = performance.now();
+    socketSend(socket, 'message:ai_text', { text: cleanText });
+    logTiming('ws.send.text', sendTextStart, meta);
     console.log('[Loop] text response sent');
+    logTiming('turn.text_ready', totalStart, meta);
 
-    if (audioUrl) {
-      const audioMsg = JSON.stringify({
-        type: 'ai:audio',
-        payload: { url: audioUrl },
-        timestamp: Date.now(),
-      });
-      socket.send(audioMsg);
-      console.log('[Loop] audio response sent');
-    }
+    setImmediate(() => {
+      publishAudioResponse(pairingId, cleanText, socket, baseUrl, meta)
+        .catch((err) => console.error('[Loop] async TTS publish failed:', err));
+    });
   } catch (err) {
     console.error('[Loop] handleVoiceText error:', err);
     const message = err instanceof Error ? err.message : '处理失败';
@@ -118,6 +187,8 @@ export async function handleVoiceText(
     } catch (sendErr) {
       console.error('[Loop] failed to send error to socket:', sendErr);
     }
+  } finally {
+    logTiming('turn.total_until_text', totalStart, meta);
   }
 }
 
@@ -125,7 +196,7 @@ export async function sendClosingMessage(
   sessionId: string,
   pairingId: string,
   socket: WebSocket,
-  baseUrl: string = 'http://192.168.4.70:3000'
+  baseUrl: string = defaultBaseUrl()
 ) {
   try {
     const recentMessages = await getRecentMessages(sessionId, 6);
@@ -156,25 +227,10 @@ export async function sendClosingMessage(
       })
     );
 
-    // TTS for closing message
-    try {
-      const { audioBuffer } = await synthesizeForPairing(pairingId, aiText);
-      const fileName = `${randomUUID()}.mp3`;
-      const ttsDir = join(process.cwd(), 'public', 'tts');
-      await mkdir(ttsDir, { recursive: true });
-      const filePath = join(ttsDir, fileName);
-      await writeFile(filePath, audioBuffer);
-      const audioUrl = `${baseUrl}/tts/${fileName}`;
-      socket.send(
-        JSON.stringify({
-          type: 'ai:audio',
-          payload: { url: audioUrl },
-          timestamp: Date.now(),
-        })
-      );
-    } catch (ttsErr) {
-      console.error('[Loop] closing message TTS failed:', ttsErr);
-    }
+    setImmediate(() => {
+      publishAudioResponse(pairingId, aiText, socket, baseUrl, { sessionId, pairingId })
+        .catch((err) => console.error('[Loop] closing message TTS failed:', err));
+    });
   } catch (err) {
     console.error('[Loop] 发送道别语失败:', err);
   }

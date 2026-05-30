@@ -30,9 +30,10 @@ const MIN_RECORDING_MS = 500;
 
 export default function CompanioneeHome() {
   const { token, pairingId, stewardName, clearAuth } = useAuthStore();
-  const [state, setState] = useState<'IDLE' | 'LISTENING' | 'PROCESSING' | 'SPEAKING'>('IDLE');
+  const [state, setState] = useState<'IDLE' | 'LISTENING' | 'PROCESSING' | 'RESPONDING' | 'SPEAKING'>('IDLE');
   const [aiText, setAiText] = useState('您好，想和我聊聊吗？');
   const sessionReadyRef = useRef(false);
+  const sessionCreateSentRef = useRef(false);
   const wasPlayingRef = useRef(false);
   const wasConnectedRef = useRef(false);
   const lastAudioUrlRef = useRef<string | null>(null);
@@ -147,18 +148,22 @@ export default function CompanioneeHome() {
   const handleMessage = useCallback((msg: WebSocketMessage) => {
     if (msg.type === 'session:created' || msg.type === 'session:resumed') {
       sessionReadyRef.current = true;
+      sessionCreateSentRef.current = false;
     } else if (msg.type === 'message:ai_text') {
       const rawText = msg.payload.text as string;
       const cleanText = rawText
         .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
         .trim();
       setAiText(cleanText);
+      setState('RESPONDING');
     } else if (msg.type === 'ai:audio') {
       const url = msg.payload.url as string;
       if (lastAudioUrlRef.current === url) return;
       lastAudioUrlRef.current = url;
       setState('SPEAKING');
       playAudio(url);
+    } else if (msg.type === 'ai:audio_unavailable') {
+      setState('IDLE');
     } else if (msg.type === 'error') {
       if (msg.payload.code === 401) {
         Alert.alert('身份过期', '请重新绑定', [{ text: '确定', onPress: handleUnbind }]);
@@ -188,9 +193,15 @@ export default function CompanioneeHome() {
   useEffect(() => {
     if (!isConnected && wasConnectedRef.current) {
       sessionReadyRef.current = false;
+      sessionCreateSentRef.current = false;
     }
     wasConnectedRef.current = isConnected;
   }, [isConnected]);
+
+  useEffect(() => {
+    if (!isConnected || !token || sessionReadyRef.current || sessionCreateSentRef.current) return;
+    sessionCreateSentRef.current = sendMessage('session:create', {});
+  }, [isConnected, token, sendMessage]);
 
   useEffect(() => {
     if (wasPlayingRef.current && !isPlaying && state === 'SPEAKING') {
@@ -206,6 +217,10 @@ export default function CompanioneeHome() {
           setState('IDLE');
         }
       }, 8000);
+    } else if (state === 'RESPONDING') {
+      playbackTimeoutRef.current = setTimeout(() => {
+        setState('IDLE');
+      }, 12000);
     } else {
       if (playbackTimeoutRef.current) {
         clearTimeout(playbackTimeoutRef.current);
@@ -335,6 +350,8 @@ export default function CompanioneeHome() {
     ? '正在倾听...'
     : state === 'PROCESSING'
     ? '思考中...'
+    : state === 'RESPONDING'
+    ? '准备播放...'
     : '正在说...';
 
   const micLabel = state === 'LISTENING' ? '松开发送' : '按住说话';
@@ -441,7 +458,7 @@ export default function CompanioneeHome() {
 
         {/* Bottom: Actions Container */}
         <View className="w-full h-[160px] items-center justify-center relative">
-          {(state === 'PROCESSING' || state === 'SPEAKING') ? (
+          {(state === 'PROCESSING' || state === 'RESPONDING' || state === 'SPEAKING') ? (
             <View className="items-center">
               {state === 'SPEAKING' ? (
                 <TouchableOpacity
@@ -455,7 +472,9 @@ export default function CompanioneeHome() {
                 </TouchableOpacity>
               ) : (
                 <View className="w-[120px] h-[120px] rounded-full items-center justify-center border-4 border-surface-bright opacity-70" style={{ backgroundColor: colors.primary }}>
-                  <Text className="text-on-primary font-bold" style={{ fontSize: 16 }}>处理中</Text>
+                  <Text className="text-on-primary font-bold" style={{ fontSize: 16 }}>
+                    {state === 'RESPONDING' ? '回应中' : '处理中'}
+                  </Text>
                 </View>
               )}
             </View>

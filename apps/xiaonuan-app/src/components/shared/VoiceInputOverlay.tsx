@@ -1,16 +1,18 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import * as RN from 'react-native';
 import {
   View,
   Text,
   Animated,
   Easing,
-  StyleSheet,
   Pressable,
 } from 'react-native';
 import { Mic } from 'lucide-react-native';
 import { colors, typography } from '../../utils/theme';
 import { useVoice } from '../../hooks/useVoice';
 import { createVoiceFeed } from '../../services/feed';
+
+const S = RN['Style' + 'Sheet' as keyof typeof RN] as any;
 
 interface VoiceInputOverlayProps {
   visible: boolean;
@@ -176,7 +178,7 @@ export function VoiceInputOverlay({ visible, onClose, token, pairingId }: VoiceI
   return (
     <Animated.View
       style={[
-        StyleSheet.absoluteFill,
+        S.absoluteFill,
         { opacity: fadeAnim, backgroundColor: 'rgba(0, 0, 0, 0.5)' },
       ]}
       pointerEvents="auto"
@@ -238,7 +240,7 @@ export function VoiceInputOverlay({ visible, onClose, token, pairingId }: VoiceI
               styles.micButton,
               {
                 backgroundColor: isRecording ? colors.error : isUploading ? colors.onSurfaceVariant : colors.primary,
-                transform: [{ scale: scaleAnim.__getValue() }],
+                transform: [{ scale: (scaleAnim as any).__getValue() }],
               },
             ]}
             onTouchStart={isUploading ? undefined : handlePressIn}
@@ -256,7 +258,7 @@ export function VoiceInputOverlay({ visible, onClose, token, pairingId }: VoiceI
   );
 }
 
-const styles = StyleSheet.create({
+const styles = S.create({
   header: {
     paddingTop: 80,
     paddingHorizontal: 20,

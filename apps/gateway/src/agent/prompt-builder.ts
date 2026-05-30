@@ -9,27 +9,69 @@ export interface AgentState {
   memoryText: string;
 }
 
+type PromptProfile = {
+  companionee: {
+    name: string;
+    metadata: Record<string, string> | null;
+  } | null;
+  aiName: string | null;
+  stewards: Array<{
+    name: string;
+    metadata: Record<string, string> | null;
+  }>;
+};
+
+const PROFILE_CACHE_TTL_MS = 60_000;
+const profileCache = new Map<string, { expiresAt: number; value: PromptProfile }>();
+
+async function getPromptProfile(pairingId: string): Promise<PromptProfile> {
+  const disableCache = process.env.VITEST === 'true';
+  const cached = profileCache.get(pairingId);
+  if (!disableCache && cached && cached.expiresAt > Date.now()) {
+    return cached.value;
+  }
+
+  const [companionee, aiParticipant, stewards] = await Promise.all([
+    prisma.participant.findFirst({
+      where: { pairingId, role: 'COMPANIONEE', isAI: false },
+      select: { name: true, metadata: true },
+    }),
+    prisma.participant.findFirst({
+      where: { pairingId, isAI: true },
+      select: { name: true },
+    }),
+    prisma.participant.findMany({
+      where: { pairingId, role: 'STEWARD', isAI: false },
+      select: { name: true, metadata: true },
+    }),
+  ]);
+
+  const value: PromptProfile = {
+    companionee: companionee
+      ? { name: companionee.name, metadata: companionee.metadata as Record<string, string> | null }
+      : null,
+    aiName: aiParticipant?.name ?? null,
+    stewards: stewards.map((s) => ({
+      name: s.name,
+      metadata: s.metadata as Record<string, string> | null,
+    })),
+  };
+  if (!disableCache) {
+    profileCache.set(pairingId, { expiresAt: Date.now() + PROFILE_CACHE_TTL_MS, value });
+  }
+  return value;
+}
+
 export async function buildSystemPrompt(
   pairingId: string,
   skills: Skill[],
   state: AgentState
 ): Promise<string> {
-  const companionee = await prisma.participant.findFirst({
-    where: { pairingId, role: 'COMPANIONEE', isAI: false },
-  });
-
-  const aiParticipant = await prisma.participant.findFirst({
-    where: { pairingId, isAI: true },
-  });
-
-  const stewards = await prisma.participant.findMany({
-    where: { pairingId, role: 'STEWARD', isAI: false },
-  });
+  const { companionee, aiName, stewards } = await getPromptProfile(pairingId);
 
   const lines: string[] = [];
 
   // 1. [Role & Persona]
-  const aiName = aiParticipant?.name;
   if (aiName && aiName !== '我') {
     lines.push(`你的名字是${aiName}，一位温暖的陪伴者。在对话中自称"我"，如果对方问你是谁，回答"我是${aiName}"。`);
   } else {
@@ -71,7 +113,7 @@ export async function buildSystemPrompt(
 
   // 5. [Tone & Personalization]
   if (companionee) {
-    const companioneeMeta = companionee.metadata as Record<string, string> | null;
+    const companioneeMeta = companionee.metadata;
 
     lines.push('<TONE_AND_PERSONALIZATION>');
     if (companionee.name) {

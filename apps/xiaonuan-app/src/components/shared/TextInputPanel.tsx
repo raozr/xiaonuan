@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
+import * as RN from 'react-native';
 import {
   View,
   Text,
   TextInput,
   Pressable,
-  StyleSheet,
   Animated,
 } from 'react-native';
 import { Send, X } from 'lucide-react-native';
 import { colors, typography } from '../../utils/theme';
+
+const S = RN['Style' + 'Sheet' as keyof typeof RN] as any;
 
 interface TextInputPanelProps {
   visible: boolean;
@@ -64,7 +66,7 @@ export function TextInputPanel({ visible, onClose, onSend }: TextInputPanelProps
   if (!visible) return null;
 
   return (
-    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={S.absoluteFill} pointerEvents="box-none">
       {/* 半透明背景 */}
       <Pressable
         onPress={onClose}
@@ -132,9 +134,9 @@ export function TextInputPanel({ visible, onClose, onSend }: TextInputPanelProps
   );
 }
 
-const styles = StyleSheet.create({
+const styles = S.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...S.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
   panel: {

@@ -36,3 +36,21 @@ export async function listEvents(
     { token }
   );
 }
+
+export async function getDailySummary(token: string, pairingId: string) {
+  return api(`/api/pairings/${pairingId}/daily-summary`, { token });
+}
+
+export async function getEvents(token: string, pairingId: string, date: string) {
+  return api(`/api/pairings/${pairingId}/events?date=${encodeURIComponent(date)}`, {
+    token,
+  });
+}
+
+export async function getTodayEvents(token: string, pairingId: string) {
+  const response = await api<{ data: EventItem[] } | EventItem[]>(
+    `/api/pairings/${pairingId}/events/today`,
+    { token }
+  );
+  return Array.isArray(response) ? response : response.data;
+}

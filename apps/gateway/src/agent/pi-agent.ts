@@ -6,6 +6,8 @@ import { buildSystemPrompt } from './prompt-builder.js';
 import { getRecentMessages } from '../conversation/turn-manager.js';
 import { buildMemoryContext } from '../memory/context-builder.js';
 import { cleanLLMResponse } from './response-cleaner.js';
+import { z } from 'zod';
+import { performance } from 'perf_hooks';
 
 export interface PiAgentConfig {
   pairingId: string;
@@ -24,6 +26,58 @@ export interface PiAgent {
   getTools(): Record<string, Function>;
   callTool(name: string, args: Record<string, unknown>): Promise<unknown>;
   processMessage(input: string, options: ProcessMessageOptions): Promise<string>;
+}
+
+const toolArgSchemas = {
+  memory_context: z.object({}).passthrough(),
+  memory_recall: z.object({
+    query: z.string().min(1),
+    checkpointId: z.string().optional(),
+  }).passthrough(),
+  memory_note: z.object({
+    category: z.string().min(1),
+    content: z.string().min(1),
+  }).passthrough(),
+  emergency_alert: z.object({
+    severity: z.enum(['HIGH', 'CRITICAL']),
+    reason: z.string().min(1),
+  }).passthrough(),
+};
+
+function elapsedSince(start: number) {
+  return Math.round(performance.now() - start);
+}
+
+function shouldUseTools(input: string) {
+  const recallPattern = /记得|想起|以前|上次|那次|之前|回忆|喜欢|讨厌|家人|儿子|女儿|老伴|孙|留言|说了什么|医院|疼|痛|吃不下|难受|不舒服|摔|晕|胸闷|喘|自杀|不想活/;
+  return recallPattern.test(input);
+}
+
+function maxToolTurnsFor(input: string) {
+  const urgentPattern = /救命|胸痛|胸闷|喘不上|摔倒|晕倒|自杀|不想活|要死/;
+  return urgentPattern.test(input) ? 2 : 1;
+}
+
+function parseToolArguments(name: string, raw: string): Record<string, unknown> {
+  let parsed: unknown;
+  try {
+    parsed = raw ? JSON.parse(raw) : {};
+  } catch {
+    throw new Error(`Tool ${name} arguments must be valid JSON`);
+  }
+
+  const schema = toolArgSchemas[name as keyof typeof toolArgSchemas];
+  if (!schema) return parsed as Record<string, unknown>;
+
+  const result = schema.safeParse(parsed);
+  if (!result.success) {
+    const message = result.error.errors
+      .map((e) => `${e.path.join('.') || 'arguments'}: ${e.message}`)
+      .join('; ');
+    throw new Error(`Tool ${name} arguments invalid: ${message}`);
+  }
+
+  return result.data;
 }
 
 export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
@@ -140,25 +194,40 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
     input: string,
     options: ProcessMessageOptions
   ): Promise<string> {
+    const totalStart = performance.now();
+    const meta = {
+      pairingId: config.pairingId,
+      sessionId: options.sessionId,
+      turnCount: options.turnCount,
+    };
     let history: Array<{ role: 'user' | 'assistant'; content: string }> = [];
     try {
+      const historyStart = performance.now();
       history = await getRecentMessages(options.sessionId, 10);
+      console.log('[Perf] agent.history', { ...meta, elapsedMs: elapsedSince(historyStart) });
     } catch (err) {
       console.error('[PiAgent] 获取历史消息失败:', err);
     }
 
     let memoryText = '';
     try {
+      const memoryStart = performance.now();
       memoryText = await buildMemoryContext({
         pairingId: config.pairingId,
         turnCount: options.turnCount,
         input,
         phase: config.phase,
       });
+      console.log('[Perf] agent.memory_context', {
+        ...meta,
+        elapsedMs: elapsedSince(memoryStart),
+        chars: memoryText.length,
+      });
     } catch (err) {
       console.error('[PiAgent] 构建记忆上下文失败:', err);
     }
 
+    const promptStart = performance.now();
     const fullSystemPrompt = await buildSystemPrompt(
       config.pairingId,
       skills,
@@ -168,25 +237,38 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
         memoryText,
       }
     );
+    console.log('[Perf] agent.prompt', {
+      ...meta,
+      elapsedMs: elapsedSince(promptStart),
+      chars: fullSystemPrompt.length,
+    });
 
     const messages: any[] = [
       { role: 'system', content: fullSystemPrompt },
       ...history,
       { role: 'user', content: input },
     ];
+    const enabledTools = shouldUseTools(input) ? agentTools : [];
+    const maxToolTurns = maxToolTurnsFor(input);
 
     try {
       console.log('[PiAgent] LLM input (last user msg):', input);
+      const llmStart = performance.now();
       let reply = await chatCompletion(messages, {
         temperature: 0.85,
         maxTokens: 512,
-        tools: agentTools,
+        tools: enabledTools,
+      });
+      console.log('[Perf] agent.llm.initial', {
+        ...meta,
+        elapsedMs: elapsedSince(llmStart),
+        toolsEnabled: enabledTools.length > 0,
       });
       console.log('[PiAgent] LLM raw reply.content:', JSON.stringify(reply.content));
 
-      // Handle tool calls loop (up to 3 turns)
+      // Handle tool calls loop; keep normal turns to one tool round for latency.
       let toolTurns = 0;
-      while (reply.tool_calls && reply.tool_calls.length > 0 && toolTurns < 3) {
+      while (reply.tool_calls && reply.tool_calls.length > 0 && toolTurns < maxToolTurns) {
         toolTurns++;
         messages.push({
           role: 'assistant',
@@ -196,19 +278,26 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
 
         for (const tc of reply.tool_calls) {
           const fnName = tc.function.name;
-          const fnArgs = JSON.parse(tc.function.arguments);
           let toolResult: string;
+          const toolStart = performance.now();
           try {
             const toolFn = tools[fnName];
             if (!toolFn) {
               toolResult = JSON.stringify({ error: `Tool ${fnName} not found` });
             } else {
+              const fnArgs = parseToolArguments(fnName, tc.function.arguments);
               const res = await toolFn({ ...fnArgs, pairingId: config.pairingId });
               toolResult = JSON.stringify(res);
             }
           } catch (err: any) {
             toolResult = JSON.stringify({ error: err.message });
           }
+          console.log('[Perf] agent.tool_call', {
+            ...meta,
+            tool: fnName,
+            toolTurn: toolTurns,
+            elapsedMs: elapsedSince(toolStart),
+          });
 
           messages.push({
             role: 'tool',
@@ -218,15 +307,22 @@ export async function createPiAgent(config: PiAgentConfig): Promise<PiAgent> {
           });
         }
 
+        const llmToolStart = performance.now();
         reply = await chatCompletion(messages, {
           temperature: 0.85,
           maxTokens: 512,
-          tools: agentTools,
+          tools: enabledTools,
+        });
+        console.log('[Perf] agent.llm.after_tool', {
+          ...meta,
+          toolTurn: toolTurns,
+          elapsedMs: elapsedSince(llmToolStart),
         });
         console.log('[PiAgent] LLM raw reply.content (after tools):', JSON.stringify(reply.content));
       }
 
       const content = cleanLLMResponse(reply.content ?? '哎呀，我刚才走神了，您再说一遍好吗？');
+      console.log('[Perf] agent.total', { ...meta, elapsedMs: elapsedSince(totalStart) });
       console.log('[PiAgent] LLM cleaned content:', content);
       return content;
     } catch (err) {

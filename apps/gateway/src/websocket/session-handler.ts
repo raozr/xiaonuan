@@ -12,8 +12,13 @@ import { generateCheckpoint } from '../memory/checkpoint-service.js';
 import { transcribeVoice } from '../services/voice-service-client.js';
 import { convertM4aToWav } from '../utils/audio-convert.js';
 import { markCheckpointPending } from '../events/checkpoint-persistence.js';
+import { performance } from 'perf_hooks';
 
 type AuthUser = { pairingId?: string; role?: string; deviceId?: string; userId?: string };
+
+function elapsedSince(start: number) {
+  return Math.round(performance.now() - start);
+}
 
 export function createWebSocketHandler(app: FastifyInstance) {
   return async (socket: WebSocket, req: FastifyRequest) => {
@@ -166,6 +171,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
         }
 
         if (type === 'message:voice_text') {
+          const turnStart = performance.now();
           app.log.info(`[WS] handling voice_text sessionId=${sessionId}`);
           if (!sessionId) {
             app.log.warn('[WS] voice_text rejected: no sessionId');
@@ -195,6 +201,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           try {
             await handleVoiceText(sessionId, user.pairingId!, text, socket, baseUrl);
           } finally {
+            app.log.info(`[Perf] ws.voice_text.handleVoiceText sessionId=${sessionId} pairingId=${user.pairingId} elapsedMs=${elapsedSince(turnStart)}`);
             app.log.info('[WS] handleVoiceText done');
             resetSilenceTimer();
           }
@@ -212,6 +219,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
         }
 
         if (type === 'message:voice_audio') {
+          const turnStart = performance.now();
           app.log.info(`[WS] handling voice_audio sessionId=${sessionId}`);
           if (!sessionId) {
             app.log.warn('[WS] voice_audio rejected: no sessionId');
@@ -226,12 +234,18 @@ export function createWebSocketHandler(app: FastifyInstance) {
 
           let text: string;
           try {
+            const decodeStart = performance.now();
             app.log.info('[WS] starting ASR...');
             const audioBuffer = Buffer.from(audioBase64, 'base64');
+            app.log.info(`[Perf] asr.decode_base64 sessionId=${sessionId} pairingId=${user.pairingId} elapsedMs=${elapsedSince(decodeStart)}`);
+            const convertStart = performance.now();
             app.log.info('[WS] converting m4a to wav...');
             const wavBuffer = await convertM4aToWav(audioBuffer);
+            app.log.info(`[Perf] asr.convert_m4a_to_wav sessionId=${sessionId} pairingId=${user.pairingId} elapsedMs=${elapsedSince(convertStart)} bytes=${wavBuffer.length}`);
             app.log.info(`[WS] converted to wav, size=${wavBuffer.length}`);
+            const asrStart = performance.now();
             const asrResult = await transcribeVoice(wavBuffer, 'wav', 16000);
+            app.log.info(`[Perf] asr.transcribe sessionId=${sessionId} pairingId=${user.pairingId} elapsedMs=${elapsedSince(asrStart)}`);
             text = asrResult.success ? (asrResult.text ?? '') : '';
             app.log.info(`[WS] ASR result: ${text}`);
           } catch (asrErr: any) {
@@ -271,6 +285,7 @@ export function createWebSocketHandler(app: FastifyInstance) {
           try {
             await handleVoiceText(sessionId, user.pairingId!, text, socket, baseUrl);
           } finally {
+            app.log.info(`[Perf] ws.voice_audio.total_until_text sessionId=${sessionId} pairingId=${user.pairingId} elapsedMs=${elapsedSince(turnStart)}`);
             app.log.info('[WS] handleVoiceText done');
             resetSilenceTimer();
           }

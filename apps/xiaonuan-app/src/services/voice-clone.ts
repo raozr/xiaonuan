@@ -27,3 +27,14 @@ export async function getVoiceCloneList(token: string, pairingId: string) {
     activeVoiceId: string;
   }>(`/api/voice-clone/pairing/${pairingId}`, { token });
 }
+
+export async function getVoiceCloneStatus(token: string, pairingId: string) {
+  return api(`/api/pairings/${pairingId}/voice-clone/status`, { token });
+}
+
+export async function resetVoiceClone(token: string, pairingId: string) {
+  return api(`/api/pairings/${pairingId}/voice-clone/reset`, {
+    method: 'POST',
+    token,
+  });
+}

@@ -9,6 +9,7 @@ export const colors = {
   surfaceDim: '#dcdad5',
   surfaceBright: '#fcf9f4',
   surfaceLowest: '#ffffff',
+  surfaceContainerLowest: '#ffffff',
   surfaceLow: '#f6f3ee',
   surfaceContainer: '#f0ede9',
   surfaceContainerHigh: '#ebe8e3',
@@ -84,6 +85,16 @@ export const typography = {
     fontWeight: '700' as const,
     lineHeight: 32,
   },
+  headlineSm: {
+    fontSize: 20,
+    fontWeight: '700' as const,
+    lineHeight: 28,
+  },
+  bodyLg: {
+    fontSize: 18,
+    fontWeight: '600' as const,
+    lineHeight: 28,
+  },
   bodyLgElderly: {
     fontSize: 20,
     fontWeight: '600' as const,
@@ -93,6 +104,11 @@ export const typography = {
     fontSize: 16,
     fontWeight: '400' as const,
     lineHeight: 24,
+  },
+  bodySm: {
+    fontSize: 14,
+    fontWeight: '400' as const,
+    lineHeight: 20,
   },
   labelCaps: {
     fontSize: 12,

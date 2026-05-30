@@ -1,13 +1,55 @@
+declare const require: ((id: string) => any) | undefined;
+
+type ExpoConstantsLike = {
+  expoConfig?: { hostUri?: string };
+  manifest?: { debuggerHost?: string };
+  manifest2?: { extra?: { expoClient?: { hostUri?: string }; expoGo?: { debuggerHost?: string } } };
+};
+
+function getExpoConstants(): ExpoConstantsLike | undefined {
+  if (process.env.VITEST) {
+    return undefined;
+  }
+
+  try {
+    const mod = typeof require === 'function' ? require('expo-constants') : undefined;
+    return (mod?.default ?? mod) as ExpoConstantsLike | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function getExpoHost() {
+  const constants = getExpoConstants();
+  const hostUri =
+    constants?.expoConfig?.hostUri ||
+    constants?.manifest2?.extra?.expoClient?.hostUri ||
+    constants?.manifest2?.extra?.expoGo?.debuggerHost ||
+    constants?.manifest?.debuggerHost;
+
+  return hostUri?.split(':')[0];
+}
+
+function getDevApiUrl() {
+  if (process.env.EXPO_PUBLIC_API_URL) {
+    return process.env.EXPO_PUBLIC_API_URL;
+  }
+
+  const expoHost = getExpoHost();
+  if (expoHost) {
+    return `http://${expoHost}:3000`;
+  }
+
+  return 'http://localhost:3000';
+}
+
 /**
  * Production build uses the deployed URL.
- * Development uses local or EXPO_PUBLIC_API_URL if set.
- *
- * In dev, HTTP goes through nginx (port 80, /xiaonuan prefix),
- * but WebSocket connects directly to gateway (port 3000) since
- * the dev nginx config lacks WebSocket upgrade support.
+ * Development prefers EXPO_PUBLIC_API_URL, then derives the computer LAN host
+ * from Expo so physical devices do not try to connect to their own localhost.
  */
 export const API_URL = __DEV__
-  ? (process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.31/xiaonuan')
+  ? getDevApiUrl()
   : 'https://www.quirklabs.top/xiaonuan';
 
 export const WS_URL = __DEV__

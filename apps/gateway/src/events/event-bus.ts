@@ -2,6 +2,7 @@ import type { NewEvent, EventOptions } from './event-types.js';
 import { prisma } from '@xiaonuan/prisma';
 
 const FLUSH_INTERVAL_MS = 30_000;
+const RETRY_INTERVAL_MS = 5_000;
 const FLUSH_THRESHOLD = 10;
 
 let buffer: NewEvent[] = [];
@@ -61,7 +62,13 @@ export async function flushEvents() {
       data: events.map(toCreateData),
     });
   } catch (err) {
-    console.error('[EventBus] flush 失败，数据已丢失:', err);
+    buffer = [...events, ...buffer];
+    startTimer();
+    const retryTimer = setTimeout(() => {
+      void flushEvents();
+    }, RETRY_INTERVAL_MS);
+    retryTimer.unref();
+    console.error('[EventBus] flush 失败，已保留数据等待重试:', err);
   } finally {
     flushing = false;
   }

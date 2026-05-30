@@ -89,8 +89,12 @@ await app.register(staticPlugin, {
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     await ensurePairingMemoriesCollection();
-    await startWorker();
-    app.log.info('Extraction worker started');
+    if (env.ENABLE_EXTRACTION_WORKER) {
+      await startWorker();
+      app.log.info('Extraction worker started');
+    } else {
+      app.log.info('Extraction worker disabled by ENABLE_EXTRACTION_WORKER=false');
+    }
 
     // Daily event pruning at 2:00 AM
     function schedulePruning() {

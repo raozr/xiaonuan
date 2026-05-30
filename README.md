@@ -47,7 +47,7 @@ xiaonuan/
 - **语言**：TypeScript, Python
 - **后端**：Node.js 22+, Fastify 5, BullMQ
 - **数据库**：PostgreSQL 17, Prisma ORM
-- **向量数据库**：Qdrant v1.12（语义记忆检索）
+- **向量数据库**：Qdrant v1.17（语义记忆检索）
 - **LLM**：DashScope (Qwen-Plus)
 - **缓存**：Redis 7
 - **语音**：阿里云 NLS (TTS / ASR)
@@ -59,7 +59,7 @@ xiaonuan/
 
 - Node.js >= 22
 - PNPM >= 9
-- Docker（运行 PostgreSQL、Qdrant、Redis）
+- Docker / Colima（运行 PostgreSQL、Qdrant、Redis）
 - Python 3.11+（如需本地开发语音服务）
 
 ### 安装与运行
@@ -73,22 +73,58 @@ xiaonuan/
 2. **配置环境变量**
    复制根目录下的 `.env.example` 为 `.env`，填写必要的 API 密钥（如 `DASHSCOPE_API_KEY`、`WECHAT_APPID`、`WECHAT_SECRET`、`NLS_*` 凭据）。
 
-3. **一键启动（推荐服务器部署）**
+3. **启动 Docker 与基础设施**
+   如果使用 Colima：
+   ```bash
+   colima start
+   ```
+   首次本地运行如果没有共享网络，先创建一次：
+   ```bash
+   docker network create app-network
+   ```
+   然后启动基础设施：
+   ```bash
+   docker compose up -d postgres qdrant redis
+   ```
+
+4. **初始化数据库与依赖**
+   ```bash
+   pnpm install
+   pnpm db:generate
+   pnpm --filter @xiaonuan/prisma exec prisma migrate status
+   ```
+   如果是全新的开发库，继续执行：
+   ```bash
+   pnpm db:migrate
+   ```
+   如果本地已有旧库但 migration history 不一致，先备份数据，再选择重建开发库或使用 Prisma 的 `migrate resolve` 标记历史迁移。
+
+5. **一键启动（推荐服务器部署）**
    项目已完全 Docker 化。使用管理脚本一键启动：
    ```bash
    ./manager.sh start
    ```
    该脚本封装了 `docker compose`，支持 `start`、`stop`、`restart`、`update`、`status`、`logs`、`backup` 和 `health`。
 
-4. **手动开发模式**
+6. **手动开发模式**
    如需开发后端代码，先启动基础设施：
    ```bash
-   docker-compose up -d postgres qdrant redis
-   pnpm install
-   pnpm db:generate
-   pnpm dev
+   pnpm --filter @xiaonuan/gateway dev
    ```
-   也可使用 `./manager.sh dev` 一键启动本地开发环境。
+   本地只调试 API 或 WebSocket 时，可在 `.env` 中设置 `ENABLE_EXTRACTION_WORKER=false`，避免启动时消费 Redis 中的历史提取任务并触发真实 LLM 调用。
+   语音服务可单独启动：
+   ```bash
+   cd apps/voice-service
+   python3 -m pip install -r requirements.txt
+   python3 main.py
+   ```
+也可使用 `./manager.sh dev` 一键启动本地开发环境。
+
+### 对话响应链路
+
+Gateway 在处理对话时会优先把 LLM 文本通过 WebSocket 发给移动端，然后异步执行 TTS，音频生成完成后再发送 `ai:audio`。如果 TTS 失败，后端会发送 `ai:audio_unavailable`，移动端保留文本回复并回到可继续对话状态。
+
+对话链路已加入 `[Perf]` 分段耗时日志，覆盖 ASR 转换/识别、记忆上下文、prompt、LLM、tool call、TTS、文件写入和 WebSocket send，可用来定位首响和音频延迟。
 
 ## 🔧 AI 名字迁移
 
@@ -114,7 +150,7 @@ pnpm --filter @xiaonuan/gateway migrate:ai-names
   eas build --profile preview    # 构建 APK 用于内部测试
   eas build --profile production # 构建 AAB 用于 Play 商店
   ```
-- **环境变量**：`EXPO_PUBLIC_API_URL` 在 `eas.json` 中按构建 profile 配置。
+- **环境变量**：开发环境优先读取 `apps/xiaonuan-app/.env.development.local` 中的 `EXPO_PUBLIC_API_URL`；真机调试时应使用电脑在同一局域网内的可访问地址。若未配置，App 会尝试从 Expo dev server 推导电脑 IP，最后才回退到 `localhost`。
 - **下载页面**：APK 下载的静态落地页位于 `apps/gateway/public/index.html`（如 `https://your-domain/`）。
 - **注意**：早期版本的微信小程序 (`apps/mini-program/`) 和子女 PC 端 (`apps/child-pc/`) 已移除，统一由 `xiaonuan-app` 覆盖所有用户角色。
 
@@ -141,7 +177,7 @@ pnpm --filter @xiaonuan/gateway migrate:ai-names
 | 服务 | 镜像 / 构建 | 描述 |
 |------|-------------|------|
 | postgres | `postgres:17-alpine` | 主关系数据库 |
-| qdrant | `qdrant/qdrant:v1.12.0` | 向量数据库，用于记忆检索 |
+| qdrant | `qdrant/qdrant:v1.17.0` | 向量数据库，用于记忆检索 |
 | redis | `redis:7-alpine` | 缓存与会话存储 |
 | voice-service | `./apps/voice-service/Dockerfile` | Python FastAPI 语音处理 |
 | gateway | `./Dockerfile` | Node.js AI 网关与 API 服务器 |
