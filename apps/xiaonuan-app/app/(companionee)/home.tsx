@@ -1,16 +1,13 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   Alert,
-  ToastAndroid,
-  Platform,
   Image,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -20,25 +17,20 @@ import Animated, {
   cancelAnimation,
 } from 'react-native-reanimated';
 import { Mic, Square, LogOut, History } from 'lucide-react-native';
-import { useWebSocket, type WebSocketMessage } from '../../src/hooks/useWebSocket';
-import { useVoice } from '../../src/hooks/useVoice';
-import { useAuthStore } from '../../src/store/auth-store';
-import { API_URL, WS_URL } from '../../src/utils/constants';
-import { colors, typography, spacing } from '../../src/utils/theme';
-
-const MIN_RECORDING_MS = 500;
+import { useCompanioneeConversation } from '../../src/hooks/useCompanioneeConversation';
+import { colors, typography } from '../../src/utils/theme';
 
 export default function CompanioneeHome() {
-  const { token, pairingId, stewardName, clearAuth } = useAuthStore();
-  const [state, setState] = useState<'IDLE' | 'LISTENING' | 'PROCESSING' | 'RESPONDING' | 'SPEAKING'>('IDLE');
-  const [aiText, setAiText] = useState('您好，想和我聊聊吗？');
-  const sessionReadyRef = useRef(false);
-  const sessionCreateSentRef = useRef(false);
-  const wasPlayingRef = useRef(false);
-  const wasConnectedRef = useRef(false);
-  const lastAudioUrlRef = useRef<string | null>(null);
-  const playbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pressStartTime = useRef<number>(0);
+  const {
+    aiText,
+    headerTitle,
+    micLabel,
+    state,
+    handleLongPress,
+    handlePressOut,
+    handleStop,
+    handleUnbind,
+  } = useCompanioneeConversation();
 
   // Reanimated shared values
   const breatheScale = useSharedValue(1);
@@ -48,12 +40,6 @@ export default function CompanioneeHome() {
   const speakHaloOpacity = useSharedValue(0);
   const processingHaloScale = useSharedValue(1);
   const processingHaloOpacity = useSharedValue(0);
-
-  const { isRecording, isPlaying, playError, hasPermission, requestPermission, startRecording, stopRecording, playAudio, stopAudio, getRecordingBase64 } = useVoice();
-
-  useEffect(() => {
-    requestPermission();
-  }, [requestPermission]);
 
   // Breathing animation
   useEffect(() => {
@@ -144,217 +130,6 @@ export default function CompanioneeHome() {
       pulseOpacity.value = 0.8;
     }
   }, [state, pulseScale, pulseOpacity]);
-
-  const handleMessage = useCallback((msg: WebSocketMessage) => {
-    if (msg.type === 'session:created' || msg.type === 'session:resumed') {
-      sessionReadyRef.current = true;
-      sessionCreateSentRef.current = false;
-    } else if (msg.type === 'message:ai_text') {
-      const rawText = msg.payload.text as string;
-      const cleanText = rawText
-        .replace(/<thought>[\s\S]*?<\/thought>/gi, '')
-        .trim();
-      setAiText(cleanText);
-      setState('RESPONDING');
-    } else if (msg.type === 'ai:audio') {
-      const url = msg.payload.url as string;
-      if (lastAudioUrlRef.current === url) return;
-      lastAudioUrlRef.current = url;
-      setState('SPEAKING');
-      playAudio(url);
-    } else if (msg.type === 'ai:audio_unavailable') {
-      setState('IDLE');
-    } else if (msg.type === 'error') {
-      if (msg.payload.code === 401) {
-        Alert.alert('身份过期', '请重新绑定', [{ text: '确定', onPress: handleUnbind }]);
-      } else {
-        const raw = msg.payload.message || '';
-        let friendly = '处理失败';
-        if (raw.includes('语音识别') || raw.includes('ASR') || raw.includes('429')) {
-          friendly = '语音识别失败，请稍后再试';
-        } else if (raw.includes('会话')) {
-          friendly = '会话已过期，请重新开始';
-        } else if (raw.includes('合成') || raw.includes('TTS')) {
-          friendly = '语音播放失败，请稍后再试';
-        }
-        Alert.alert('提示', friendly);
-        setState('IDLE');
-      }
-    }
-  }, [playAudio]);
-
-  const wsUrl = `${WS_URL}?token=${token}`;
-  const { isConnected, sendMessage } = useWebSocket(
-    wsUrl.split('?')[0] ?? WS_URL,
-    token ?? '',
-    handleMessage,
-  );
-
-  useEffect(() => {
-    if (!isConnected && wasConnectedRef.current) {
-      sessionReadyRef.current = false;
-      sessionCreateSentRef.current = false;
-    }
-    wasConnectedRef.current = isConnected;
-  }, [isConnected]);
-
-  useEffect(() => {
-    if (!isConnected || !token || sessionReadyRef.current || sessionCreateSentRef.current) return;
-    sessionCreateSentRef.current = sendMessage('session:create', {});
-  }, [isConnected, token, sendMessage]);
-
-  useEffect(() => {
-    if (wasPlayingRef.current && !isPlaying && state === 'SPEAKING') {
-      setState('IDLE');
-    }
-    wasPlayingRef.current = isPlaying;
-  }, [isPlaying, state]);
-
-  useEffect(() => {
-    if (state === 'SPEAKING') {
-      playbackTimeoutRef.current = setTimeout(() => {
-        if (!isPlaying) {
-          setState('IDLE');
-        }
-      }, 8000);
-    } else if (state === 'RESPONDING') {
-      playbackTimeoutRef.current = setTimeout(() => {
-        setState('IDLE');
-      }, 12000);
-    } else {
-      if (playbackTimeoutRef.current) {
-        clearTimeout(playbackTimeoutRef.current);
-        playbackTimeoutRef.current = null;
-      }
-    }
-    return () => {
-      if (playbackTimeoutRef.current) {
-        clearTimeout(playbackTimeoutRef.current);
-        playbackTimeoutRef.current = null;
-      }
-    };
-  }, [state, isPlaying]);
-
-  useEffect(() => {
-    if (state === 'SPEAKING' && playError) {
-      setState('IDLE');
-    }
-  }, [state, playError]);
-
-  async function handleLongPress() {
-    if (!isConnected) {
-      Alert.alert('网络未连接', '正在尝试连接小暖...');
-      return;
-    }
-    if (!hasPermission) {
-      const granted = await requestPermission();
-      if (!granted) {
-        Alert.alert('需要麦克风权限', '请在设置中允许小暖使用麦克风');
-        return;
-      }
-    }
-    pressStartTime.current = Date.now();
-    setState('LISTENING');
-    if (!sessionReadyRef.current) {
-      const sent = sendMessage('session:create', {});
-      if (!sent) {
-        Alert.alert('提示', '网络不稳定，请松开后重试');
-        setState('IDLE');
-        return;
-      }
-    }
-    await startRecording();
-  }
-
-  async function handlePressOut() {
-    if (state !== 'LISTENING') return;
-    const duration = Date.now() - pressStartTime.current;
-    if (!isRecording) {
-      setState('IDLE');
-      return;
-    }
-    const uri = await stopRecording();
-    if (duration < MIN_RECORDING_MS) {
-      setState('IDLE');
-      const msg = '说话时间太短';
-      if (Platform.OS === 'android') {
-        ToastAndroid.show(msg, ToastAndroid.SHORT);
-      } else {
-        Alert.alert('提示', msg);
-      }
-      return;
-    }
-    setState('PROCESSING');
-    let waited = 0;
-    while (!sessionReadyRef.current && waited < 3000) {
-      await new Promise((r) => setTimeout(r, 100));
-      waited += 100;
-    }
-    if (!sessionReadyRef.current && isConnected) {
-      sendMessage('session:create', {});
-      waited = 0;
-      while (!sessionReadyRef.current && waited < 2000) {
-        await new Promise((r) => setTimeout(r, 100));
-        waited += 100;
-      }
-    }
-    if (!sessionReadyRef.current) {
-      Alert.alert('提示', '会话创建失败，请重试');
-      setState('IDLE');
-      return;
-    }
-    const base64 = await getRecordingBase64();
-    if (!base64) {
-      Alert.alert('提示', '读取录音失败，请重试');
-      setState('IDLE');
-      return;
-    }
-    const sent = sendMessage('message:voice_audio', { audioBase64: base64 });
-    if (!sent) {
-      Alert.alert('提示', '网络断开，请重试');
-      setState('IDLE');
-      return;
-    }
-  }
-
-  function handleStop() {
-    if (state === 'SPEAKING') {
-      stopAudio();
-      setState('IDLE');
-    }
-    if (state === 'LISTENING') {
-      stopRecording();
-      setState('IDLE');
-    }
-  }
-
-  function handleUnbind() {
-    Alert.alert(
-      '退出绑定',
-      '退出后可以重新输入绑定码，绑定到其他家庭。确定要退出吗？',
-      [
-        { text: '取消', style: 'cancel' },
-        { text: '确定退出', style: 'destructive', onPress: async () => {
-          await clearAuth();
-          router.replace('/(companionee)');
-        }},
-      ]
-    );
-  }
-
-  const headerTitle = !isConnected
-    ? '连接中...'
-    : state === 'IDLE'
-    ? `${stewardName ?? '小暖'}的陪伴`
-    : state === 'LISTENING'
-    ? '正在倾听...'
-    : state === 'PROCESSING'
-    ? '思考中...'
-    : state === 'RESPONDING'
-    ? '准备播放...'
-    : '正在说...';
-
-  const micLabel = state === 'LISTENING' ? '松开发送' : '按住说话';
 
   const breatheStyle = useAnimatedStyle(() => ({
     transform: [{ scale: breatheScale.value }],

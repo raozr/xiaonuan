@@ -72,7 +72,6 @@ async function _chatCompletionOnce(
     }
 
     const data = (await res.json()) as Record<string, unknown>;
-    console.log('[Dashscope] LLM raw response:', JSON.stringify(data).slice(0, 2000));
     const choices = data.choices as Array<Record<string, unknown>> | undefined;
     const first = choices?.[0];
     const msg = first?.message as ChatResponse | undefined;

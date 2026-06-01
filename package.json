@@ -8,6 +8,7 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "test": "pnpm -r test",
+    "doctor": "node scripts/doctor.mjs",
     "db:migrate": "pnpm --filter @xiaonuan/prisma migrate",
     "db:generate": "pnpm --filter @xiaonuan/prisma generate",
     "db:seed": "pnpm --filter @xiaonuan/prisma seed",

@@ -37,6 +37,8 @@ xiaonuan/
 ├── deploy/
 │   └── nginx/            # 生产 Nginx 反向代理配置
 ├── doc/                  # 架构文档与设计文档
+├── scripts/
+│   └── doctor.mjs        # 本地开发环境自检脚本
 ├── docker-compose.yml    # 后端服务编排
 ├── Dockerfile            # 网关服务镜像
 └── manager.sh            # 生产部署管理脚本
@@ -99,14 +101,20 @@ xiaonuan/
    ```
    如果本地已有旧库但 migration history 不一致，先备份数据，再选择重建开发库或使用 Prisma 的 `migrate resolve` 标记历史迁移。
 
-5. **一键启动（推荐服务器部署）**
+5. **本地环境自检**
+   ```bash
+   pnpm run doctor
+   ```
+   该脚本会检查 `.env`、PostgreSQL、Redis、Qdrant、Gateway health、Voice service health，并输出移动端当前使用的 `EXPO_PUBLIC_API_URL`。如果 Gateway 或 voice-service 尚未启动，对应 health 检查会失败，这是预期的排障信号。
+
+6. **一键启动（推荐服务器部署）**
    项目已完全 Docker 化。使用管理脚本一键启动：
    ```bash
    ./manager.sh start
    ```
    该脚本封装了 `docker compose`，支持 `start`、`stop`、`restart`、`update`、`status`、`logs`、`backup` 和 `health`。
 
-6. **手动开发模式**
+7. **手动开发模式**
    如需开发后端代码，先启动基础设施：
    ```bash
    pnpm --filter @xiaonuan/gateway dev
@@ -118,13 +126,25 @@ xiaonuan/
    python3 -m pip install -r requirements.txt
    python3 main.py
    ```
-也可使用 `./manager.sh dev` 一键启动本地开发环境。
+也可使用 `./manager.sh dev` 一键启动本地开发环境。该命令会自动寻找已安装 `uvicorn` 的 Python 解释器；如本机有多个 Python，可显式指定：
+```bash
+PYTHON_BIN=/usr/bin/python3 ./manager.sh dev
+```
 
 ### 对话响应链路
 
 Gateway 在处理对话时会优先把 LLM 文本通过 WebSocket 发给移动端，然后异步执行 TTS，音频生成完成后再发送 `ai:audio`。如果 TTS 失败，后端会发送 `ai:audio_unavailable`，移动端保留文本回复并回到可继续对话状态。
 
 对话链路已加入 `[Perf]` 分段耗时日志，覆盖 ASR 转换/识别、记忆上下文、prompt、LLM、tool call、TTS、文件写入和 WebSocket send，可用来定位首响和音频延迟。
+
+### 近期工程变更
+
+- **对话首响优化**：Gateway 在 LLM 回复清洗完成后立即发送 `message:ai_text`，TTS 改为后续异步发送 `ai:audio`；TTS 失败时发送 `ai:audio_unavailable`，不再阻塞文本回复。
+- **可观测性整理**：新增统一观测工具，`[Perf]` 日志固定携带 `sessionId`、`pairingId`、`turnCount`、`stage`、`elapsedMs` 等字段；WebSocket send、ASR、LLM、TTS 等关键阶段都可追踪。
+- **WebSocket 契约类型化**：Gateway 侧新增服务端消息类型和发送 helper，移动端新增 WebSocket 消息类型，减少事件名和 payload 漂移。
+- **老人端状态收敛**：将老人端首页的连接、录音、处理、播放、错误恢复等逻辑抽入 `useCompanioneeConversation`，页面组件回归渲染与动画。
+- **语音服务本地启动修复**：`manager.sh dev` 支持自动选择可用 Python；voice-service 依赖改为 `httpx[socks]`，修复 SOCKS 代理环境下 ASR 请求缺少 `socksio` 导致的 500。
+- **本地自检脚本**：新增 `pnpm run doctor`，用于快速确认基础设施、Gateway、voice-service 和移动端 API 地址配置。
 
 ## 🔧 AI 名字迁移
 

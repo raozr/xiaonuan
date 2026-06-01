@@ -1,11 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { AppState, type AppStateStatus } from 'react-native';
+import type { ClientWsMessageType, ClientWsPayload, WebSocketMessage } from '../types/websocket';
 
-export interface WebSocketMessage {
-  type: string;
-  payload: any;
-  timestamp: number;
-}
+export type { WebSocketMessage };
 
 export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSocketMessage) => void) {
   const [isConnected, setIsConnected] = useState(false);
@@ -129,10 +126,9 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
     };
   }, [connect, clearReconnectTimer]);
 
-  const sendMessage = useCallback((type: string, payload: any) => {
+  const sendMessage = useCallback(<T extends ClientWsMessageType>(type: T, payload: ClientWsPayload<T>) => {
     if (ws.current?.readyState === WebSocket.OPEN) {
       const msg = JSON.stringify({ type, payload, timestamp: Date.now() });
-      console.log('[WS] Send:', type, JSON.stringify(payload).slice(0, 120));
       ws.current.send(msg);
       return true;
     } else {

@@ -21,6 +21,7 @@ NC='\033[0m' # No Color
 COMPOSE_CMD=""
 PROJECT_NAME="xiaonuan"
 BACKUP_DIR="./backups"
+PYTHON_BIN="${PYTHON_BIN:-python3}"
 
 # ==================================================
 # 工具函数
@@ -34,6 +35,23 @@ function detect_compose() {
         echo -e "${RED}错误: 未安装 Docker Compose${NC}"
         exit 1
     fi
+}
+
+function detect_voice_python() {
+    local candidates=("$PYTHON_BIN" "/usr/bin/python3")
+    local candidate
+
+    for candidate in "${candidates[@]}"; do
+        if command -v "$candidate" &> /dev/null && "$candidate" -m uvicorn --version &> /dev/null; then
+            PYTHON_BIN="$candidate"
+            return 0
+        fi
+    done
+
+    echo -e "${RED}错误: 未找到已安装 uvicorn 的 Python 环境${NC}"
+    echo -e "${YELLOW}请先运行: python3 -m pip install -r apps/voice-service/requirements.txt${NC}"
+    echo -e "${YELLOW}如果依赖装在指定解释器中，可这样启动: PYTHON_BIN=/path/to/python3 ./manager.sh dev${NC}"
+    exit 1
 }
 
 function show_usage() {
@@ -329,8 +347,9 @@ cmd_dev() {
             echo -e "${RED}  错误: .env 中未找到 DASHSCOPE_API_KEY${NC}"
             exit 1
         fi
+        detect_voice_python
         cd apps/voice-service
-        BAILIAN_API_KEY="$api_key" nohup python3 -m uvicorn main:app \
+        BAILIAN_API_KEY="$api_key" nohup "$PYTHON_BIN" -m uvicorn main:app \
             --host 0.0.0.0 --port 8000 > /tmp/voice-service.log 2>&1 &
         cd - > /dev/null
         sleep 2
