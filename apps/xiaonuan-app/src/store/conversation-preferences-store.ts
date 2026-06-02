@@ -19,9 +19,14 @@ export const useConversationPreferencesStore = create<ConversationPreferencesSta
   },
 
   loadFromStorage: async () => {
-    const stored = await AsyncStorage.getItem(STORAGE_KEYS.VOICE_PLAYBACK_ENABLED);
-    if (stored === 'true' || stored === 'false') {
-      set({ hasLoadedFromStorage: true, voicePlaybackEnabled: stored === 'true' });
+    try {
+      const stored = await AsyncStorage.getItem(STORAGE_KEYS.VOICE_PLAYBACK_ENABLED);
+      if (stored === 'true' || stored === 'false') {
+        set({ hasLoadedFromStorage: true, voicePlaybackEnabled: stored === 'true' });
+        return;
+      }
+    } catch {
+      set({ hasLoadedFromStorage: true, voicePlaybackEnabled: true });
       return;
     }
     set({ hasLoadedFromStorage: true, voicePlaybackEnabled: true });

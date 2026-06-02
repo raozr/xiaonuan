@@ -26,6 +26,7 @@ export function useCompanioneeConversation() {
   const [state, setState] = useState<CompanioneeConversationState>('IDLE');
   const [aiText, setAiText] = useState('您好，想和我聊聊吗？');
   const [lastAudioUrl, setLastAudioUrl] = useState<string | null>(null);
+  const [pendingAutoPlayUrl, setPendingAutoPlayUrl] = useState<string | null>(null);
   const {
     hasLoadedFromStorage: hasLoadedConversationPreferences,
     loadFromStorage: loadConversationPreferences,
@@ -93,7 +94,10 @@ export function useCompanioneeConversation() {
         if (!url || lastAudioUrlRef.current === url) return;
         lastAudioUrlRef.current = url;
         setLastAudioUrl(url);
-        if (hasLoadedConversationPreferences && voicePlaybackEnabled) {
+        if (!hasLoadedConversationPreferences) {
+          setPendingAutoPlayUrl(url);
+          setState('IDLE');
+        } else if (voicePlaybackEnabled) {
           setState('SPEAKING');
           playAudio(url);
         } else {
@@ -124,6 +128,19 @@ export function useCompanioneeConversation() {
   );
 
   const { isConnected, sendMessage } = useWebSocket(WS_URL, token ?? '', handleMessage);
+
+  useEffect(() => {
+    if (!hasLoadedConversationPreferences || !pendingAutoPlayUrl) return;
+
+    const url = pendingAutoPlayUrl;
+    setPendingAutoPlayUrl(null);
+    if (voicePlaybackEnabled) {
+      setState('SPEAKING');
+      playAudio(url);
+    } else {
+      setState('IDLE');
+    }
+  }, [hasLoadedConversationPreferences, pendingAutoPlayUrl, playAudio, voicePlaybackEnabled]);
 
   useEffect(() => {
     if (!isConnected && wasConnectedRef.current) {

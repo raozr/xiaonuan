@@ -21,14 +21,32 @@ const { mockPlayAudio, mockStopAudio, mockStorage, handlers, storageControls } =
     capturedMessageHandler: undefined as ((msg: TestWebSocketMessage) => void) | undefined,
   },
   storageControls: {
+    deferNextGetItem: false,
     deferNextSetItem: false,
+    rejectNextGetItem: false,
+    resolveGetItem: undefined as ((value?: string | null) => void) | undefined,
     resolveSetItem: undefined as (() => void) | undefined,
   },
 }));
 
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
-    getItem: vi.fn((key: string) => Promise.resolve(mockStorage[key] ?? null)),
+    getItem: vi.fn((key: string) => {
+      if (storageControls.rejectNextGetItem) {
+        storageControls.rejectNextGetItem = false;
+        return Promise.reject(new Error('storage read failed'));
+      }
+      if (storageControls.deferNextGetItem) {
+        storageControls.deferNextGetItem = false;
+        return new Promise<string | null>((resolve) => {
+          storageControls.resolveGetItem = (value) => {
+            storageControls.resolveGetItem = undefined;
+            resolve(value === undefined ? mockStorage[key] ?? null : value);
+          };
+        });
+      }
+      return Promise.resolve(mockStorage[key] ?? null);
+    }),
     setItem: vi.fn((key: string, value: string) => {
       if (storageControls.deferNextSetItem) {
         storageControls.deferNextSetItem = false;
@@ -108,7 +126,10 @@ describe('useCompanioneeConversation voice playback preference', () => {
       delete mockStorage[key];
     });
     handlers.capturedMessageHandler = undefined;
+    storageControls.deferNextGetItem = false;
     storageControls.deferNextSetItem = false;
+    storageControls.rejectNextGetItem = false;
+    storageControls.resolveGetItem = undefined;
     storageControls.resolveSetItem = undefined;
   });
 
@@ -168,9 +189,40 @@ describe('useCompanioneeConversation voice playback preference', () => {
     expect(result.current.state).toBe('IDLE');
   });
 
-  it('should not auto-play ai audio before persisted disabled preference finishes loading', async () => {
+  it('should auto-play pending ai audio after hydration resolves to default enabled', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    storageControls.deferNextGetItem = true;
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/startup-reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('IDLE');
+
+    await act(async () => {
+      storageControls.resolveGetItem?.(null);
+      await Promise.resolve();
+    });
+
+    expect(mockPlayAudio).toHaveBeenCalledWith('http://example.com/startup-reply.mp3');
+    expect(result.current.voicePlaybackEnabled).toBe(true);
+    expect(result.current.canPlayLatestAudio).toBe(false);
+    expect(result.current.state).toBe('SPEAKING');
+  });
+
+  it('should keep pending ai audio manual-only after hydration resolves to disabled', async () => {
     const { STORAGE_KEYS } = await import('../utils/constants');
     const { useAuthStore } = await import('../store/auth-store');
+    storageControls.deferNextGetItem = true;
     mockStorage[STORAGE_KEYS.VOICE_PLAYBACK_ENABLED] = 'false';
     await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
     const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
@@ -188,10 +240,19 @@ describe('useCompanioneeConversation voice playback preference', () => {
     expect(mockPlayAudio).not.toHaveBeenCalled();
     expect(result.current.state).toBe('IDLE');
 
-    await flushAsyncEffects();
+    await act(async () => {
+      storageControls.resolveGetItem?.('false');
+      await Promise.resolve();
+    });
 
     expect(result.current.voicePlaybackEnabled).toBe(false);
     expect(result.current.canPlayLatestAudio).toBe(true);
+
+    await act(async () => {
+      await result.current.playLatestAudio();
+    });
+
+    expect(mockPlayAudio).toHaveBeenCalledWith('http://example.com/startup-reply.mp3');
   });
 
   it('should stop current playback immediately when turning voice playback off', async () => {

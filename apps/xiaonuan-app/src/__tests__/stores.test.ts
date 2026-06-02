@@ -4,13 +4,21 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const mockStorage: Record<string, string> = {};
 const mockStorageControls: {
   deferNextSetItem: boolean;
+  rejectNextGetItem: boolean;
   resolveSetItem?: () => void;
 } = {
   deferNextSetItem: false,
+  rejectNextGetItem: false,
 };
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
-    getItem: vi.fn((key: string) => Promise.resolve(mockStorage[key] ?? null)),
+    getItem: vi.fn((key: string) => {
+      if (mockStorageControls.rejectNextGetItem) {
+        mockStorageControls.rejectNextGetItem = false;
+        return Promise.reject(new Error('storage read failed'));
+      }
+      return Promise.resolve(mockStorage[key] ?? null);
+    }),
     setItem: vi.fn((key: string, value: string) => {
       if (mockStorageControls.deferNextSetItem) {
         mockStorageControls.deferNextSetItem = false;
@@ -36,6 +44,7 @@ describe('auth-store', () => {
   beforeEach(() => {
     Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
     mockStorageControls.deferNextSetItem = false;
+    mockStorageControls.rejectNextGetItem = false;
     mockStorageControls.resolveSetItem = undefined;
     vi.resetModules();
   });
@@ -120,6 +129,7 @@ describe('conversation-preferences-store', () => {
   beforeEach(() => {
     Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
     mockStorageControls.deferNextSetItem = false;
+    mockStorageControls.rejectNextGetItem = false;
     mockStorageControls.resolveSetItem = undefined;
     vi.resetModules();
   });
@@ -168,6 +178,18 @@ describe('conversation-preferences-store', () => {
 
   it('should mark conversation preferences loaded when no stored preference exists', async () => {
     const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
+
+    await useConversationPreferencesStore.getState().loadFromStorage();
+
+    expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(true);
+    expect(useConversationPreferencesStore.getState().hasLoadedFromStorage).toBe(true);
+  });
+
+  it('should fall back to enabled and mark loaded when preference storage read fails', async () => {
+    const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
+
+    useConversationPreferencesStore.setState({ hasLoadedFromStorage: false, voicePlaybackEnabled: false });
+    mockStorageControls.rejectNextGetItem = true;
 
     await useConversationPreferencesStore.getState().loadFromStorage();
 
