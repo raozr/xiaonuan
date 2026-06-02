@@ -251,6 +251,40 @@ describe('useCompanioneeConversation voice playback preference', () => {
     expect(result.current.canPlayLatestAudio).toBe(false);
   });
 
+  it('should not reset recording state when unhydrated ai audio arrives during recording', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    storageControls.deferNextGetItem = true;
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+
+    await act(async () => {
+      await result.current.handleLongPress();
+    });
+
+    expect(result.current.state).toBe('LISTENING');
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/startup-reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('LISTENING');
+
+    await act(async () => {
+      storageControls.resolveGetItem?.(null);
+      await Promise.resolve();
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('LISTENING');
+  });
+
   it('should keep pending ai audio manual-only after hydration resolves to disabled', async () => {
     const { STORAGE_KEYS } = await import('../utils/constants');
     const { useAuthStore } = await import('../store/auth-store');

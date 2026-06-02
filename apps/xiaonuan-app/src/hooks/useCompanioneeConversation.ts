@@ -96,7 +96,9 @@ export function useCompanioneeConversation() {
         setLastAudioUrl(url);
         if (!hasLoadedConversationPreferences) {
           setPendingAutoPlayUrl(url);
-          setState('IDLE');
+          if (state === 'RESPONDING') {
+            setState('IDLE');
+          }
         } else if (voicePlaybackEnabled) {
           setState('SPEAKING');
           playAudio(url);
@@ -124,7 +126,7 @@ export function useCompanioneeConversation() {
         setState('IDLE');
       }
     },
-    [handleUnbind, hasLoadedConversationPreferences, playAudio, voicePlaybackEnabled]
+    [handleUnbind, hasLoadedConversationPreferences, playAudio, state, voicePlaybackEnabled]
   );
 
   const { isConnected, sendMessage } = useWebSocket(WS_URL, token ?? '', handleMessage);
