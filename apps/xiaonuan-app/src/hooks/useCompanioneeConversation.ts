@@ -27,6 +27,7 @@ export function useCompanioneeConversation() {
   const [aiText, setAiText] = useState('您好，想和我聊聊吗？');
   const [lastAudioUrl, setLastAudioUrl] = useState<string | null>(null);
   const {
+    hasLoadedFromStorage: hasLoadedConversationPreferences,
     loadFromStorage: loadConversationPreferences,
     setVoicePlaybackEnabled,
     voicePlaybackEnabled,
@@ -92,7 +93,7 @@ export function useCompanioneeConversation() {
         if (!url || lastAudioUrlRef.current === url) return;
         lastAudioUrlRef.current = url;
         setLastAudioUrl(url);
-        if (voicePlaybackEnabled) {
+        if (hasLoadedConversationPreferences && voicePlaybackEnabled) {
           setState('SPEAKING');
           playAudio(url);
         } else {
@@ -119,7 +120,7 @@ export function useCompanioneeConversation() {
         setState('IDLE');
       }
     },
-    [handleUnbind, playAudio, voicePlaybackEnabled]
+    [handleUnbind, hasLoadedConversationPreferences, playAudio, voicePlaybackEnabled]
   );
 
   const { isConnected, sendMessage } = useWebSocket(WS_URL, token ?? '', handleMessage);
@@ -255,17 +256,20 @@ export function useCompanioneeConversation() {
 
   const toggleVoicePlayback = useCallback(async () => {
     const nextEnabled = !voicePlaybackEnabled;
-    await setVoicePlaybackEnabled(nextEnabled);
     if (!nextEnabled && state === 'SPEAKING') {
       stopAudio();
       setState('IDLE');
     }
+    await setVoicePlaybackEnabled(nextEnabled);
   }, [setVoicePlaybackEnabled, state, stopAudio, voicePlaybackEnabled]);
 
   const playLatestAudio = useCallback(async () => {
     if (!lastAudioUrl) return;
     setState('SPEAKING');
-    await playAudio(lastAudioUrl);
+    const didPlay = await playAudio(lastAudioUrl);
+    if (didPlay === false) {
+      setState('IDLE');
+    }
   }, [lastAudioUrl, playAudio]);
 
   const handleStop = useCallback(() => {

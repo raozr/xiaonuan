@@ -2,10 +2,29 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // Mock AsyncStorage
 const mockStorage: Record<string, string> = {};
+const mockStorageControls: {
+  deferNextSetItem: boolean;
+  resolveSetItem?: () => void;
+} = {
+  deferNextSetItem: false,
+};
 vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
     getItem: vi.fn((key: string) => Promise.resolve(mockStorage[key] ?? null)),
-    setItem: vi.fn((key: string, value: string) => { mockStorage[key] = value; return Promise.resolve(); }),
+    setItem: vi.fn((key: string, value: string) => {
+      if (mockStorageControls.deferNextSetItem) {
+        mockStorageControls.deferNextSetItem = false;
+        return new Promise<void>((resolve) => {
+          mockStorageControls.resolveSetItem = () => {
+            mockStorage[key] = value;
+            mockStorageControls.resolveSetItem = undefined;
+            resolve();
+          };
+        });
+      }
+      mockStorage[key] = value;
+      return Promise.resolve();
+    }),
     multiSet: vi.fn((pairs: [string, string][]) => { pairs.forEach(([k, v]) => { mockStorage[k] = v; }); return Promise.resolve(); }),
     multiGet: vi.fn((keys: string[]) => Promise.resolve(keys.map(k => [k, mockStorage[k] ?? null]))),
     multiRemove: vi.fn((keys: string[]) => { keys.forEach(k => { delete mockStorage[k]; }); return Promise.resolve(); }),
@@ -16,6 +35,8 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 describe('auth-store', () => {
   beforeEach(() => {
     Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    mockStorageControls.deferNextSetItem = false;
+    mockStorageControls.resolveSetItem = undefined;
     vi.resetModules();
   });
 
@@ -98,6 +119,8 @@ describe('role-store', () => {
 describe('conversation-preferences-store', () => {
   beforeEach(() => {
     Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    mockStorageControls.deferNextSetItem = false;
+    mockStorageControls.resolveSetItem = undefined;
     vi.resetModules();
   });
 
@@ -105,6 +128,7 @@ describe('conversation-preferences-store', () => {
     const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
 
     expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(true);
+    expect(useConversationPreferencesStore.getState().hasLoadedFromStorage).toBe(false);
   });
 
   it('should persist AI voice playback preference', async () => {
@@ -117,6 +141,18 @@ describe('conversation-preferences-store', () => {
     expect(mockStorage[STORAGE_KEYS.VOICE_PLAYBACK_ENABLED]).toBe('false');
   });
 
+  it('should update AI voice playback preference in memory before persistence completes', async () => {
+    const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
+
+    mockStorageControls.deferNextSetItem = true;
+    const persistPromise = useConversationPreferencesStore.getState().setVoicePlaybackEnabled(false);
+
+    expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(false);
+
+    mockStorageControls.resolveSetItem?.();
+    await persistPromise;
+  });
+
   it('should restore AI voice playback preference from storage', async () => {
     const { STORAGE_KEYS } = await import('../utils/constants');
     const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
@@ -127,5 +163,15 @@ describe('conversation-preferences-store', () => {
     await useConversationPreferencesStore.getState().loadFromStorage();
 
     expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(false);
+    expect(useConversationPreferencesStore.getState().hasLoadedFromStorage).toBe(true);
+  });
+
+  it('should mark conversation preferences loaded when no stored preference exists', async () => {
+    const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
+
+    await useConversationPreferencesStore.getState().loadFromStorage();
+
+    expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(true);
+    expect(useConversationPreferencesStore.getState().hasLoadedFromStorage).toBe(true);
   });
 });

@@ -13,12 +13,16 @@ const flushAsyncEffects = () => act(async () => {
   await Promise.resolve();
 });
 
-const { mockPlayAudio, mockStopAudio, mockStorage, handlers } = vi.hoisted(() => ({
+const { mockPlayAudio, mockStopAudio, mockStorage, handlers, storageControls } = vi.hoisted(() => ({
   mockPlayAudio: vi.fn(),
   mockStopAudio: vi.fn(),
   mockStorage: {} as Record<string, string>,
   handlers: {
     capturedMessageHandler: undefined as ((msg: TestWebSocketMessage) => void) | undefined,
+  },
+  storageControls: {
+    deferNextSetItem: false,
+    resolveSetItem: undefined as (() => void) | undefined,
   },
 }));
 
@@ -26,6 +30,16 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
   default: {
     getItem: vi.fn((key: string) => Promise.resolve(mockStorage[key] ?? null)),
     setItem: vi.fn((key: string, value: string) => {
+      if (storageControls.deferNextSetItem) {
+        storageControls.deferNextSetItem = false;
+        return new Promise<void>((resolve) => {
+          storageControls.resolveSetItem = () => {
+            mockStorage[key] = value;
+            storageControls.resolveSetItem = undefined;
+            resolve();
+          };
+        });
+      }
       mockStorage[key] = value;
       return Promise.resolve();
     }),
@@ -94,6 +108,8 @@ describe('useCompanioneeConversation voice playback preference', () => {
       delete mockStorage[key];
     });
     handlers.capturedMessageHandler = undefined;
+    storageControls.deferNextSetItem = false;
+    storageControls.resolveSetItem = undefined;
   });
 
   it('should expose voice playback enabled by default', async () => {
@@ -152,6 +168,32 @@ describe('useCompanioneeConversation voice playback preference', () => {
     expect(result.current.state).toBe('IDLE');
   });
 
+  it('should not auto-play ai audio before persisted disabled preference finishes loading', async () => {
+    const { STORAGE_KEYS } = await import('../utils/constants');
+    const { useAuthStore } = await import('../store/auth-store');
+    mockStorage[STORAGE_KEYS.VOICE_PLAYBACK_ENABLED] = 'false';
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/startup-reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('IDLE');
+
+    await flushAsyncEffects();
+
+    expect(result.current.voicePlaybackEnabled).toBe(false);
+    expect(result.current.canPlayLatestAudio).toBe(true);
+  });
+
   it('should stop current playback immediately when turning voice playback off', async () => {
     const { useAuthStore } = await import('../store/auth-store');
     await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
@@ -170,12 +212,21 @@ describe('useCompanioneeConversation voice playback preference', () => {
 
     expect(result.current.state).toBe('SPEAKING');
 
+    storageControls.deferNextSetItem = true;
+
+    let togglePromise: Promise<void> | undefined;
     await act(async () => {
-      await result.current.toggleVoicePlayback();
+      togglePromise = result.current.toggleVoicePlayback();
+      await Promise.resolve();
     });
 
     expect(mockStopAudio).toHaveBeenCalled();
     expect(result.current.state).toBe('IDLE');
+
+    await act(async () => {
+      storageControls.resolveSetItem?.();
+      await togglePromise;
+    });
   });
 
   it('should play the latest audio manually without changing voice playback preference', async () => {
@@ -205,5 +256,35 @@ describe('useCompanioneeConversation voice playback preference', () => {
     expect(mockPlayAudio).toHaveBeenCalledWith('http://example.com/reply.mp3');
     expect(result.current.voicePlaybackEnabled).toBe(false);
     expect(result.current.state).toBe('SPEAKING');
+  });
+
+  it('should return to idle when manual latest audio playback fails', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    await act(async () => {
+      await result.current.toggleVoicePlayback();
+    });
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
+    mockPlayAudio.mockResolvedValueOnce(false);
+
+    await act(async () => {
+      await result.current.playLatestAudio();
+    });
+
+    expect(mockPlayAudio).toHaveBeenCalledWith('http://example.com/reply.mp3');
+    expect(result.current.state).toBe('IDLE');
   });
 });
