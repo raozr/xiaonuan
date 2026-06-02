@@ -8,6 +8,7 @@ build/
 coverage/
 *.tsbuildinfo
 *.apk
+.worktrees/
 
 # Documentation and Process Files
 SPEC*.md
