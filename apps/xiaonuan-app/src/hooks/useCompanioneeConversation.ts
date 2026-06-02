@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, Platform, ToastAndroid } from 'react-native';
 import { router } from 'expo-router';
-import { useWebSocket, type WebSocketMessage } from './useWebSocket';
+import { useWebSocket } from './useWebSocket';
 import { useVoice } from './useVoice';
 import { useAuthStore } from '../store/auth-store';
+import { useConversationPreferencesStore } from '../store/conversation-preferences-store';
+import type { WebSocketMessage } from '../types/websocket';
 import { WS_URL } from '../utils/constants';
 
 const MIN_RECORDING_MS = 500;
@@ -23,6 +25,12 @@ export function useCompanioneeConversation() {
   const { token, pairingId, stewardName, clearAuth } = useAuthStore();
   const [state, setState] = useState<CompanioneeConversationState>('IDLE');
   const [aiText, setAiText] = useState('您好，想和我聊聊吗？');
+  const [lastAudioUrl, setLastAudioUrl] = useState<string | null>(null);
+  const {
+    loadFromStorage: loadConversationPreferences,
+    setVoicePlaybackEnabled,
+    voicePlaybackEnabled,
+  } = useConversationPreferencesStore();
 
   const sessionReadyRef = useRef(false);
   const sessionCreateSentRef = useRef(false);
@@ -67,6 +75,10 @@ export function useCompanioneeConversation() {
     requestPermission();
   }, [requestPermission]);
 
+  useEffect(() => {
+    loadConversationPreferences();
+  }, [loadConversationPreferences]);
+
   const handleMessage = useCallback(
     (msg: WebSocketMessage) => {
       if (msg.type === 'session:created' || msg.type === 'session:resumed') {
@@ -79,8 +91,13 @@ export function useCompanioneeConversation() {
         const url = msg.payload.url;
         if (!url || lastAudioUrlRef.current === url) return;
         lastAudioUrlRef.current = url;
-        setState('SPEAKING');
-        playAudio(url);
+        setLastAudioUrl(url);
+        if (voicePlaybackEnabled) {
+          setState('SPEAKING');
+          playAudio(url);
+        } else {
+          setState('IDLE');
+        }
       } else if (msg.type === 'ai:audio_unavailable') {
         setState('IDLE');
       } else if (msg.type === 'error') {
@@ -102,7 +119,7 @@ export function useCompanioneeConversation() {
         setState('IDLE');
       }
     },
-    [handleUnbind, playAudio]
+    [handleUnbind, playAudio, voicePlaybackEnabled]
   );
 
   const { isConnected, sendMessage } = useWebSocket(WS_URL, token ?? '', handleMessage);
@@ -236,6 +253,21 @@ export function useCompanioneeConversation() {
     }
   }, [getRecordingBase64, isConnected, isRecording, sendMessage, state, stopRecording]);
 
+  const toggleVoicePlayback = useCallback(async () => {
+    const nextEnabled = !voicePlaybackEnabled;
+    await setVoicePlaybackEnabled(nextEnabled);
+    if (!nextEnabled && state === 'SPEAKING') {
+      stopAudio();
+      setState('IDLE');
+    }
+  }, [setVoicePlaybackEnabled, state, stopAudio, voicePlaybackEnabled]);
+
+  const playLatestAudio = useCallback(async () => {
+    if (!lastAudioUrl) return;
+    setState('SPEAKING');
+    await playAudio(lastAudioUrl);
+  }, [lastAudioUrl, playAudio]);
+
   const handleStop = useCallback(() => {
     if (state === 'SPEAKING') {
       stopAudio();
@@ -263,10 +295,14 @@ export function useCompanioneeConversation() {
 
   return {
     aiText,
+    canPlayLatestAudio: !voicePlaybackEnabled && Boolean(lastAudioUrl),
     headerTitle,
     isConnected,
     micLabel,
+    playLatestAudio,
     state,
+    toggleVoicePlayback,
+    voicePlaybackEnabled,
     handleLongPress,
     handlePressOut,
     handleStop,
