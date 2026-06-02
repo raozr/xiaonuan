@@ -62,6 +62,7 @@ export const STORAGE_KEYS = {
   PAIRING_ID: 'xn:pairingId',
   USER: 'xn:user',
   ROLE: 'xn:role',
+  VOICE_PLAYBACK_ENABLED: 'xn:voicePlaybackEnabled',
 } as const;
 
 export const COMPANIONEE_ROLE = 'COMPANIONEE';

@@ -94,3 +94,38 @@ describe('role-store', () => {
     expect(useRoleStore.getState().role).toBe('STEWARD');
   });
 });
+
+describe('conversation-preferences-store', () => {
+  beforeEach(() => {
+    Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    vi.resetModules();
+  });
+
+  it('should default AI voice playback to enabled', async () => {
+    const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
+
+    expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(true);
+  });
+
+  it('should persist AI voice playback preference', async () => {
+    const { STORAGE_KEYS } = await import('../utils/constants');
+    const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
+
+    await useConversationPreferencesStore.getState().setVoicePlaybackEnabled(false);
+
+    expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(false);
+    expect(mockStorage[STORAGE_KEYS.VOICE_PLAYBACK_ENABLED]).toBe('false');
+  });
+
+  it('should restore AI voice playback preference from storage', async () => {
+    const { STORAGE_KEYS } = await import('../utils/constants');
+    const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
+
+    mockStorage[STORAGE_KEYS.VOICE_PLAYBACK_ENABLED] = 'false';
+    useConversationPreferencesStore.setState({ voicePlaybackEnabled: true });
+
+    await useConversationPreferencesStore.getState().loadFromStorage();
+
+    expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(false);
+  });
+});
