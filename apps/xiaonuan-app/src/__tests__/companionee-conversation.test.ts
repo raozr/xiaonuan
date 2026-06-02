@@ -219,6 +219,38 @@ describe('useCompanioneeConversation voice playback preference', () => {
     expect(result.current.state).toBe('SPEAKING');
   });
 
+  it('should not auto-play pending ai audio after hydration if the elder started recording', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    storageControls.deferNextGetItem = true;
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/startup-reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
+    await act(async () => {
+      await result.current.handleLongPress();
+    });
+
+    expect(result.current.state).toBe('LISTENING');
+
+    await act(async () => {
+      storageControls.resolveGetItem?.(null);
+      await Promise.resolve();
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('LISTENING');
+    expect(result.current.canPlayLatestAudio).toBe(false);
+  });
+
   it('should keep pending ai audio manual-only after hydration resolves to disabled', async () => {
     const { STORAGE_KEYS } = await import('../utils/constants');
     const { useAuthStore } = await import('../store/auth-store');

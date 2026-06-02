@@ -3,10 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // Mock AsyncStorage
 const mockStorage: Record<string, string> = {};
 const mockStorageControls: {
+  deferNextGetItem: boolean;
   deferNextSetItem: boolean;
   rejectNextGetItem: boolean;
+  resolveGetItem?: (value?: string | null) => void;
   resolveSetItem?: () => void;
 } = {
+  deferNextGetItem: false,
   deferNextSetItem: false,
   rejectNextGetItem: false,
 };
@@ -16,6 +19,15 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
       if (mockStorageControls.rejectNextGetItem) {
         mockStorageControls.rejectNextGetItem = false;
         return Promise.reject(new Error('storage read failed'));
+      }
+      if (mockStorageControls.deferNextGetItem) {
+        mockStorageControls.deferNextGetItem = false;
+        return new Promise<string | null>((resolve) => {
+          mockStorageControls.resolveGetItem = (value) => {
+            mockStorageControls.resolveGetItem = undefined;
+            resolve(value === undefined ? mockStorage[key] ?? null : value);
+          };
+        });
       }
       return Promise.resolve(mockStorage[key] ?? null);
     }),
@@ -43,8 +55,10 @@ vi.mock('@react-native-async-storage/async-storage', () => ({
 describe('auth-store', () => {
   beforeEach(() => {
     Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    mockStorageControls.deferNextGetItem = false;
     mockStorageControls.deferNextSetItem = false;
     mockStorageControls.rejectNextGetItem = false;
+    mockStorageControls.resolveGetItem = undefined;
     mockStorageControls.resolveSetItem = undefined;
     vi.resetModules();
   });
@@ -97,6 +111,7 @@ describe('auth-store', () => {
 describe('role-store', () => {
   beforeEach(() => {
     Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    mockStorageControls.deferNextGetItem = false;
     vi.resetModules();
   });
 
@@ -128,8 +143,10 @@ describe('role-store', () => {
 describe('conversation-preferences-store', () => {
   beforeEach(() => {
     Object.keys(mockStorage).forEach(k => delete mockStorage[k]);
+    mockStorageControls.deferNextGetItem = false;
     mockStorageControls.deferNextSetItem = false;
     mockStorageControls.rejectNextGetItem = false;
+    mockStorageControls.resolveGetItem = undefined;
     mockStorageControls.resolveSetItem = undefined;
     vi.resetModules();
   });
@@ -158,9 +175,24 @@ describe('conversation-preferences-store', () => {
     const persistPromise = useConversationPreferencesStore.getState().setVoicePlaybackEnabled(false);
 
     expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(false);
+    expect(useConversationPreferencesStore.getState().hasLoadedFromStorage).toBe(true);
 
     mockStorageControls.resolveSetItem?.();
     await persistPromise;
+  });
+
+  it('should not let a slow storage load overwrite a local voice playback change', async () => {
+    const { useConversationPreferencesStore } = await import('../store/conversation-preferences-store');
+
+    mockStorageControls.deferNextGetItem = true;
+    const loadPromise = useConversationPreferencesStore.getState().loadFromStorage();
+    await useConversationPreferencesStore.getState().setVoicePlaybackEnabled(false);
+
+    mockStorageControls.resolveGetItem?.(null);
+    await loadPromise;
+
+    expect(useConversationPreferencesStore.getState().voicePlaybackEnabled).toBe(false);
+    expect(useConversationPreferencesStore.getState().hasLoadedFromStorage).toBe(true);
   });
 
   it('should restore AI voice playback preference from storage', async () => {

@@ -134,13 +134,13 @@ export function useCompanioneeConversation() {
 
     const url = pendingAutoPlayUrl;
     setPendingAutoPlayUrl(null);
-    if (voicePlaybackEnabled) {
+    if (voicePlaybackEnabled && (state === 'IDLE' || state === 'RESPONDING')) {
       setState('SPEAKING');
       playAudio(url);
-    } else {
+    } else if (!voicePlaybackEnabled) {
       setState('IDLE');
     }
-  }, [hasLoadedConversationPreferences, pendingAutoPlayUrl, playAudio, voicePlaybackEnabled]);
+  }, [hasLoadedConversationPreferences, pendingAutoPlayUrl, playAudio, state, voicePlaybackEnabled]);
 
   useEffect(() => {
     if (!isConnected && wasConnectedRef.current) {

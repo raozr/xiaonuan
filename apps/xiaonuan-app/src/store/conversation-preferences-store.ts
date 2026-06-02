@@ -9,26 +9,39 @@ interface ConversationPreferencesState {
   loadFromStorage: () => Promise<void>;
 }
 
-export const useConversationPreferencesStore = create<ConversationPreferencesState>((set) => ({
-  hasLoadedFromStorage: false,
-  voicePlaybackEnabled: true,
+export const useConversationPreferencesStore = create<ConversationPreferencesState>((set) => {
+  let localMutationVersion = 0;
 
-  setVoicePlaybackEnabled: async (enabled) => {
-    set({ voicePlaybackEnabled: enabled });
-    await AsyncStorage.setItem(STORAGE_KEYS.VOICE_PLAYBACK_ENABLED, String(enabled));
-  },
+  return {
+    hasLoadedFromStorage: false,
+    voicePlaybackEnabled: true,
 
-  loadFromStorage: async () => {
-    try {
-      const stored = await AsyncStorage.getItem(STORAGE_KEYS.VOICE_PLAYBACK_ENABLED);
-      if (stored === 'true' || stored === 'false') {
-        set({ hasLoadedFromStorage: true, voicePlaybackEnabled: stored === 'true' });
-        return;
+    setVoicePlaybackEnabled: async (enabled) => {
+      localMutationVersion += 1;
+      set({ hasLoadedFromStorage: true, voicePlaybackEnabled: enabled });
+      await AsyncStorage.setItem(STORAGE_KEYS.VOICE_PLAYBACK_ENABLED, String(enabled));
+    },
+
+    loadFromStorage: async () => {
+      const loadStartedMutationVersion = localMutationVersion;
+      try {
+        const stored = await AsyncStorage.getItem(STORAGE_KEYS.VOICE_PLAYBACK_ENABLED);
+        set((state) => {
+          if (localMutationVersion !== loadStartedMutationVersion) {
+            return { hasLoadedFromStorage: true, voicePlaybackEnabled: state.voicePlaybackEnabled };
+          }
+          if (stored === 'true' || stored === 'false') {
+            return { hasLoadedFromStorage: true, voicePlaybackEnabled: stored === 'true' };
+          }
+          return { hasLoadedFromStorage: true, voicePlaybackEnabled: true };
+        });
+      } catch {
+        set((state) => ({
+          hasLoadedFromStorage: true,
+          voicePlaybackEnabled:
+            localMutationVersion !== loadStartedMutationVersion ? state.voicePlaybackEnabled : true,
+        }));
       }
-    } catch {
-      set({ hasLoadedFromStorage: true, voicePlaybackEnabled: true });
-      return;
-    }
-    set({ hasLoadedFromStorage: true, voicePlaybackEnabled: true });
-  },
-}));
+    },
+  };
+});
