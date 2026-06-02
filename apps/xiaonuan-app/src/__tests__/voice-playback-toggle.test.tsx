@@ -134,4 +134,17 @@ describe('VoicePlaybackToggle', () => {
 
     expect(screen.queryByText('播放')).toBeNull();
   });
+
+  it('should hide play button when voice playback is enabled', () => {
+    const screen = render(
+      <VoicePlaybackToggle
+        enabled
+        canPlayLatest
+        onToggle={vi.fn()}
+        onPlayLatest={vi.fn()}
+      />
+    );
+
+    expect(screen.queryByText('播放')).toBeNull();
+  });
 });
