@@ -107,6 +107,19 @@ const getControlNode = (node: { parent?: unknown; props: Record<string, unknown>
   return node;
 };
 
+const getVisiblePillNode = (node: { parent?: unknown; props: Record<string, unknown> }) => {
+  let current = node.parent as { parent?: unknown; props: Record<string, unknown> } | null | undefined;
+
+  while (current) {
+    if (typeof current.props.className === 'string' && current.props.className.includes('h-9')) {
+      return current;
+    }
+    current = current.parent as { parent?: unknown; props: Record<string, unknown> } | null | undefined;
+  }
+
+  return node;
+};
+
 describe('VoicePlaybackToggle', () => {
   it('should show enabled label', () => {
     const screen = render(
@@ -190,8 +203,11 @@ describe('VoicePlaybackToggle', () => {
       />
     );
     const enabledToggle = getControlNode(enabledScreen.getByText('语音 开'));
+    const enabledPill = getVisiblePillNode(enabledScreen.getByText('语音 开'));
 
     expect(enabledToggle.props.className).toContain('min-h-touch-target-min');
+    expect(enabledPill.props.className).toContain('h-9');
+    expect(enabledPill.props.className).toContain('px-3');
     expect(enabledToggle.props.accessibilityRole).toBe('switch');
     expect(enabledToggle.props.accessibilityState).toEqual({ checked: true });
     expect(enabledToggle.props.accessibilityLabel).toBe('关闭语音播放');
@@ -205,8 +221,11 @@ describe('VoicePlaybackToggle', () => {
       />
     );
     const disabledToggle = getControlNode(disabledScreen.getByText('语音 关'));
+    const disabledPill = getVisiblePillNode(disabledScreen.getByText('语音 关'));
 
     expect(disabledToggle.props.className).toContain('min-h-touch-target-min');
+    expect(disabledPill.props.className).toContain('h-9');
+    expect(disabledPill.props.className).toContain('px-3');
     expect(disabledToggle.props.accessibilityRole).toBe('switch');
     expect(disabledToggle.props.accessibilityState).toEqual({ checked: false });
     expect(disabledToggle.props.accessibilityLabel).toBe('打开语音播放');
@@ -222,8 +241,11 @@ describe('VoicePlaybackToggle', () => {
       />
     );
     const playButton = getControlNode(screen.getByText('播放'));
+    const playPill = getVisiblePillNode(screen.getByText('播放'));
 
     expect(playButton.props.className).toContain('min-h-touch-target-min');
+    expect(playPill.props.className).toContain('h-9');
+    expect(playPill.props.className).toContain('px-3');
     expect(playButton.props.accessibilityRole).toBe('button');
     expect(playButton.props.accessibilityLabel).toBe('播放最近一条语音');
   });

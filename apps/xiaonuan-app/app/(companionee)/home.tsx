@@ -225,7 +225,7 @@ export default function CompanioneeHome() {
           <View className="w-full max-w-[340px] flex-1 max-h-[100%] bg-white rounded-[32px] p-6 border border-surfaceContainerHigh relative" style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.08, shadowRadius: 12, elevation: 4 }}>
             <ScrollView
               className="flex-1"
-              contentContainerStyle={{ flexGrow: 1, paddingVertical: 4, paddingBottom: 84 }}
+              contentContainerStyle={{ flexGrow: 1, paddingVertical: 4, paddingBottom: 64 }}
               showsVerticalScrollIndicator={true}
               bounces={true}
               indicatorStyle="black"

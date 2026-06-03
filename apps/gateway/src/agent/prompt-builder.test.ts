@@ -315,7 +315,7 @@ describe('prompt-builder', () => {
       expect(result).toContain('<OUTPUT_FORMAT>');
     });
 
-    it('应包含当前时间和轮次', async () => {
+    it('应按被陪伴者时区包含当前本地时间、时区和轮次', async () => {
       vi.mocked(prisma.participant.findFirst).mockResolvedValue(null);
       vi.mocked(prisma.participant.findMany).mockResolvedValue([]);
 
@@ -325,8 +325,44 @@ describe('prompt-builder', () => {
         memoryText: '',
       });
 
-      expect(result).toContain('current_time: "2026-05-20T10:00:00.000Z"');
+      expect(result).toContain('current_time: "2026-05-20 18:00:00"');
+      expect(result).toContain('timezone: "Asia/Shanghai"');
       expect(result).toContain('turn_count: 5');
+    });
+
+    it('北京时间早上不应被注入成 UTC 晚上', async () => {
+      vi.mocked(prisma.participant.findFirst).mockResolvedValue(
+        mockCompanionee({ metadata: { timezone: 'Asia/Shanghai' } }),
+      );
+      vi.mocked(prisma.participant.findMany).mockResolvedValue([]);
+
+      const result = await buildSystemPrompt('pairing-1', [], {
+        time: new Date('2026-06-02T22:30:00Z'),
+        turnCount: 1,
+        memoryText: '',
+      });
+
+      expect(result).toContain('current_time: "2026-06-03 06:30:00"');
+      expect(result).toContain('timezone: "Asia/Shanghai"');
+      expect(result).toContain('time_of_day: "早上"');
+      expect(result).not.toContain('2026-06-02T22:30:00.000Z');
+    });
+
+    it('被陪伴者时区配置异常时应回退到北京时间', async () => {
+      vi.mocked(prisma.participant.findFirst).mockResolvedValue(
+        mockCompanionee({ metadata: { timezone: 'bad/timezone' } }),
+      );
+      vi.mocked(prisma.participant.findMany).mockResolvedValue([]);
+
+      const result = await buildSystemPrompt('pairing-1', [], {
+        time: new Date('2026-06-02T22:30:00Z'),
+        turnCount: 1,
+        memoryText: '',
+      });
+
+      expect(result).toContain('current_time: "2026-06-03 06:30:00"');
+      expect(result).toContain('timezone: "Asia/Shanghai"');
+      expect(result).toContain('time_of_day: "早上"');
     });
 
     it('有记忆文本时应包含 current_context', async () => {

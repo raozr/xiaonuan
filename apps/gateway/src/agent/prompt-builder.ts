@@ -23,6 +23,47 @@ type PromptProfile = {
 
 const PROFILE_CACHE_TTL_MS = 60_000;
 const profileCache = new Map<string, { expiresAt: number; value: PromptProfile }>();
+const DEFAULT_TIMEZONE = 'Asia/Shanghai';
+
+function getTimeOfDay(hour: number): string {
+  if (hour >= 5 && hour < 9) return '早上';
+  if (hour >= 9 && hour < 12) return '上午';
+  if (hour >= 12 && hour < 14) return '中午';
+  if (hour >= 14 && hour < 18) return '下午';
+  if (hour >= 18 && hour < 22) return '晚上';
+  return '夜里';
+}
+
+function formatLocalTime(date: Date, timezone: string): { localTime: string; timeOfDay: string } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+  const value = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  const hour = Number(value('hour'));
+
+  return {
+    localTime: `${value('year')}-${value('month')}-${value('day')} ${value('hour')}:${value('minute')}:${value('second')}`,
+    timeOfDay: getTimeOfDay(hour),
+  };
+}
+
+function resolveTimezone(timezone: string | undefined): string {
+  if (!timezone) return DEFAULT_TIMEZONE;
+
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: timezone });
+    return timezone;
+  } catch {
+    return DEFAULT_TIMEZONE;
+  }
+}
 
 async function getPromptProfile(pairingId: string): Promise<PromptProfile> {
   const disableCache = process.env.VITEST === 'true';
@@ -90,8 +131,12 @@ export async function buildSystemPrompt(
   lines.push('');
 
   // 3. [Current State]
+  const timezone = resolveTimezone(companionee?.metadata?.timezone);
+  const { localTime, timeOfDay } = formatLocalTime(state.time, timezone);
   lines.push('<CURRENT_STATE>');
-  lines.push(`- current_time: "${state.time.toISOString()}"`);
+  lines.push(`- current_time: "${localTime}"`);
+  lines.push(`- timezone: "${timezone}"`);
+  lines.push(`- time_of_day: "${timeOfDay}"`);
   lines.push(`- turn_count: ${state.turnCount}`);
   if (state.memoryText) {
     lines.push(`- current_context:\n${state.memoryText}`);
