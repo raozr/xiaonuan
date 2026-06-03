@@ -3,10 +3,10 @@ import {
   View,
   Text,
   TouchableOpacity,
-  Alert,
   Image,
   ScrollView,
 } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
@@ -22,6 +22,7 @@ import { useCompanioneeConversation } from '../../src/hooks/useCompanioneeConver
 import { colors, typography } from '../../src/utils/theme';
 
 export default function CompanioneeHome() {
+  const router = useRouter();
   const {
     aiText,
     canPlayLatestAudio,
@@ -166,7 +167,7 @@ export default function CompanioneeHome() {
         <TouchableOpacity
           className="w-16 items-center justify-center"
           activeOpacity={0.7}
-          onPress={() => Alert.alert('对话历史', '功能开发中')}
+          onPress={() => router.push('/(companionee)/history')}
         >
           <History size={28} color={colors.secondary} />
         </TouchableOpacity>

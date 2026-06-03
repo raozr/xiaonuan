@@ -145,13 +145,14 @@ export async function handleVoiceText(
     });
     logPerf('agent.process_message', llmStart, meta);
 
+    const cleanText = cleanLLMResponse(aiText) || '我在听，您继续说。';
+
     // 4. Save AI message
     const saveAiStart = nowMs();
-    await saveMessage(sessionId, 'AI', aiText);
+    await saveMessage(sessionId, 'AI', cleanText);
     logPerf('db.save_ai_message', saveAiStart, meta);
 
     // 5. Send text immediately, then synthesize audio asynchronously.
-    const cleanText = cleanLLMResponse(aiText) || '我在听，您继续说。';
     const sendTextStart = nowMs();
     sendWsMessage(socket, 'message:ai_text', { text: cleanText });
     logPerf('ws.send.text', sendTextStart, meta);

@@ -13,6 +13,7 @@ import { authRoutes } from './routes/auth.js';
 import { pcAuthRoutes } from './routes/pc-auth.js';
 import { pairingRoutes } from './routes/pairing.js';
 import { eventsRoutes } from './routes/events.js';
+import { conversationHistoryRoutes } from './routes/conversation-history.js';
 import { meRoutes } from './routes/me.js';
 import { sessionRoutes } from './routes/session.js';
 import { asrRoutes } from './routes/asr.js';
@@ -63,6 +64,11 @@ await app.register(async (protectedRoutes) => {
   await authenticate(protectedRoutes);
   await meRoutes(protectedRoutes);
 }, { prefix: '/api/me' });
+
+await app.register(async (apiRoutes) => {
+  await authenticate(apiRoutes);
+  await conversationHistoryRoutes(apiRoutes);
+}, { prefix: '/api/conversation' });
 
 await app.register(async (apiRoutes) => {
   await authenticate(apiRoutes);
