@@ -332,7 +332,7 @@ describe('useCompanioneeConversation voice playback preference', () => {
 
     expect(mockPlayAudio).not.toHaveBeenCalled();
     expect(result.current.state).toBe('LISTENING');
-    expect(result.current.canPlayLatestAudio).toBe(true);
+    expect(result.current.canPlayLatestAudio).toBe(false);
   });
 
   it('should not reset recording state when pending ai audio hydrates to disabled during recording', async () => {
@@ -367,7 +367,66 @@ describe('useCompanioneeConversation voice playback preference', () => {
     expect(mockPlayAudio).not.toHaveBeenCalled();
     expect(result.current.voicePlaybackEnabled).toBe(false);
     expect(result.current.state).toBe('LISTENING');
+    expect(result.current.canPlayLatestAudio).toBe(false);
+  });
+
+  it('should not reset recording state when ai audio becomes unavailable during recording', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    await act(async () => {
+      await result.current.handleLongPress();
+    });
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio_unavailable',
+        payload: {},
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(result.current.state).toBe('LISTENING');
+  });
+
+  it('should not manually play latest audio during recording', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    await act(async () => {
+      await result.current.toggleVoicePlayback();
+    });
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
     expect(result.current.canPlayLatestAudio).toBe(true);
+
+    await act(async () => {
+      await result.current.handleLongPress();
+    });
+
+    expect(result.current.canPlayLatestAudio).toBe(false);
+
+    await act(async () => {
+      await result.current.playLatestAudio();
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('LISTENING');
   });
 
   it('should keep pending ai audio manual-only after hydration resolves to disabled', async () => {

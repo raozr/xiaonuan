@@ -110,7 +110,9 @@ export function useCompanioneeConversation() {
           setState('IDLE');
         }
       } else if (msg.type === 'ai:audio_unavailable') {
-        setState('IDLE');
+        if (!USER_ACTIVE_STATES.includes(state)) {
+          setState('IDLE');
+        }
       } else if (msg.type === 'error') {
         if (msg.payload.code === 401) {
           Alert.alert('身份过期', '请重新绑定', [{ text: '确定', onPress: handleUnbind }]);
@@ -288,12 +290,13 @@ export function useCompanioneeConversation() {
 
   const playLatestAudio = useCallback(async () => {
     if (!lastAudioUrl) return;
+    if (USER_ACTIVE_STATES.includes(state)) return;
     setState('SPEAKING');
     const didPlay = await playAudio(lastAudioUrl);
     if (didPlay === false) {
       setState('IDLE');
     }
-  }, [lastAudioUrl, playAudio]);
+  }, [lastAudioUrl, playAudio, state]);
 
   const handleStop = useCallback(() => {
     if (state === 'SPEAKING') {
@@ -322,7 +325,7 @@ export function useCompanioneeConversation() {
 
   return {
     aiText,
-    canPlayLatestAudio: !voicePlaybackEnabled && Boolean(lastAudioUrl),
+    canPlayLatestAudio: !voicePlaybackEnabled && Boolean(lastAudioUrl) && !USER_ACTIVE_STATES.includes(state),
     headerTitle,
     isConnected,
     micLabel,
