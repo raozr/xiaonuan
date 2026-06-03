@@ -9,6 +9,7 @@ import type { WebSocketMessage } from '../types/websocket';
 import { WS_URL } from '../utils/constants';
 
 const MIN_RECORDING_MS = 500;
+const USER_ACTIVE_STATES: CompanioneeConversationState[] = ['LISTENING', 'PROCESSING'];
 
 export type CompanioneeConversationState =
   | 'IDLE'
@@ -94,11 +95,14 @@ export function useCompanioneeConversation() {
         if (!url || lastAudioUrlRef.current === url) return;
         lastAudioUrlRef.current = url;
         setLastAudioUrl(url);
+        const userIsActive = USER_ACTIVE_STATES.includes(state);
         if (!hasLoadedConversationPreferences) {
           setPendingAutoPlayUrl(url);
           if (state === 'RESPONDING') {
             setState('IDLE');
           }
+        } else if (userIsActive) {
+          return;
         } else if (voicePlaybackEnabled) {
           setState('SPEAKING');
           playAudio(url);
@@ -139,7 +143,7 @@ export function useCompanioneeConversation() {
     if (voicePlaybackEnabled && (state === 'IDLE' || state === 'RESPONDING')) {
       setState('SPEAKING');
       playAudio(url);
-    } else if (!voicePlaybackEnabled) {
+    } else if (!voicePlaybackEnabled && !USER_ACTIVE_STATES.includes(state)) {
       setState('IDLE');
     }
   }, [hasLoadedConversationPreferences, pendingAutoPlayUrl, playAudio, state, voicePlaybackEnabled]);

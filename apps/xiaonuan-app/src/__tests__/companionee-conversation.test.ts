@@ -285,6 +285,91 @@ describe('useCompanioneeConversation voice playback preference', () => {
     expect(result.current.state).toBe('LISTENING');
   });
 
+  it('should not auto-play hydrated ai audio when voice playback is enabled during recording', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    await act(async () => {
+      await result.current.handleLongPress();
+    });
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/late-reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('LISTENING');
+  });
+
+  it('should not reset recording state when hydrated disabled ai audio arrives during recording', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    await act(async () => {
+      await result.current.toggleVoicePlayback();
+      await result.current.handleLongPress();
+    });
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/late-reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('LISTENING');
+    expect(result.current.canPlayLatestAudio).toBe(true);
+  });
+
+  it('should not reset recording state when pending ai audio hydrates to disabled during recording', async () => {
+    const { STORAGE_KEYS } = await import('../utils/constants');
+    const { useAuthStore } = await import('../store/auth-store');
+    storageControls.deferNextGetItem = true;
+    mockStorage[STORAGE_KEYS.VOICE_PLAYBACK_ENABLED] = 'false';
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+
+    await act(async () => {
+      await result.current.handleLongPress();
+    });
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/startup-reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(result.current.state).toBe('LISTENING');
+
+    await act(async () => {
+      storageControls.resolveGetItem?.('false');
+      await Promise.resolve();
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.voicePlaybackEnabled).toBe(false);
+    expect(result.current.state).toBe('LISTENING');
+    expect(result.current.canPlayLatestAudio).toBe(true);
+  });
+
   it('should keep pending ai audio manual-only after hydration resolves to disabled', async () => {
     const { STORAGE_KEYS } = await import('../utils/constants');
     const { useAuthStore } = await import('../store/auth-store');
