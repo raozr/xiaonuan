@@ -13,8 +13,9 @@ const flushAsyncEffects = () => act(async () => {
   await Promise.resolve();
 });
 
-const { mockPlayAudio, mockStopAudio, mockStorage, handlers, storageControls } = vi.hoisted(() => ({
+const { mockPlayAudio, mockSendMessage, mockStopAudio, mockStorage, handlers, storageControls } = vi.hoisted(() => ({
   mockPlayAudio: vi.fn(),
+  mockSendMessage: vi.fn(() => true),
   mockStopAudio: vi.fn(),
   mockStorage: {} as Record<string, string>,
   handlers: {
@@ -112,7 +113,7 @@ vi.mock('../hooks/useWebSocket', async () => {
       handlers.capturedMessageHandler = onMessage;
       return {
         isConnected: true,
-        sendMessage: vi.fn(() => true),
+        sendMessage: mockSendMessage,
       };
     },
   };
@@ -599,6 +600,93 @@ describe('useCompanioneeConversation voice playback preference', () => {
     });
 
     expect(mockPlayAudio).toHaveBeenCalledWith('http://example.com/reply.mp3');
+    expect(result.current.state).toBe('IDLE');
+  });
+
+  it('should send text through the existing voice_text websocket channel', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'session:created',
+        payload: { sessionId: 'session-1' },
+        timestamp: Date.now(),
+      });
+    });
+
+    await act(async () => {
+      await result.current.sendTextMessage('今天想聊聊晚饭');
+    });
+
+    expect(mockSendMessage).toHaveBeenCalledWith('message:voice_text', { text: '今天想聊聊晚饭' });
+    expect(result.current.state).toBe('PROCESSING');
+  });
+
+  it('should turn off voice playback when sending a text message', async () => {
+    const { STORAGE_KEYS } = await import('../utils/constants');
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    expect(result.current.voicePlaybackEnabled).toBe(true);
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'session:created',
+        payload: { sessionId: 'session-1' },
+        timestamp: Date.now(),
+      });
+    });
+
+    await act(async () => {
+      await result.current.sendTextMessage('用打字聊一会儿');
+    });
+
+    expect(result.current.voicePlaybackEnabled).toBe(false);
+    expect(mockStorage[STORAGE_KEYS.VOICE_PLAYBACK_ENABLED]).toBe('false');
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'message:ai_text',
+        payload: { text: '好啊，咱们打字聊。' },
+        timestamp: Date.now(),
+      });
+    });
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/text-reply.mp3' },
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalledWith('http://example.com/text-reply.mp3');
+    expect(result.current.canPlayLatestAudio).toBe(true);
+  });
+
+  it('should ignore blank text messages', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+    mockSendMessage.mockClear();
+
+    await act(async () => {
+      await result.current.sendTextMessage('   ');
+    });
+
+    expect(mockSendMessage).not.toHaveBeenCalled();
     expect(result.current.state).toBe('IDLE');
   });
 });

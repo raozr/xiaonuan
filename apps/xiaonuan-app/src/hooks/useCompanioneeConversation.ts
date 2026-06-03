@@ -144,6 +144,37 @@ export function useCompanioneeConversation() {
 
   const { isConnected, sendMessage } = useWebSocket(WS_URL, token ?? '', handleMessage);
 
+  const requestSessionCreate = useCallback(() => {
+    if (sessionReadyRef.current || sessionCreateSentRef.current) return true;
+    const sent = sendMessage('session:create', {});
+    sessionCreateSentRef.current = sent;
+    return sent;
+  }, [sendMessage]);
+
+  const ensureSessionReady = useCallback(async () => {
+    if (sessionReadyRef.current) return true;
+
+    if (!requestSessionCreate()) return false;
+
+    let waited = 0;
+    while (!sessionReadyRef.current && waited < 3000) {
+      await new Promise((r) => setTimeout(r, 100));
+      waited += 100;
+    }
+
+    if (!sessionReadyRef.current && isConnected) {
+      sessionCreateSentRef.current = false;
+      requestSessionCreate();
+      waited = 0;
+      while (!sessionReadyRef.current && waited < 2000) {
+        await new Promise((r) => setTimeout(r, 100));
+        waited += 100;
+      }
+    }
+
+    return sessionReadyRef.current;
+  }, [isConnected, requestSessionCreate]);
+
   useEffect(() => {
     if (!hasLoadedConversationPreferences || !pendingAutoPlayUrl) return;
 
@@ -168,8 +199,8 @@ export function useCompanioneeConversation() {
 
   useEffect(() => {
     if (!isConnected || !token || sessionReadyRef.current || sessionCreateSentRef.current) return;
-    sessionCreateSentRef.current = sendMessage('session:create', {});
-  }, [isConnected, token, sendMessage]);
+    requestSessionCreate();
+  }, [isConnected, token, requestSessionCreate]);
 
   useEffect(() => {
     if (wasPlayingRef.current && !isPlaying && state === 'SPEAKING') {
@@ -224,15 +255,14 @@ export function useCompanioneeConversation() {
     pressStartTime.current = Date.now();
     setConversationState('LISTENING');
     if (!sessionReadyRef.current) {
-      const sent = sendMessage('session:create', {});
-      if (!sent) {
+      if (!requestSessionCreate()) {
         Alert.alert('提示', '网络不稳定，请松开后重试');
         setConversationState('IDLE');
         return;
       }
     }
     await startRecording();
-  }, [hasPermission, isConnected, requestPermission, sendMessage, setConversationState, startRecording]);
+  }, [hasPermission, isConnected, requestPermission, requestSessionCreate, setConversationState, startRecording]);
 
   const handlePressOut = useCallback(async () => {
     if (state !== 'LISTENING') return;
@@ -255,20 +285,7 @@ export function useCompanioneeConversation() {
     }
 
     setConversationState('PROCESSING');
-    let waited = 0;
-    while (!sessionReadyRef.current && waited < 3000) {
-      await new Promise((r) => setTimeout(r, 100));
-      waited += 100;
-    }
-    if (!sessionReadyRef.current && isConnected) {
-      sendMessage('session:create', {});
-      waited = 0;
-      while (!sessionReadyRef.current && waited < 2000) {
-        await new Promise((r) => setTimeout(r, 100));
-        waited += 100;
-      }
-    }
-    if (!sessionReadyRef.current) {
+    if (!(await ensureSessionReady())) {
       Alert.alert('提示', '会话创建失败，请重试');
       setConversationState('IDLE');
       return;
@@ -285,7 +302,39 @@ export function useCompanioneeConversation() {
       Alert.alert('提示', '网络断开，请重试');
       setConversationState('IDLE');
     }
-  }, [getRecordingBase64, isConnected, isRecording, sendMessage, setConversationState, state, stopRecording]);
+  }, [ensureSessionReady, getRecordingBase64, isRecording, sendMessage, setConversationState, state, stopRecording]);
+
+  const sendTextMessage = useCallback(async (rawText: string) => {
+    const text = rawText.trim();
+    if (!text) return;
+    if (!isConnected) {
+      Alert.alert('网络未连接', '正在尝试连接小暖...');
+      return;
+    }
+
+    if (voicePlaybackEnabled) {
+      await setVoicePlaybackEnabled(false);
+    }
+    setConversationState('PROCESSING');
+    if (!(await ensureSessionReady())) {
+      Alert.alert('提示', '会话创建失败，请重试');
+      setConversationState('IDLE');
+      return;
+    }
+
+    const sent = sendMessage('message:voice_text', { text });
+    if (!sent) {
+      Alert.alert('提示', '网络断开，请重试');
+      setConversationState('IDLE');
+    }
+  }, [
+    ensureSessionReady,
+    isConnected,
+    sendMessage,
+    setConversationState,
+    setVoicePlaybackEnabled,
+    voicePlaybackEnabled,
+  ]);
 
   const toggleVoicePlayback = useCallback(async () => {
     const nextEnabled = !voicePlaybackEnabled;
@@ -339,6 +388,7 @@ export function useCompanioneeConversation() {
     micLabel,
     playLatestAudio,
     state,
+    sendTextMessage,
     toggleVoicePlayback,
     voicePlaybackEnabled,
     handleLongPress,

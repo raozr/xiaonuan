@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import * as RN from 'react-native';
 import {
+  KeyboardAvoidingView,
+  Platform,
   View,
   Text,
   TextInput,
@@ -16,9 +18,19 @@ interface TextInputPanelProps {
   visible: boolean;
   onClose: () => void;
   onSend: (text: string) => void;
+  placeholder?: string;
+  title?: string;
+  variant?: 'center' | 'bottom';
 }
 
-export function TextInputPanel({ visible, onClose, onSend }: TextInputPanelProps) {
+export function TextInputPanel({
+  visible,
+  onClose,
+  onSend,
+  placeholder = '记录一下TA的日常、爱好或近况...',
+  title = '写留言',
+  variant = 'center',
+}: TextInputPanelProps) {
   const [text, setText] = useState('');
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.9)).current;
@@ -64,6 +76,7 @@ export function TextInputPanel({ visible, onClose, onSend }: TextInputPanelProps
   };
 
   if (!visible) return null;
+  const isBottom = variant === 'bottom';
 
   return (
     <View style={S.absoluteFill} pointerEvents="box-none">
@@ -74,62 +87,75 @@ export function TextInputPanel({ visible, onClose, onSend }: TextInputPanelProps
         pointerEvents="auto"
       />
 
-      {/* 居中面板 - 不会被键盘遮挡 */}
-      <Animated.View
-        style={[
-          styles.panel,
-          {
-            opacity: fadeAnim,
-            transform: [{ scale: scaleAnim }],
-          },
-        ]}
-        pointerEvents="auto"
+      <KeyboardAvoidingView
+        behavior={isBottom ? 'padding' : Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={isBottom ? 0 : undefined}
+        pointerEvents="box-none"
+        style={styles.keyboardAvoider}
       >
-        {/* 关闭按钮 */}
-        <Pressable
-          onPress={onClose}
-          style={styles.closeButton}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-        >
-          <View style={styles.closeButtonInner}>
-            <X size={16} color={colors.onSurfaceVariant} />
-          </View>
-        </Pressable>
-
-        {/* 标题 */}
-        <Text style={[typography.headlineSm, styles.title, { color: colors.onSurface }]}>
-          写留言
-        </Text>
-
-        {/* 输入框 */}
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={[styles.input, typography.bodyMd, { color: colors.onSurface }]}
-            placeholder="记录一下TA的日常、爱好或近况..."
-            placeholderTextColor={colors.onSurfaceVariant}
-            value={text}
-            onChangeText={setText}
-            multiline
-            autoFocus
-            textAlignVertical="top"
-          />
-        </View>
-
-        {/* 发送按钮 */}
-        <Pressable
-          onPress={handleSend}
-          disabled={!text.trim()}
+        <Animated.View
           style={[
-            styles.sendButton,
+            isBottom ? styles.bottomPanel : styles.panel,
             {
-              backgroundColor: text.trim() ? colors.primary : colors.surfaceContainerHigh,
-              opacity: text.trim() ? 1 : 0.5,
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }],
             },
           ]}
+          pointerEvents="auto"
         >
-          <Send size={20} color={text.trim() ? colors.onPrimary : colors.onSurfaceVariant} />
-        </Pressable>
-      </Animated.View>
+          {/* 关闭按钮 */}
+          <Pressable
+            onPress={onClose}
+            style={styles.closeButton}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="关闭文字输入"
+          >
+            <View style={styles.closeButtonInner}>
+              <X size={16} color={colors.onSurfaceVariant} />
+            </View>
+          </Pressable>
+
+          {!isBottom && (
+            <Text style={[typography.headlineSm, styles.title, { color: colors.onSurface }]}>
+              {title}
+            </Text>
+          )}
+
+          {/* 输入框 */}
+          <View style={[styles.inputContainer, isBottom && styles.elderInputContainer]}>
+            <TextInput
+              style={[styles.input, isBottom ? typography.bodyLgElderly : typography.bodyMd, { color: colors.onSurface }]}
+              placeholder={placeholder}
+              placeholderTextColor={colors.onSurfaceVariant}
+              value={text}
+              onChangeText={setText}
+              multiline
+              autoFocus
+              textAlignVertical="top"
+              accessibilityLabel={title}
+            />
+          </View>
+
+          {/* 发送按钮 */}
+          <Pressable
+            onPress={handleSend}
+            disabled={!text.trim()}
+            style={[
+              styles.sendButton,
+              isBottom && styles.elderSendButton,
+              {
+                backgroundColor: text.trim() ? colors.primary : colors.surfaceContainerHigh,
+                opacity: text.trim() ? 1 : 0.5,
+              },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="发送文字"
+          >
+            <Send size={isBottom ? 24 : 20} color={text.trim() ? colors.onPrimary : colors.onSurfaceVariant} />
+          </Pressable>
+        </Animated.View>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -155,6 +181,24 @@ const styles = S.create({
     shadowRadius: 16,
     elevation: 10,
     maxHeight: '60%',
+  },
+  keyboardAvoider: {
+    ...S.absoluteFillObject,
+    justifyContent: 'flex-end',
+  },
+  bottomPanel: {
+    backgroundColor: colors.surfaceBright,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 10,
+    maxHeight: '70%',
   },
   closeButton: {
     position: 'absolute',
@@ -182,8 +226,12 @@ const styles = S.create({
     marginBottom: 16,
     minHeight: 120,
   },
+  elderInputContainer: {
+    minHeight: 112,
+    padding: 12,
+  },
   input: {
-    minHeight: 100,
+    minHeight: 88,
     textAlignVertical: 'top',
   },
   sendButton: {
@@ -193,5 +241,10 @@ const styles = S.create({
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  elderSendButton: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
 });

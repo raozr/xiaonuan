@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,8 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -16,8 +16,9 @@ import Animated, {
   withSequence,
   cancelAnimation,
 } from 'react-native-reanimated';
-import { Mic, Square, LogOut, History } from 'lucide-react-native';
+import { Keyboard, Mic, Square, LogOut, History } from 'lucide-react-native';
 import { VoicePlaybackToggle } from '../../src/components/companionee/VoicePlaybackToggle';
+import { TextInputPanel } from '../../src/components/shared/TextInputPanel';
 import { useCompanioneeConversation } from '../../src/hooks/useCompanioneeConversation';
 import { colors, typography } from '../../src/utils/theme';
 
@@ -34,9 +35,11 @@ export default function CompanioneeHome() {
     handleStop,
     handleUnbind,
     playLatestAudio,
+    sendTextMessage,
     toggleVoicePlayback,
     voicePlaybackEnabled,
   } = useCompanioneeConversation();
+  const [textInputVisible, setTextInputVisible] = useState(false);
 
   // Reanimated shared values
   const breatheScale = useSharedValue(1);
@@ -301,6 +304,18 @@ export default function CompanioneeHome() {
               </Text>
             </View>
           )}
+          {state !== 'PROCESSING' && state !== 'RESPONDING' && state !== 'SPEAKING' && (
+            <TouchableOpacity
+              className="absolute right-8 top-10 w-touch-target-min h-touch-target-min rounded-full items-center justify-center bg-surfaceContainerHigh"
+              style={{ shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.12, shadowRadius: 6, elevation: 4 }}
+              activeOpacity={0.7}
+              onPress={() => setTextInputVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel="打开文字输入"
+            >
+              <Keyboard size={28} color={colors.onSurfaceVariant} />
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Unbind button */}
@@ -313,6 +328,13 @@ export default function CompanioneeHome() {
           <LogOut size={20} color={colors.onSurfaceVariant} />
         </TouchableOpacity>
       </View>
+      <TextInputPanel
+        visible={textInputVisible}
+        onClose={() => setTextInputVisible(false)}
+        onSend={sendTextMessage}
+        placeholder="想和小暖说什么..."
+        variant="bottom"
+      />
     </SafeAreaView>
   );
 }
