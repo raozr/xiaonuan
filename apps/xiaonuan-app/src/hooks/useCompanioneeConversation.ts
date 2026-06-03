@@ -39,6 +39,7 @@ export function useCompanioneeConversation() {
   const sessionCreateSentRef = useRef(false);
   const wasPlayingRef = useRef(false);
   const wasConnectedRef = useRef(false);
+  const stateRef = useRef<CompanioneeConversationState>('IDLE');
   const lastAudioUrlRef = useRef<string | null>(null);
   const playbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressStartTime = useRef<number>(0);
@@ -55,6 +56,11 @@ export function useCompanioneeConversation() {
     stopAudio,
     stopRecording,
   } = useVoice();
+
+  const setConversationState = useCallback((nextState: CompanioneeConversationState) => {
+    stateRef.current = nextState;
+    setState(nextState);
+  }, []);
 
   const handleUnbind = useCallback(() => {
     Alert.alert(
@@ -89,29 +95,30 @@ export function useCompanioneeConversation() {
         sessionCreateSentRef.current = false;
       } else if (msg.type === 'message:ai_text') {
         setAiText(cleanAssistantText(msg.payload.text));
-        setState('RESPONDING');
+        setConversationState('RESPONDING');
       } else if (msg.type === 'ai:audio') {
         const url = msg.payload.url;
         if (!url || lastAudioUrlRef.current === url) return;
         lastAudioUrlRef.current = url;
         setLastAudioUrl(url);
-        const userIsActive = USER_ACTIVE_STATES.includes(state);
+        const currentState = stateRef.current;
+        const userIsActive = USER_ACTIVE_STATES.includes(currentState);
         if (!hasLoadedConversationPreferences) {
           setPendingAutoPlayUrl(url);
-          if (state === 'RESPONDING') {
-            setState('IDLE');
+          if (currentState === 'RESPONDING') {
+            setConversationState('IDLE');
           }
         } else if (userIsActive) {
           return;
         } else if (voicePlaybackEnabled) {
-          setState('SPEAKING');
+          setConversationState('SPEAKING');
           playAudio(url);
         } else {
-          setState('IDLE');
+          setConversationState('IDLE');
         }
       } else if (msg.type === 'ai:audio_unavailable') {
-        if (!USER_ACTIVE_STATES.includes(state)) {
-          setState('IDLE');
+        if (!USER_ACTIVE_STATES.includes(stateRef.current)) {
+          setConversationState('IDLE');
         }
       } else if (msg.type === 'error') {
         if (msg.payload.code === 401) {
@@ -129,10 +136,10 @@ export function useCompanioneeConversation() {
           friendly = '语音播放失败，请稍后再试';
         }
         Alert.alert('提示', friendly);
-        setState('IDLE');
+        setConversationState('IDLE');
       }
     },
-    [handleUnbind, hasLoadedConversationPreferences, playAudio, state, voicePlaybackEnabled]
+    [handleUnbind, hasLoadedConversationPreferences, playAudio, setConversationState, voicePlaybackEnabled]
   );
 
   const { isConnected, sendMessage } = useWebSocket(WS_URL, token ?? '', handleMessage);
@@ -142,13 +149,14 @@ export function useCompanioneeConversation() {
 
     const url = pendingAutoPlayUrl;
     setPendingAutoPlayUrl(null);
-    if (voicePlaybackEnabled && (state === 'IDLE' || state === 'RESPONDING')) {
-      setState('SPEAKING');
+    const currentState = stateRef.current;
+    if (voicePlaybackEnabled && (currentState === 'IDLE' || currentState === 'RESPONDING')) {
+      setConversationState('SPEAKING');
       playAudio(url);
-    } else if (!voicePlaybackEnabled && !USER_ACTIVE_STATES.includes(state)) {
-      setState('IDLE');
+    } else if (!voicePlaybackEnabled && !USER_ACTIVE_STATES.includes(currentState)) {
+      setConversationState('IDLE');
     }
-  }, [hasLoadedConversationPreferences, pendingAutoPlayUrl, playAudio, state, voicePlaybackEnabled]);
+  }, [hasLoadedConversationPreferences, pendingAutoPlayUrl, playAudio, setConversationState, voicePlaybackEnabled]);
 
   useEffect(() => {
     if (!isConnected && wasConnectedRef.current) {
@@ -165,21 +173,21 @@ export function useCompanioneeConversation() {
 
   useEffect(() => {
     if (wasPlayingRef.current && !isPlaying && state === 'SPEAKING') {
-      setState('IDLE');
+      setConversationState('IDLE');
     }
     wasPlayingRef.current = isPlaying;
-  }, [isPlaying, state]);
+  }, [isPlaying, setConversationState, state]);
 
   useEffect(() => {
     if (state === 'SPEAKING') {
       playbackTimeoutRef.current = setTimeout(() => {
         if (!isPlaying) {
-          setState('IDLE');
+          setConversationState('IDLE');
         }
       }, 8000);
     } else if (state === 'RESPONDING') {
       playbackTimeoutRef.current = setTimeout(() => {
-        setState('IDLE');
+        setConversationState('IDLE');
       }, 12000);
     } else if (playbackTimeoutRef.current) {
       clearTimeout(playbackTimeoutRef.current);
@@ -192,13 +200,13 @@ export function useCompanioneeConversation() {
         playbackTimeoutRef.current = null;
       }
     };
-  }, [state, isPlaying]);
+  }, [state, isPlaying, setConversationState]);
 
   useEffect(() => {
     if (state === 'SPEAKING' && playError) {
-      setState('IDLE');
+      setConversationState('IDLE');
     }
-  }, [state, playError]);
+  }, [state, playError, setConversationState]);
 
   const handleLongPress = useCallback(async () => {
     if (!isConnected) {
@@ -214,29 +222,29 @@ export function useCompanioneeConversation() {
     }
 
     pressStartTime.current = Date.now();
-    setState('LISTENING');
+    setConversationState('LISTENING');
     if (!sessionReadyRef.current) {
       const sent = sendMessage('session:create', {});
       if (!sent) {
         Alert.alert('提示', '网络不稳定，请松开后重试');
-        setState('IDLE');
+        setConversationState('IDLE');
         return;
       }
     }
     await startRecording();
-  }, [hasPermission, isConnected, requestPermission, sendMessage, startRecording]);
+  }, [hasPermission, isConnected, requestPermission, sendMessage, setConversationState, startRecording]);
 
   const handlePressOut = useCallback(async () => {
     if (state !== 'LISTENING') return;
     const duration = Date.now() - pressStartTime.current;
     if (!isRecording) {
-      setState('IDLE');
+      setConversationState('IDLE');
       return;
     }
 
     await stopRecording();
     if (duration < MIN_RECORDING_MS) {
-      setState('IDLE');
+      setConversationState('IDLE');
       const msg = '说话时间太短';
       if (Platform.OS === 'android') {
         ToastAndroid.show(msg, ToastAndroid.SHORT);
@@ -246,7 +254,7 @@ export function useCompanioneeConversation() {
       return;
     }
 
-    setState('PROCESSING');
+    setConversationState('PROCESSING');
     let waited = 0;
     while (!sessionReadyRef.current && waited < 3000) {
       await new Promise((r) => setTimeout(r, 100));
@@ -262,52 +270,52 @@ export function useCompanioneeConversation() {
     }
     if (!sessionReadyRef.current) {
       Alert.alert('提示', '会话创建失败，请重试');
-      setState('IDLE');
+      setConversationState('IDLE');
       return;
     }
 
     const base64 = await getRecordingBase64();
     if (!base64) {
       Alert.alert('提示', '读取录音失败，请重试');
-      setState('IDLE');
+      setConversationState('IDLE');
       return;
     }
     const sent = sendMessage('message:voice_audio', { audioBase64: base64 });
     if (!sent) {
       Alert.alert('提示', '网络断开，请重试');
-      setState('IDLE');
+      setConversationState('IDLE');
     }
-  }, [getRecordingBase64, isConnected, isRecording, sendMessage, state, stopRecording]);
+  }, [getRecordingBase64, isConnected, isRecording, sendMessage, setConversationState, state, stopRecording]);
 
   const toggleVoicePlayback = useCallback(async () => {
     const nextEnabled = !voicePlaybackEnabled;
     if (!nextEnabled && state === 'SPEAKING') {
       stopAudio();
-      setState('IDLE');
+      setConversationState('IDLE');
     }
     await setVoicePlaybackEnabled(nextEnabled);
-  }, [setVoicePlaybackEnabled, state, stopAudio, voicePlaybackEnabled]);
+  }, [setConversationState, setVoicePlaybackEnabled, state, stopAudio, voicePlaybackEnabled]);
 
   const playLatestAudio = useCallback(async () => {
     if (!lastAudioUrl) return;
-    if (USER_ACTIVE_STATES.includes(state)) return;
-    setState('SPEAKING');
+    if (USER_ACTIVE_STATES.includes(stateRef.current)) return;
+    setConversationState('SPEAKING');
     const didPlay = await playAudio(lastAudioUrl);
     if (didPlay === false) {
-      setState('IDLE');
+      setConversationState('IDLE');
     }
-  }, [lastAudioUrl, playAudio, state]);
+  }, [lastAudioUrl, playAudio, setConversationState]);
 
   const handleStop = useCallback(() => {
     if (state === 'SPEAKING') {
       stopAudio();
-      setState('IDLE');
+      setConversationState('IDLE');
     }
     if (state === 'LISTENING') {
       stopRecording();
-      setState('IDLE');
+      setConversationState('IDLE');
     }
-  }, [state, stopAudio, stopRecording]);
+  }, [setConversationState, state, stopAudio, stopRecording]);
 
   const headerTitle = !isConnected
     ? '连接中...'

@@ -393,6 +393,49 @@ describe('useCompanioneeConversation voice playback preference', () => {
     expect(result.current.state).toBe('LISTENING');
   });
 
+  it('should not auto-play ai audio in the same tick as recording starts', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    await act(async () => {
+      const longPressPromise = result.current.handleLongPress();
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio',
+        payload: { url: 'http://example.com/immediate-reply.mp3' },
+        timestamp: Date.now(),
+      });
+      await longPressPromise;
+    });
+
+    expect(mockPlayAudio).not.toHaveBeenCalled();
+    expect(result.current.state).toBe('LISTENING');
+  });
+
+  it('should not reset recording state when audio unavailable arrives in the same tick as recording starts', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    await act(async () => {
+      const longPressPromise = result.current.handleLongPress();
+      handlers.capturedMessageHandler?.({
+        type: 'ai:audio_unavailable',
+        payload: {},
+        timestamp: Date.now(),
+      });
+      await longPressPromise;
+    });
+
+    expect(result.current.state).toBe('LISTENING');
+  });
+
   it('should not manually play latest audio during recording', async () => {
     const { useAuthStore } = await import('../store/auth-store');
     await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
