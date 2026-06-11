@@ -13,13 +13,27 @@ const flushAsyncEffects = () => act(async () => {
   await Promise.resolve();
 });
 
-const { mockPlayAudio, mockSendMessage, mockStopAudio, mockStorage, handlers, storageControls } = vi.hoisted(() => ({
+const {
+  mockGetRecordingBase64,
+  mockPlayAudio,
+  mockSendMessage,
+  mockStartRecording,
+  mockStopAudio,
+  mockStopRecording,
+  mockStorage,
+  handlers,
+  storageControls,
+} = vi.hoisted(() => ({
+  mockGetRecordingBase64: vi.fn(),
   mockPlayAudio: vi.fn(),
   mockSendMessage: vi.fn(() => true),
+  mockStartRecording: vi.fn(() => Promise.resolve(true)),
   mockStopAudio: vi.fn(),
+  mockStopRecording: vi.fn(),
   mockStorage: {} as Record<string, string>,
   handlers: {
     capturedMessageHandler: undefined as ((msg: TestWebSocketMessage) => void) | undefined,
+    capturedAuthRejectedHandler: undefined as ((reason: string) => void) | undefined,
   },
   storageControls: {
     deferNextGetItem: false,
@@ -94,23 +108,29 @@ vi.mock('expo-router', () => ({
 
 vi.mock('../hooks/useVoice', () => ({
   useVoice: () => ({
-    getRecordingBase64: vi.fn(),
+    getRecordingBase64: mockGetRecordingBase64,
     hasPermission: true,
     isPlaying: false,
     isRecording: false,
     playAudio: mockPlayAudio,
     playError: false,
     requestPermission: vi.fn(() => Promise.resolve(true)),
-    startRecording: vi.fn(),
+    startRecording: mockStartRecording,
     stopAudio: mockStopAudio,
-    stopRecording: vi.fn(),
+    stopRecording: mockStopRecording,
   }),
 }));
 
 vi.mock('../hooks/useWebSocket', async () => {
   return {
-    useWebSocket: (_url: string, _token: string, onMessage?: (msg: TestWebSocketMessage) => void) => {
+    useWebSocket: (
+      _url: string,
+      _token: string,
+      onMessage?: (msg: TestWebSocketMessage) => void,
+      options?: { onAuthRejected?: (reason: string) => void }
+    ) => {
       handlers.capturedMessageHandler = onMessage;
+      handlers.capturedAuthRejectedHandler = options?.onAuthRejected;
       return {
         isConnected: true,
         sendMessage: mockSendMessage,
@@ -127,6 +147,9 @@ describe('useCompanioneeConversation voice playback preference', () => {
       delete mockStorage[key];
     });
     handlers.capturedMessageHandler = undefined;
+    handlers.capturedAuthRejectedHandler = undefined;
+    mockGetRecordingBase64.mockResolvedValue('audio-base64');
+    mockStartRecording.mockResolvedValue(true);
     storageControls.deferNextGetItem = false;
     storageControls.deferNextSetItem = false;
     storageControls.rejectNextGetItem = false;
@@ -144,6 +167,73 @@ describe('useCompanioneeConversation voice playback preference', () => {
 
     expect(result.current.voicePlaybackEnabled).toBe(true);
     expect(result.current.canPlayLatestAudio).toBe(false);
+  });
+
+  it('should clear auth and return to binding when websocket rejects the device', async () => {
+    const { router } = await import('expo-router');
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    await act(async () => {
+      await handlers.capturedAuthRejectedHandler?.('Invalid device');
+    });
+
+    expect(useAuthStore.getState().token).toBeNull();
+    expect(useAuthStore.getState().pairingId).toBeNull();
+    expect(router.replace).toHaveBeenCalledWith('/(companionee)');
+  });
+
+  it('should show a clear retry prompt when ASR returns empty text', async () => {
+    const { Alert } = await import('react-native');
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    act(() => {
+      handlers.capturedMessageHandler?.({
+        type: 'error',
+        payload: { code: 'ASR_EMPTY', message: '未能识别到语音内容' },
+        timestamp: Date.now(),
+      });
+    });
+
+    expect(Alert.alert).toHaveBeenCalledWith('提示', '没听清，请靠近一点再说一次');
+  });
+
+  it('should enter listening only after recording starts successfully', async () => {
+    const { useAuthStore } = await import('../store/auth-store');
+    await useAuthStore.getState().setAuth({ token: 'token', pairingId: 'pair-1' });
+    const { useCompanioneeConversation } = await import('../hooks/useCompanioneeConversation');
+
+    let resolveStartRecording: ((started: boolean) => void) | undefined;
+    mockStartRecording.mockReturnValueOnce(new Promise<boolean>((resolve) => {
+      resolveStartRecording = resolve;
+    }));
+
+    const { result } = renderHook(() => useCompanioneeConversation());
+    await flushAsyncEffects();
+
+    let longPressPromise: Promise<void> | undefined;
+    await act(async () => {
+      longPressPromise = result.current.handleLongPress();
+      await Promise.resolve();
+    });
+
+    expect(result.current.state).toBe('IDLE');
+
+    await act(async () => {
+      resolveStartRecording?.(true);
+      await longPressPromise;
+    });
+
+    expect(result.current.state).toBe('LISTENING');
   });
 
   it('should auto-play ai audio when voice playback is enabled', async () => {

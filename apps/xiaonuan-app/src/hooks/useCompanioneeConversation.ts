@@ -40,6 +40,7 @@ export function useCompanioneeConversation() {
   const wasPlayingRef = useRef(false);
   const wasConnectedRef = useRef(false);
   const stateRef = useRef<CompanioneeConversationState>('IDLE');
+  const recordingStartingRef = useRef(false);
   const lastAudioUrlRef = useRef<string | null>(null);
   const playbackTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pressStartTime = useRef<number>(0);
@@ -102,7 +103,7 @@ export function useCompanioneeConversation() {
         lastAudioUrlRef.current = url;
         setLastAudioUrl(url);
         const currentState = stateRef.current;
-        const userIsActive = USER_ACTIVE_STATES.includes(currentState);
+        const userIsActive = recordingStartingRef.current || USER_ACTIVE_STATES.includes(currentState);
         if (!hasLoadedConversationPreferences) {
           setPendingAutoPlayUrl(url);
           if (currentState === 'RESPONDING') {
@@ -128,7 +129,9 @@ export function useCompanioneeConversation() {
 
         const raw = msg.payload.message || '';
         let friendly = '处理失败';
-        if (msg.payload.code === 'ASR_FAILED' || msg.payload.code === 'ASR_EMPTY' || raw.includes('语音识别')) {
+        if (msg.payload.code === 'ASR_EMPTY') {
+          friendly = '没听清，请靠近一点再说一次';
+        } else if (msg.payload.code === 'ASR_FAILED' || raw.includes('语音识别')) {
           friendly = '语音识别失败，请稍后再试';
         } else if (msg.payload.code === 'SESSION_REQUIRED' || raw.includes('会话')) {
           friendly = '会话已过期，请重新开始';
@@ -142,7 +145,14 @@ export function useCompanioneeConversation() {
     [handleUnbind, hasLoadedConversationPreferences, playAudio, setConversationState, voicePlaybackEnabled]
   );
 
-  const { isConnected, sendMessage } = useWebSocket(WS_URL, token ?? '', handleMessage);
+  const handleAuthRejected = useCallback(async () => {
+    await clearAuth();
+    router.replace('/(companionee)');
+  }, [clearAuth]);
+
+  const { isConnected, sendMessage } = useWebSocket(WS_URL, token ?? '', handleMessage, {
+    onAuthRejected: handleAuthRejected,
+  });
 
   const requestSessionCreate = useCallback(() => {
     if (sessionReadyRef.current || sessionCreateSentRef.current) return true;
@@ -181,6 +191,7 @@ export function useCompanioneeConversation() {
     const url = pendingAutoPlayUrl;
     setPendingAutoPlayUrl(null);
     const currentState = stateRef.current;
+    if (recordingStartingRef.current) return;
     if (voicePlaybackEnabled && (currentState === 'IDLE' || currentState === 'RESPONDING')) {
       setConversationState('SPEAKING');
       playAudio(url);
@@ -252,17 +263,23 @@ export function useCompanioneeConversation() {
       }
     }
 
+    recordingStartingRef.current = true;
+    const recordingStarted = await startRecording();
+    recordingStartingRef.current = false;
+    if (!recordingStarted) {
+      Alert.alert('提示', '录音启动失败，请松开后重试');
+      setConversationState('IDLE');
+      return;
+    }
+
     pressStartTime.current = Date.now();
     setConversationState('LISTENING');
-    if (!sessionReadyRef.current) {
-      if (!requestSessionCreate()) {
-        Alert.alert('提示', '网络不稳定，请松开后重试');
-        setConversationState('IDLE');
-        return;
-      }
+    if (!sessionReadyRef.current && !requestSessionCreate()) {
+      await stopRecording();
+      Alert.alert('提示', '网络不稳定，请松开后重试');
+      setConversationState('IDLE');
     }
-    await startRecording();
-  }, [hasPermission, isConnected, requestPermission, requestSessionCreate, setConversationState, startRecording]);
+  }, [hasPermission, isConnected, requestPermission, requestSessionCreate, setConversationState, startRecording, stopRecording]);
 
   const handlePressOut = useCallback(async () => {
     if (state !== 'LISTENING') return;
@@ -297,6 +314,11 @@ export function useCompanioneeConversation() {
       setConversationState('IDLE');
       return;
     }
+    console.log('[Voice] Sending audio', {
+      durationMs: duration,
+      base64Length: base64.length,
+      estimatedBytes: Math.floor((base64.length * 3) / 4),
+    });
     const sent = sendMessage('message:voice_audio', { audioBase64: base64 });
     if (!sent) {
       Alert.alert('提示', '网络断开，请重试');

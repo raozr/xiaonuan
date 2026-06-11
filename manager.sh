@@ -35,6 +35,17 @@ function detect_compose() {
         echo -e "${RED}错误: 未安装 Docker Compose${NC}"
         exit 1
     fi
+    export COMPOSE_PROJECT_NAME="${PROJECT_NAME}"
+}
+
+function ensure_docker_network() {
+    if docker network inspect app-network &> /dev/null; then
+        return 0
+    fi
+
+    echo -e "${YELLOW}未找到 Docker 网络 app-network，正在创建...${NC}"
+    docker network create app-network > /dev/null
+    echo -e "${GREEN}Docker 网络 app-network 已创建${NC}"
 }
 
 function detect_voice_python() {
@@ -171,6 +182,7 @@ function do_clean() {
 cmd_start() {
     echo -e "${GREEN}正在启动小暖服务...${NC}"
     check_env
+    ensure_docker_network
     ${COMPOSE_CMD} up -d --build
     wait_for_health
     echo -e "${GREEN}服务已启动 (端口: 3000)${NC}"
@@ -215,6 +227,7 @@ cmd_update() {
 
     # 5. 构建并启动
     echo -e "${BLUE}重新构建并启动服务...${NC}"
+    ensure_docker_network
     ${COMPOSE_CMD} down
     ${COMPOSE_CMD} build
     ${COMPOSE_CMD} up -d
@@ -277,6 +290,8 @@ cmd_db_reset() {
     ${COMPOSE_CMD} down -v
     echo -e "${GREEN}容器和数据卷已移除${NC}"
 
+    ensure_docker_network
+
     echo -e "${BLUE}步骤 2/5: 重新启动 PostgreSQL...${NC}"
     ${COMPOSE_CMD} up -d postgres
     echo -n "等待 PostgreSQL 启动"
@@ -327,6 +342,7 @@ cmd_dev() {
 
     # 1. Docker 基础设施
     echo -e "${BLUE}[1/4] 检查 Docker 基础设施...${NC}"
+    ensure_docker_network
     if ${COMPOSE_CMD} ps 2>/dev/null | grep -q "postgres"; then
         echo -e "${GREEN}  Docker 基础设施已就绪${NC}"
     else

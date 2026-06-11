@@ -113,7 +113,7 @@ xiaonuan/
    ```bash
    ./manager.sh start
    ```
-   该脚本封装了 `docker compose`，支持 `start`、`stop`、`restart`、`update`、`status`、`logs`、`backup` 和 `health`。
+   该脚本封装了 `docker compose`，固定使用 `xiaonuan` 作为 Compose project name，并使用 `xiaonuan-*` 容器名，避免不同目录名启动出多套容器；支持 `start`、`stop`、`restart`、`update`、`status`、`logs`、`backup` 和 `health`。
 
 7. **手动开发模式**
    如需开发后端代码，先启动基础设施：

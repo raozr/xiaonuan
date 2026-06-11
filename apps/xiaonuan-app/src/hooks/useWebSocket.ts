@@ -4,17 +4,35 @@ import type { ClientWsMessageType, ClientWsPayload, WebSocketMessage } from '../
 
 export type { WebSocketMessage };
 
-export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSocketMessage) => void) {
+type UseWebSocketOptions = {
+  onAuthRejected?: (reason: string) => void;
+};
+
+function isAuthRejection(code: number, reason: string) {
+  return code === 1008 && /invalid device|invalid token|missing pairingid|missing token/i.test(reason);
+}
+
+export function useWebSocket(
+  url: string,
+  token: string,
+  onMessage?: (msg: WebSocketMessage) => void,
+  options?: UseWebSocketOptions
+) {
   const [isConnected, setIsConnected] = useState(false);
   const ws = useRef<WebSocket | null>(null);
   const reconnectCount = useRef(0);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onMessageRef = useRef(onMessage);
+  const onAuthRejectedRef = useRef(options?.onAuthRejected);
   const appState = useRef<AppStateStatus>(AppState.currentState);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
   }, [onMessage]);
+
+  useEffect(() => {
+    onAuthRejectedRef.current = options?.onAuthRejected;
+  }, [options?.onAuthRejected]);
 
   const clearReconnectTimer = useCallback(() => {
     if (reconnectTimer.current) {
@@ -78,6 +96,11 @@ export function useWebSocket(url: string, token: string, onMessage?: (msg: WebSo
       clearReconnectTimer();
 
       if (appState.current === 'background') {
+        return;
+      }
+
+      if (isAuthRejection(e.code, e.reason)) {
+        onAuthRejectedRef.current?.(e.reason);
         return;
       }
 

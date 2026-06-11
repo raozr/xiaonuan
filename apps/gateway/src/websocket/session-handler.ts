@@ -11,6 +11,7 @@ import {
 import { generateCheckpoint } from '../memory/checkpoint-service.js';
 import { transcribeVoice } from '../services/voice-service-client.js';
 import { convertM4aToWav } from '../utils/audio-convert.js';
+import { estimatePcm16MonoDurationSec } from '../utils/audio-duration.js';
 import { markCheckpointPending } from '../events/checkpoint-persistence.js';
 import { elapsedSince, nowMs } from '../utils/observability.js';
 import { sendWsMessage } from './messages.js';
@@ -236,6 +237,8 @@ export function createWebSocketHandler(app: FastifyInstance) {
           }
 
           let text: string;
+          let asrMessage: string | undefined;
+          let estimatedDurationSec: number | undefined;
           try {
             const decodeStart = nowMs();
             const audioBuffer = Buffer.from(audioBase64, 'base64');
@@ -248,20 +251,27 @@ export function createWebSocketHandler(app: FastifyInstance) {
             }, '[Perf]');
             const convertStart = nowMs();
             const wavBuffer = await convertM4aToWav(audioBuffer);
+            estimatedDurationSec = estimatePcm16MonoDurationSec(wavBuffer.length);
             app.log.info({
               sessionId,
               pairingId: user.pairingId,
               stage: 'asr.convert_m4a_to_wav',
               elapsedMs: elapsedSince(convertStart),
               bytes: wavBuffer.length,
+              estimatedDurationSec,
             }, '[Perf]');
             const asrStart = nowMs();
             const asrResult = await transcribeVoice(wavBuffer, 'wav', 16000);
+            asrMessage = asrResult.message;
             app.log.info({
               sessionId,
               pairingId: user.pairingId,
               stage: 'asr.transcribe',
               elapsedMs: elapsedSince(asrStart),
+              success: asrResult.success,
+              textLength: asrResult.text?.length ?? 0,
+              message: asrResult.message,
+              estimatedDurationSec,
             }, '[Perf]');
             text = asrResult.success ? (asrResult.text ?? '') : '';
           } catch (asrErr: any) {
@@ -282,6 +292,14 @@ export function createWebSocketHandler(app: FastifyInstance) {
           }
 
           if (!text.trim()) {
+            app.log.warn({
+              sessionId,
+              pairingId: user.pairingId,
+              stage: 'asr.empty',
+              errorCode: 'ASR_EMPTY',
+              message: asrMessage,
+              estimatedDurationSec,
+            }, 'ASR returned empty text');
             sendMessage('error', { message: '未能识别到语音内容', code: 'ASR_EMPTY' });
             return;
           }

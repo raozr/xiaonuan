@@ -1,6 +1,7 @@
 services:
   postgres:
     image: postgres:17-alpine
+    container_name: xiaonuan-postgres
     ports:
       - "5432:5432"
     environment:
@@ -19,6 +20,7 @@ services:
 
   qdrant:
     image: qdrant/qdrant:v1.17.0
+    container_name: xiaonuan-qdrant
     ports:
       - "6333:6333"
       - "6334:6334"
@@ -29,6 +31,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: xiaonuan-redis
     ports:
       - "6379:6379"
     volumes:
@@ -45,6 +48,7 @@ services:
     build:
       context: ./apps/voice-service
       dockerfile: Dockerfile
+    container_name: xiaonuan-voice-service
     restart: always
     environment:
       - BAILIAN_API_KEY=${DASHSCOPE_API_KEY}
@@ -59,6 +63,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: xiaonuan-gateway
     restart: always
     ports:
       - "3000:3000"

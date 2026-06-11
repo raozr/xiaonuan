@@ -49,7 +49,7 @@ export function useVoice() {
       setHasPermission(granted);
       if (!granted) {
         console.warn('[Voice] 录音权限被拒绝');
-        return;
+        return false;
       }
       await setAudioModeAsync({
         allowsRecording: true,
@@ -58,7 +58,7 @@ export function useVoice() {
 
       if (recorderState.isRecording) {
         console.log('[Voice] Already recording, skipping');
-        return;
+        return true;
       }
 
       try {
@@ -72,8 +72,10 @@ export function useVoice() {
       }
 
       recorder.record();
+      return true;
     } catch (e) {
       console.error('[Voice] 开始录音失败', e);
+      return false;
     }
   }, [recorder, recorderState.isRecording]);
 
