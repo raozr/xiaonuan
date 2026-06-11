@@ -169,8 +169,8 @@ pnpm --filter @xiaonuan/gateway migrate:ai-names
 - **通过 EAS 构建与发布**：
   ```bash
   cd apps/xiaonuan-app
-  eas build --profile preview    # 构建 APK 用于内部测试
-  eas build --profile production # 构建 AAB 用于 Play 商店
+  npx eas build --platform android --profile preview    # 构建 APK 用于内部测试
+  npx eas build --platform android --profile production # 构建 AAB 用于 Play 商店
   ```
 - **环境变量**：开发环境优先读取 `apps/xiaonuan-app/.env.development.local` 中的 `EXPO_PUBLIC_API_URL`；真机调试时应使用电脑在同一局域网内的可访问地址。若未配置，App 会尝试从 Expo dev server 推导电脑 IP，最后才回退到 `localhost`。
 - **下载页面**：APK 下载的静态落地页位于 `apps/gateway/public/index.html`（如 `https://your-domain/`）。
