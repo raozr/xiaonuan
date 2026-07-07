@@ -1,75 +1,75 @@
-# Pairing Long-Press Delete Design
+# 陪伴卡片长按删除设计
 
-## Goal
+## 目标
 
-Add a long-press delete action to each concrete companion card on the steward "我的陪伴" screen. The action deletes that specific pairing and companion avatar/persona from the account, using the existing backend pairing deletion API.
+在监护端“我的陪伴”页面，为每一个具体陪伴卡片增加长按删除能力。用户长按某个陪伴框后，可以删除这个陪伴关系以及对应的陪伴分身。删除操作复用后端已有的配对删除接口。
 
-## Current Context
+## 当前上下文
 
-- The steward pairing list is rendered in `apps/xiaonuan-app/app/(steward)/index.tsx`.
-- Each list item is rendered by `apps/xiaonuan-app/src/components/steward/PairingCard.tsx`.
-- The mobile pairing service currently supports list, create, bind, refresh invite code, and detail fetch operations.
-- The gateway already exposes `DELETE /api/pairings/:pairingId`.
-- Backend deletion is restricted to authenticated steward users who are primary members of the pairing.
+- 监护端陪伴列表由 `apps/xiaonuan-app/app/(steward)/index.tsx` 渲染。
+- 单个陪伴卡片由 `apps/xiaonuan-app/src/components/steward/PairingCard.tsx` 渲染。
+- 移动端 `pairing` 服务层目前支持列表、创建、绑定、刷新配对码、详情查询。
+- 网关已经提供 `DELETE /api/pairings/:pairingId`。
+- 后端删除权限限制为：已认证的监护端用户，且必须是该陪伴关系的主要家庭成员。
 
-## Recommended Approach
+## 推荐方案
 
-Use the existing `PairingCard` as the interaction surface. A normal tap keeps opening the pairing detail page. A long press on a specific card opens a destructive confirmation prompt for that specific companion.
+继续使用现有 `PairingCard` 作为交互入口。普通点击保持不变，进入陪伴详情页；长按某一张具体卡片时，弹出针对该陪伴的危险操作确认提示。
 
-Flow:
+流程：
 
-1. User long-presses one companion card.
-2. The app shows a native confirmation dialog with that companion's name.
-3. User chooses "删除陪伴".
-4. The app calls `DELETE /api/pairings/:pairingId` through a new `deletePairing` service helper.
-5. On success, the deleted pairing is removed from the local list.
-6. On failure, the app shows the backend or network error message and keeps the card visible.
+1. 用户长按某一个陪伴卡片。
+2. App 弹出原生确认对话框，对话框中带上该陪伴对象的名字。
+3. 用户点击“删除陪伴”。
+4. App 通过新增的 `deletePairing` 服务方法调用 `DELETE /api/pairings/:pairingId`。
+5. 删除成功后，从当前列表中移除这一张卡片。
+6. 删除失败时，展示后端或网络错误信息，并保留该卡片。
 
-This keeps the change small, native-feeling, and consistent with the existing Expo/React Native code.
+这个方案改动小、交互接近原生体验，也符合当前 Expo/React Native 项目的实现风格。
 
-## UI Behavior
+## UI 行为
 
-- Short press: unchanged, navigates to `/(steward)/${pairingId}`.
-- Long press: opens a native alert menu for the pressed card only.
-- Confirmation text includes the companion name, for example: `删除 张阿姨 的陪伴？`.
-- The destructive action label is `删除陪伴`.
-- The cancel action label is `取消`.
-- While deletion is in progress, repeated delete attempts for the same card are ignored.
-- If the deleted card was the last companion, the existing empty state appears.
+- 短按：行为不变，跳转到 `/(steward)/${pairingId}`。
+- 长按：只针对被长按的那张卡片弹出原生确认菜单。
+- 确认文案带上陪伴对象姓名，例如：`删除 张阿姨 的陪伴？`。
+- 危险操作按钮文案为 `删除陪伴`。
+- 取消按钮文案为 `取消`。
+- 删除请求进行中时，忽略对同一张卡片的重复删除请求。
+- 如果删除的是最后一个陪伴，删除成功后显示现有空状态。
 
-## API And Data Flow
+## API 与数据流
 
-Add `deletePairing(token, pairingId)` in `apps/xiaonuan-app/src/services/pairing.ts`.
+在 `apps/xiaonuan-app/src/services/pairing.ts` 中新增 `deletePairing(token, pairingId)`。
 
-The list screen owns deletion state and orchestration:
+列表页负责删除状态和流程编排：
 
-- `PairingCard` receives an optional `onLongPress` callback.
-- `PairingListScreen` passes a callback with the selected `Pairing`.
-- The callback opens the native confirmation dialog.
-- On confirm, it calls `deletePairing`.
-- On success, `setPairings((current) => current.filter((p) => p.id !== pairing.id))`.
+- `PairingCard` 接收一个可选的 `onLongPress` 回调。
+- `PairingListScreen` 为每个 `Pairing` 传入对应的长按回调。
+- 回调负责打开原生确认对话框。
+- 用户确认后，调用 `deletePairing`。
+- 成功后执行 `setPairings((current) => current.filter((p) => p.id !== pairing.id))`。
 
-No backend schema or route changes are needed.
+不需要修改后端数据模型或路由。
 
-## Error Handling
+## 错误处理
 
-- Missing token: show a generic login/session error and do not call the API.
-- 403 from backend: show the backend message, such as `仅主要家庭成员可删除配对`.
-- Network or server failure: show a non-destructive error alert and leave the pairing in the list.
-- Unknown companion name: use `未知` in the confirmation text, matching the existing card fallback.
+- 缺少 token：展示通用登录/会话错误，不调用接口。
+- 后端返回 403：展示后端错误信息，例如 `仅主要家庭成员可删除配对`。
+- 网络或服务器错误：展示非危险错误提示，并保留该陪伴卡片。
+- 陪伴对象姓名未知：确认文案中使用 `未知`，与现有卡片兜底文案保持一致。
 
-## Testing
+## 测试
 
-Add focused mobile tests:
+增加聚焦的移动端测试：
 
-- Service test for `deletePairing` to verify it calls `/api/pairings/:pairingId` with method `DELETE` and token.
-- Card wiring test for `PairingCard` to verify `onLongPress` is accepted and called.
+- 服务层测试：验证 `deletePairing` 会携带 token，并以 `DELETE` 方法请求 `/api/pairings/:pairingId`。
+- 卡片 wiring 测试：验证 `PairingCard` 可以接收并触发 `onLongPress`。
 
-Existing backend tests already cover the delete endpoint's primary-steward permission and success behavior.
+后端现有测试已经覆盖删除接口的主要家庭成员权限和成功删除行为。
 
-## Out Of Scope
+## 不在本次范围内
 
-- Adding a custom bottom sheet or new UI dependency.
-- Adding undo or soft delete.
-- Changing backend deletion semantics.
-- Allowing non-primary stewards to delete pairings.
+- 增加自定义底部弹层或新的 UI 依赖。
+- 增加撤销或软删除。
+- 修改后端删除语义。
+- 允许非主要家庭成员删除陪伴关系。
