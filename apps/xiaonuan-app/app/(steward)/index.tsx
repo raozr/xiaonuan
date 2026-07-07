@@ -7,7 +7,7 @@ import { TopAppBar } from '../../src/components/shared/TopAppBar';
 import { PairingCard } from '../../src/components/steward/PairingCard';
 import { EmptyStateIllustration } from '../../src/components/steward/EmptyStateIllustration';
 import { Button } from '../../src/components/ui/Button';
-import { listPairings, type Pairing } from '../../src/services/pairing';
+import { deletePairing, listPairings, type Pairing } from '../../src/services/pairing';
 import { colors, typography, spacing } from '../../src/utils/theme';
 import { useAuthStore } from '../../src/store/auth-store';
 
@@ -15,6 +15,7 @@ export default function PairingListScreen() {
   const [pairings, setPairings] = useState<Pairing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingPairingId, setDeletingPairingId] = useState<string | null>(null);
   const { token } = useAuthStore();
   const insets = useSafeAreaInsets();
 
@@ -33,6 +34,47 @@ export default function PairingListScreen() {
       setError(e.message ?? '加载失败');
     } finally {
       setLoading(false);
+    }
+  }
+
+  function confirmDeletePairing(pairing: Pairing) {
+    const companionName = pairing.companionee?.name ?? '未知';
+
+    Alert.alert(
+      `删除 ${companionName} 的陪伴？`,
+      '删除后，这个陪伴关系和对应分身将从你的账号中移除。',
+      [
+        { text: '取消', style: 'cancel' },
+        {
+          text: '删除陪伴',
+          style: 'destructive',
+          onPress: () => {
+            void handleDeletePairing(pairing);
+          },
+        },
+      ]
+    );
+  }
+
+  async function handleDeletePairing(pairing: Pairing) {
+    if (!token) {
+      Alert.alert('无法删除', '登录状态已失效，请重新登录后再试。');
+      return;
+    }
+
+    if (deletingPairingId === pairing.id) {
+      return;
+    }
+
+    try {
+      setDeletingPairingId(pairing.id);
+      await deletePairing(token, pairing.id);
+      setPairings((current) => current.filter((item) => item.id !== pairing.id));
+    } catch (e: any) {
+      console.error('Failed to delete pairing:', e);
+      Alert.alert('删除失败', e.message ?? '请稍后再试');
+    } finally {
+      setDeletingPairingId(null);
     }
   }
 
@@ -64,6 +106,7 @@ export default function PairingListScreen() {
               name={p.companionee?.name ?? '未知'}
               online={p.isOnline}
               lastActive={p.lastActive ?? undefined}
+              onLongPress={() => confirmDeletePairing(p)}
             />
           ))
         ) : (
