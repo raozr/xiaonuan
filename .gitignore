@@ -9,6 +9,8 @@ build/
 coverage/
 *.tsbuildinfo
 *.apk
+!apps/gateway/public/downloads/
+!apps/gateway/public/downloads/xiaonuan-v1.01.apk
 .worktrees/
 
 # Documentation and Process Files
