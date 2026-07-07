@@ -11,9 +11,10 @@ interface PairingCardProps {
   online: boolean;
   lastActive?: string;
   avatar?: number;
+  onLongPress?: () => void;
 }
 
-export function PairingCard({ pairingId, name, online, lastActive, avatar }: PairingCardProps) {
+export function PairingCard({ pairingId, name, online, lastActive, avatar, onLongPress }: PairingCardProps) {
   const displayName = name ?? '未知';
   return (
     <TouchableOpacity
@@ -27,6 +28,7 @@ export function PairingCard({ pairingId, name, online, lastActive, avatar }: Pai
       }}
       activeOpacity={0.7}
       onPress={() => router.push(`/(steward)/${pairingId}`)}
+      onLongPress={onLongPress}
     >
       {/* Avatar */}
       <View className="relative mr-stack-md">
