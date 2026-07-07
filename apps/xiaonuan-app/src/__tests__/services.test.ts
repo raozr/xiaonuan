@@ -150,6 +150,27 @@ describe('API Service Layer', () => {
       expect(result).toHaveLength(2);
       expect(result[0].companioneeName).toBe('Bob');
     });
+
+    it('should delete a pairing with token', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        text: () => Promise.resolve(JSON.stringify({ success: true, message: '配对已删除' })),
+      });
+
+      const { deletePairing } = await import('../services/pairing');
+      const result = await deletePairing('test-token', 'pair-1');
+
+      expect(result.success).toBe(true);
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/pairings/pair-1'),
+        expect.objectContaining({
+          method: 'DELETE',
+          headers: expect.objectContaining({
+            Authorization: 'Bearer test-token',
+          }),
+        })
+      );
+    });
   });
 
   describe('feed.ts - feed service', () => {

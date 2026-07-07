@@ -41,6 +41,13 @@ export async function createPairing(token: string, input: CreatePairingInput) {
   }) as Promise<{ id: string; inviteCode: string; inviteCodeExpiresAt: string }>;
 }
 
+export async function deletePairing(token: string, pairingId: string) {
+  return api(`/api/pairings/${pairingId}`, {
+    method: 'DELETE',
+    token,
+  }) as Promise<{ success: boolean; message?: string }>;
+}
+
 export async function bindPairing(input: BindInput) {
   return api('/api/pairings/bind', {
     method: 'POST',
